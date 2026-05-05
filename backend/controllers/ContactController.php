@@ -77,6 +77,7 @@ class ContactController {
             $tags, $b['notes'] ?? null,
         ]);
         $id = (int)$this->db->lastInsertId();
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Thêm Liên hệ mới', "Liên hệ \"{$b['first_name']} {$b['last_name']}\" đã được tạo.", 'contact', $id);
         $this->show($auth, $id);
     }
 
@@ -114,6 +115,7 @@ class ContactController {
         $stmt = $this->db->prepare("UPDATE contacts SET deleted_at=NOW() WHERE id=? AND tenant_id=?");
         $stmt->execute([$id, $auth['tenant_id']]);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy liên hệ', false);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Xóa Liên hệ', "Một liên hệ đã bị đưa vào thùng rác.", 'contact', $id);
         respond(200, null, 'Đã xóa liên hệ (vào thùng rác)');
     }
 

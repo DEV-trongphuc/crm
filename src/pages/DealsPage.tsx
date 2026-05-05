@@ -15,11 +15,11 @@ const FMT = (n: number) => {
 };
 
 const MOCK_STAGES: any[] = [
-  { id: 1, name: 'Lead m\u1edbi', color: '#6366f1', position: 1 },
-  { id: 2, name: '\u0110\u00e3 li\u00ean h\u1ec7', color: '#f59e0b', position: 2 },
-  { id: 3, name: 'Th\u01b0\u01a1ng l\u01b0\u1ee3ng', color: '#8b5cf6', position: 3 },
-  { id: 4, name: 'B\u00e1o gi\u00e1', color: '#3b82f6', position: 4 },
-  { id: 5, name: 'Ch\u1ed1t h\u1ee3p \u0111\u1ed3ng', color: '#10b981', position: 5 },
+  { id: 1, name: 'Lead mới', color: '#6366f1', position: 1 },
+  { id: 2, name: 'Đã liên hệ', color: '#f59e0b', position: 2 },
+  { id: 3, name: 'Thương lượng', color: '#8b5cf6', position: 3 },
+  { id: 4, name: 'Báo giá', color: '#3b82f6', position: 4 },
+  { id: 5, name: 'Chốt hợp đồng', color: '#10b981', position: 5 },
 ];
 
 const MOCK_DEALS_GROUPED: Record<number, any[]> = {
@@ -47,6 +47,7 @@ export const DealsPage: React.FC = () => {
   const { addToast } = useUIStore();
   const [stages, setStages] = useState<any[]>([]);
   const [deals, setDeals] = useState<Record<number, any[]>>({});
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDrawer, setShowDrawer] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
@@ -58,6 +59,15 @@ export const DealsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('');
+
+  const fetchUsers = async () => {
+    try {
+      const r = await api.get('/users');
+      setUsers(r.data.data || []);
+    } catch (e) {
+      console.error("Failed to fetch users", e);
+    }
+  };
 
   const fetchStages = async () => {
     try {
@@ -92,6 +102,7 @@ export const DealsPage: React.FC = () => {
   };
 
   React.useEffect(() => {
+    fetchUsers();
     fetchStages();
   }, []);
 
@@ -191,7 +202,8 @@ export const DealsPage: React.FC = () => {
           if (!deal.close.startsWith(filterMonth)) return false;
         }
         if (filterAssignee) {
-          if (deal.assignee !== filterAssignee) return false;
+          const val = String(filterAssignee);
+          if (String(deal.owner_id) !== val && deal.assignee !== val) return false;
         }
         return true;
       });
@@ -231,18 +243,22 @@ export const DealsPage: React.FC = () => {
           <Calendar size={18} className="text-light" />
           <select className="form-input" style={{ paddingLeft: '0.5rem' }} value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
             <option value="">Tất cả thời gian chốt</option>
-            <option value="2026-05">Tháng 5 / 2026</option>
-            <option value="2026-06">Tháng 6 / 2026</option>
-            <option value="2026-07">Tháng 7 / 2026</option>
+            {Array.from({ length: 12 }).map((_, i) => {
+              const d = new Date();
+              d.setMonth(d.getMonth() + i - 2); // Show 2 months past and 9 months future
+              const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+              const label = `Tháng ${d.getMonth() + 1} / ${d.getFullYear()}`;
+              return <option key={val} value={val}>{label}</option>;
+            })}
           </select>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 150 }}>
           <Users size={18} className="text-light" />
           <select className="form-input" style={{ paddingLeft: '0.5rem' }} value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)}>
             <option value="">Tất cả Sale (Assignee)</option>
-            <option value="admin">Quản trị viên</option>
-            <option value="sale1">Nguyễn Văn Sale</option>
-            <option value="sale2">Trần Thị Sale</option>
+            {users.map(u => (
+              <option key={u.id} value={u.id || u.full_name}>{u.full_name}</option>
+            ))}
           </select>
         </div>
         <button className="btn outline sm" onClick={() => { setSearchTerm(''); setFilterMonth(''); setFilterAssignee(''); }}>

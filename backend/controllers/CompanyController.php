@@ -50,7 +50,9 @@ class CompanyController {
             $b['country']??'Việt Nam', $b['size']??null, $b['status']??'prospect',
             json_encode($b['tags']??[]), $b['notes']??null,
         ]);
-        $this->show($auth, (int)$this->db->lastInsertId());
+        $id = (int)$this->db->lastInsertId();
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Thêm Công ty mới', "Công ty \"{$b['name']}\" đã được tạo.", 'company', $id);
+        $this->show($auth, $id);
     }
 
     public function show(array $auth, int $id): void {
@@ -84,6 +86,7 @@ class CompanyController {
         $stmt = $this->db->prepare("UPDATE companies SET deleted_at=NOW() WHERE id=? AND tenant_id=?");
         $stmt->execute([$id, $auth['tenant_id']]);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy công ty', false);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Xóa Công ty', "Một công ty đã bị đưa vào thùng rác.", 'company', $id);
         respond(200, null, 'Đã xóa công ty (vào thùng rác)');
     }
 

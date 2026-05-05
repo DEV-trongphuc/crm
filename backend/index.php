@@ -58,6 +58,14 @@ function requireRole(array $payload, array $roles): void {
     }
 }
 
+function logActivity(PDO $db, int $tid, int $uid, string $type, string $subject, string $body = null, string $relType = null, int $relId = null): void {
+    $stmt = $db->prepare("
+        INSERT INTO activities (tenant_id, user_id, type, subject, body, status, related_type, related_id)
+        VALUES (?, ?, ?, ?, ?, 'done', ?, ?)
+    ");
+    $stmt->execute([$tid, $uid, $type, $subject, $body, $relType, $relId]);
+}
+
 // ── Load controllers ──────────────────────────────────────────
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/DashboardController.php';

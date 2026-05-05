@@ -45,6 +45,9 @@ class AuthController {
             'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))'
         )->execute([$user['id'], $hash, 30]);
 
+        // Log activity
+        logActivity($this->db, $user['tenant_id'], $user['id'], 'system', 'Đăng nhập hệ thống', "Người dùng {$user['full_name']} đã đăng nhập thành công từ {$_SERVER['REMOTE_ADDR']}");
+
         respond(200, [
             'access_token'  => $accessToken,
             'refresh_token' => $refreshToken,

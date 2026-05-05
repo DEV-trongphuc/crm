@@ -103,6 +103,8 @@ class DealController {
         // Record history
         $this->db->prepare("INSERT INTO deal_stage_history (deal_id,from_stage,to_stage,moved_by) VALUES (?,NULL,?,?)")
             ->execute([$id, $stageId, $auth['user_id']]);
+        
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Tạo Deal mới', "Deal \"{$b['title']}\" được tạo thành công.", 'deal', $id);
         $this->show($auth, $id);
     }
 
@@ -137,6 +139,12 @@ class DealController {
             ->execute([$b['stage_id'], $id, $auth['tenant_id']]);
         $this->db->prepare("INSERT INTO deal_stage_history (deal_id,from_stage,to_stage,moved_by) VALUES (?,?,?,?)")
             ->execute([$id, $old, $b['stage_id'], $auth['user_id']]);
+
+        // Get stage names for log
+        $sn = $this->db->prepare("SELECT name FROM pipeline_stages WHERE id IN (?,?)");
+        $sn->execute([$old, $b['stage_id']]); $names = $sn->fetchAll(PDO::FETCH_COLUMN);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Chuyển giai đoạn Deal', "Deal đã được chuyển trạng thái.", 'deal', $id);
+
         respond(200, null, 'Đã cập nhật stage thành công');
     }
 
@@ -157,6 +165,8 @@ class DealController {
         $stmt = $this->db->prepare("UPDATE deals SET deleted_at=NOW() WHERE id=? AND tenant_id=?");
         $stmt->execute([$id,$auth['tenant_id']]);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy deal', false);
+        
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Xóa Deal', "Một cơ hội bán hàng đã bị xóa.", 'deal', $id);
         respond(200, null, 'Đã xóa deal (vào thùng rác)');
     }
 
