@@ -97,17 +97,77 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [taskForm, setTaskForm] = useState({ title: '', priority: 'medium', due_date: '', description: '' });
 
   const [docs, setDocs] = useState<any[]>([]);
+  const [deals, setDeals] = useState<any[]>([]);
+  const [drawerInvoices, setDrawerInvoices] = useState<any[]>([]);
+  const [drawerTickets, setDrawerTickets] = useState<any[]>([]);
+  const [drawerActivities, setDrawerActivities] = useState<any[]>([]);
+  const [loadingRelated, setLoadingRelated] = useState(false);
+
+  const fetchData = useCallback(async () => {
+    if (!contact?.id) return;
+    setLoadingRelated(true);
+    try {
+      // Fetch Notes
+      const notesRes = await api.get(`/notes?entity_type=contact&entity_id=${contact.id}`);
+      setNotes((notesRes.data.data || []).map((n: any) => ({
+        id: n.id,
+        text: n.body,
+        time: n.created_at,
+        user: n.user_name || 'Hệ thống'
+      })));
+
+      // Fetch Tasks (Activities)
+      const tasksRes = await api.get(`/activities?related_type=contact&related_id=${contact.id}`);
+      const rawActivities = tasksRes.data.data.items || [];
+      setDrawerActivities(rawActivities);
+      setTasks(rawActivities.filter((a: any) => a.type === 'task').map((a: any) => ({
+        id: a.id,
+        title: a.subject,
+        done: a.status === 'completed',
+        priority: a.priority,
+        due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—'
+      })));
+
+      // Fetch Deals
+      const dealsRes = await api.get(`/deals?contact_id=${contact.id}`);
+      setDeals((dealsRes.data.data.items || []).map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        value: d.value,
+        stage: d.stage_name,
+        prob: d.probability,
+        close: d.expected_close_date,
+        stage_color: d.stage_color || '#3b82f6'
+      })));
+
+      // Fetch Invoices
+      const invoicesRes = await api.get(`/invoices?contact_id=${contact.id}`);
+      setDrawerInvoices(invoicesRes.data.data.items || []);
+
+      // Fetch Tickets
+      const ticketsRes = await api.get(`/tickets?contact_id=${contact.id}`);
+      setDrawerTickets(ticketsRes.data.data.items || []);
+
+    } catch (e) {
+      console.error("Error fetching drawer data:", e);
+    } finally {
+      setLoadingRelated(false);
+    }
+  }, [contact?.id]);
 
   useEffect(() => {
     if (contact) {
       setFormData(contact);
       setTags(contact.tags || []);
-      // TODO: Fetch notes from API
       setNotes([]);
-      setTasks(buildTasks(contact));
+      setTasks([]);
+      setDeals([]);
+      setDrawerInvoices([]);
+      setDrawerTickets([]);
       setActiveTab('info');
+      if (isOpen) fetchData();
     }
-  }, [contact]);
+  }, [contact, isOpen, fetchData]);
 
   useEffect(() => {
     if (isOpen) {
@@ -117,11 +177,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         .then(r => {
           const stages = r.data.data || [];
           if (stages.length > 0) {
-            // Map API stages to the shape used by the stepper
             setPipelineStages(stages.map((s: any) => ({ id: s.id, name: s.name, color: s.color || '#6366f1', order_index: s.order_index })));
           }
         })
-        .catch(() => { /* keep default */ });
+        .catch(() => { });
     }
   }, [isOpen]);
 
@@ -160,43 +219,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const mockStore = useMockStore();
 
   const timeline = React.useMemo(() => {
-    if (!DEV_MODE) return buildTimeline(contact);
-    return mockStore.activities
-      .map((a: any) => ({
+    const source = DEV_MODE ? mockStore.activities.filter((a: any) => a.contact_id === contact.id) : drawerActivities;
+    return source.map((a: any) => ({
         id: a.id,
         title: a.subject,
         type: a.type,
-        user: a.user_name,
+        user: a.user_name || 'Hệ thống',
         time: a.created_at,
         color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#8b5cf6' : '#10b981',
         icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : <Mail size={16} />,
-        note: a.note || ''
+        note: a.body || a.note || ''
       }));
-  }, [mockStore.activities, formData.id, contact]);
-
-  const deals = React.useMemo(() => {
-    if (!DEV_MODE) return buildDeals(contact);
-    return mockStore.deals
-      .map((d: any) => ({
-        id: d.id,
-        title: d.title,
-        value: d.value,
-        stage: d.stage,
-        prob: d.probability,
-        close: d.expected_close,
-        stage_color: d.stage === 'won' ? '#10b981' : d.stage === 'lost' ? '#ef4444' : '#3b82f6'
-      }));
-  }, [mockStore.deals, formData.id]);
-
-  const drawerInvoices = React.useMemo(() => {
-    if (!DEV_MODE) return [];
-    return mockStore.invoices;
-  }, [mockStore.invoices, formData.id]);
-
-  const drawerTickets = React.useMemo(() => {
-    if (!DEV_MODE) return [];
-    return mockStore.tickets;
-  }, [mockStore.tickets, formData.id]);
+  }, [drawerActivities, mockStore.activities, contact.id]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
 
   const handleSave = async () => {
@@ -223,17 +257,74 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const addNote = async () => {
     if (!newNote.trim()) return;
     const text = newNote.trim();
-    setNewNote('');
     try {
-      // NoteController routes expect entity_type + entity_id as query params
       await api.post(`/notes?entity_type=contact&entity_id=${contact.id}`, {
         body: text, type: 'internal'
       });
-      setNotes(p => [{ id: Date.now(), text, time: new Date().toISOString(), user: 'Admin' }, ...p]);
+      setNewNote('');
+      fetchData(); // Reload all to stay in sync
       addToast('Đã lưu ghi chú', 'success');
     } catch {
-      setNotes(p => [{ id: Date.now(), text, time: new Date().toISOString(), user: 'Admin' }, ...p]);
-      addToast('Đã lưu ghi chú (offline)', 'warning');
+      addToast('Lỗi khi lưu ghi chú', 'error');
+    }
+  };
+
+  const handleAddTask = async () => {
+    if (!taskForm.title.trim()) return;
+    try {
+      await api.post('/activities', {
+        related_type: 'contact',
+        related_id: contact.id,
+        subject: taskForm.title,
+        type: 'task',
+        priority: taskForm.priority,
+        due_date: taskForm.due_date,
+        status: 'planned'
+      });
+      setShowTaskModal(false);
+      setTaskForm({ title: '', priority: 'medium', due_date: '', description: '' });
+      fetchData();
+      addToast('Đã thêm công việc mới', 'success');
+    } catch (e: any) {
+      addToast(e?.response?.data?.message || 'Lỗi khi lưu công việc', 'error');
+    }
+  };
+
+  const handleCreateDeal = async () => {
+    if (!dealForm.title.trim()) return;
+    try {
+      await api.post('/deals', {
+        contact_id: contact.id,
+        title: dealForm.title,
+        value: Number(dealForm.value) || 0,
+        stage_id: dealForm.stage === 'lead' ? null : dealForm.stage,
+        probability: dealForm.probability
+      });
+      setShowDealModal(false);
+      setDealForm({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '' });
+      fetchData();
+      addToast('Đã tạo cơ hội mới thành công', 'success');
+    } catch (e: any) {
+      addToast(e?.response?.data?.message || 'Lỗi khi tạo cơ hội', 'error');
+    }
+  };
+
+  const handleCreateTicket = async () => {
+    if (!ticketForm.subject.trim()) return;
+    try {
+      await api.post('/tickets', {
+        contact_id: contact.id,
+        customer_name: fullName,
+        subject: ticketForm.subject,
+        priority: ticketForm.priority,
+        description: ticketForm.description
+      });
+      setShowTicketModal(false);
+      setTicketForm({ subject: '', priority: 'medium', description: '' });
+      fetchData();
+      addToast('Đã gửi yêu cầu hỗ trợ', 'success');
+    } catch (e: any) {
+      addToast(e?.response?.data?.message || 'Lỗi khi tạo ticket', 'error');
     }
   };
 
@@ -277,9 +368,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </span>
                     </div>
 
-                    <p style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-light)', fontSize: '0.9375rem', marginBottom: '1rem' }}>
-                      <Briefcase size={16} /> <strong>{formData.job_title || 'Chủ doanh nghiệp'}</strong> tại <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{formData.company_name || 'Công ty TNHH'}</span>
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                      <p style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-light)', fontSize: '0.8125rem' }}>
+                        <Clock size={14} /> <span>Tạo lúc: <strong style={{ color: 'var(--color-text)' }}>{formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</strong></span>
+                      </p>
+                      {formData.updated_at && formData.updated_at !== formData.created_at && (
+                        <p style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-light)', fontSize: '0.8125rem' }}>
+                          <span style={{ color: 'var(--color-text-muted)' }}>|</span>
+                          <span>Cập nhật: <strong style={{ color: 'var(--color-text)' }}>{new Date(formData.updated_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong></span>
+                        </p>
+                      )}
+                    </div>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -475,14 +574,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <Clock size={13} style={{ color: 'var(--color-text-muted)' }} /> Thời gian
                             </label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', gap: '6px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Tạo lúc:</span>
-                                <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>
-                                  {formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                </span>
+                                <input 
+                                  type="datetime-local" 
+                                  className="form-input sm" 
+                                  style={{ padding: '4px 8px', fontSize: '0.8125rem', width: '180px' }}
+                                  value={formData.created_at ? formData.created_at.substring(0, 16) : ''} 
+                                  onChange={e => setFormData({ ...formData, created_at: e.target.value.replace('T', ' ') + ':00' })}
+                                />
                               </div>
-                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', gap: '6px' }}>
+                              <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Cập nhật:</span>
                                 <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>
                                   {formData.updated_at ? new Date(formData.updated_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
@@ -1171,7 +1274,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </div>
               <div className="modal-footer">
                 <button className="btn outline" onClick={() => setShowDealModal(false)}>Hủy</button>
-                <button className="btn primary" onClick={() => { addToast('Đã tạo Deal thành công', 'success'); setShowDealModal(false); }}>Tạo Deal</button>
+                <button className="btn primary" onClick={handleCreateDeal}>Tạo Deal</button>
               </div>
             </motion.div>
           </div>
@@ -1214,7 +1317,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </div>
               <div className="modal-footer">
                 <button className="btn outline" onClick={() => setShowTaskModal(false)}>Hủy</button>
-                <button className="btn primary" onClick={() => { addToast('Đã thêm công việc mới', 'success'); setShowTaskModal(false); }}>Lưu công việc</button>
+                <button className="btn primary" onClick={handleAddTask}>Lưu công việc</button>
               </div>
             </motion.div>
           </div>
@@ -1262,7 +1365,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </div>
               <div className="modal-footer">
                 <button className="btn outline" onClick={() => setShowTicketModal(false)}>Hủy</button>
-                <button className="btn primary" onClick={() => { addToast('Đã tạo Ticket thành công', 'success'); setShowTicketModal(false); }}>Tạo Ticket</button>
+                <button className="btn primary" onClick={handleCreateTicket}>Tạo Ticket</button>
               </div>
             </motion.div>
           </div>
