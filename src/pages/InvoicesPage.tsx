@@ -70,7 +70,7 @@ export const InvoicesPage: React.FC = () => {
   const overdueAmt = filtered.filter(i => i.status === 'overdue').reduce((s, i) => s + Number(i.total), 0);
 
   const STATUS_CONFIG: Record<string, { label: string; class: string; icon: React.ReactNode }> = {
-    paid:    { label: 'Đã thanh toán', class: 'success', icon: <CheckCircle size={11} /> },
+    paid: { label: 'Đã thanh toán', class: 'success', icon: <CheckCircle size={11} /> },
     pending: { label: 'Chờ thanh toán', class: 'warning', icon: <Clock size={11} /> },
     overdue: { label: 'Quá hạn', class: 'danger', icon: <AlertCircle size={11} /> },
   };
@@ -111,7 +111,7 @@ export const InvoicesPage: React.FC = () => {
     const rows = filtered.map(i => [
       i.invoice_number, i.contact_name, i.company_name, i.title, i.total, i.issue_date, i.due_date, i.status
     ]);
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + headers.join(",") + "\n"
       + rows.map(e => e.join(",")).join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -128,7 +128,7 @@ export const InvoicesPage: React.FC = () => {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Hóa đơn & Thanh toán</h1>
+          <h1 className="page-title">Invoices</h1>
           <p className="page-subtitle">Quản lý giao dịch tài chính và trạng thái thanh toán</p>
         </div>
         <div className="flex gap-2">
@@ -283,8 +283,8 @@ export const InvoicesPage: React.FC = () => {
         {previewItem && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setPreviewItem(null)} style={{ zIndex: 300 }} />
-            <motion.div 
-              className="modal" 
+            <motion.div
+              className="modal"
               style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '90%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto', zIndex: 310, padding: 0, borderRadius: '24px' }}
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
             >

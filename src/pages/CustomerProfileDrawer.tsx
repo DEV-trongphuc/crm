@@ -64,7 +64,7 @@ const TABS = [
   { id: 'tasks', label: 'Công việc (Tasks)', icon: <CheckSquare size={16} /> },
   { id: 'notes', label: 'Ghi chú nội bộ', icon: <FileText size={16} /> },
   { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <FileText size={16} /> },
-  { id: 'invoices', label: 'Hóa đơn & Thanh toán', icon: <DollarSign size={16} /> },
+  { id: 'invoices', label: 'Invoices', icon: <DollarSign size={16} /> },
 ];
 
 export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate }) => {
@@ -78,7 +78,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string }[]>([]);
   const [tasks, setTasks] = useState(buildTasks());
   const [pipelineModal, setPipelineModal] = useState<{ isOpen: boolean; targetId: string; targetLabel: string; note: string }>({ isOpen: false, targetId: '', targetLabel: '', note: '' });
-  
+
   const [docs, setDocs] = useState([
     { id: 1, name: 'CCCD_MatTruoc.jpg', date: new Date().toLocaleDateString('vi-VN'), size: '1.2 MB', type: 'jpg' },
     { id: 2, name: 'CCCD_MatSau.jpg', date: new Date().toLocaleDateString('vi-VN'), size: '1.1 MB', type: 'jpg' }
@@ -527,9 +527,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {tasks.map(t => (
-                          <div 
-                            key={t.id} 
-                            className="card-panel" 
+                          <div
+                            key={t.id}
+                            className="card-panel"
                             onClick={() => setTasks(p => p.map(x => x.id === t.id ? { ...x, done: !x.done } : x))}
                             style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1rem', opacity: t.done ? 0.6 : 1, cursor: 'pointer', transition: 'all 0.2s', border: '1px solid transparent' }}
                             onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary-light)'}
@@ -599,7 +599,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <Plus size={14} /> Upload file
                         </label>
                       </div>
-                      
+
                       {docs.length === 0 ? (
                         <div className="empty-state" style={{ padding: '3rem 1rem', textAlign: 'center', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
                           <FileText size={48} color="var(--color-border)" style={{ margin: '0 auto 1rem auto' }} />
@@ -617,7 +617,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <h4 style={{ fontSize: '0.9rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</h4>
                                 <p className="text-xs text-light mt-1">Tải lên: {doc.date} • {doc.size}</p>
                               </div>
-                              <div className="flex gap-1" style={{ flexShrink: 0 }}>
+                              <div className="flex gap-2" style={{ flexShrink: 0 }}>
                                 <button className="btn-icon sm" title="Đổi tên" onClick={() => {
                                   const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
                                   if (newName && newName.trim()) {
@@ -646,7 +646,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {activeTab === 'invoices' && (
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Hóa đơn & Thanh toán</h3>
+                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Invoices</h3>
                         <button className="btn outline sm" onClick={() => { onClose(); useUIStore.getState().setShowPOS(formData); }}><Plus size={14} /> Tạo hóa đơn</button>
                       </div>
                       <div className="empty-state" style={{ padding: '3rem 1rem', textAlign: 'center', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
