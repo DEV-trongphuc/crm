@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil } from 'lucide-react';
+import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { EmptyCard } from '../components/ui/EmptyCard';
+import { TagInput } from '../components/ui/TagInput';
 import { useUIStore } from '../store/uiStore';
+import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 import styles from './EntityDrawer.module.css'; // Reusing the same drawer CSS
 
 interface CompanyDrawerProps {
@@ -27,21 +31,59 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   const { addToast, showConfirm } = useUIStore();
   const [activeTab, setActiveTab] = useState('info');
   const [formData, setFormData] = useState(entity || {});
+  const [tags, setTags] = useState<string[]>(entity?.tags || []);
   const [helpModal, setHelpModal] = useState<{title: string, content: string} | null>(null);
   
-  // B2B Sub-contacts State
-  const [subContacts, setSubContacts] = useState<any[]>([
-    { id: 1, name: 'Trần Đức Tuấn', role: 'Giám đốc điều hành (CEO)', phone: '090 123 4567', email: 'tuan.tran@company.com', isPrimary: true },
-    { id: 2, name: 'Nguyễn Thị Nga', role: 'Kế toán trưởng', phone: '098 765 4321', email: 'nga.nguyen@company.com', isPrimary: false },
-  ]);
+  // B2B Sub-contacts State — loaded from API
+  const [subContacts, setSubContacts] = useState<any[]>([]);
+  const [subLoading, setSubLoading] = useState(false);
+
+  // Deals — loaded from API
+  const [deals, setDeals] = useState<any[]>([]);
+  const [dealsLoading, setDealsLoading] = useState(false);
   
-  const [docs, setDocs] = useState([
-    { id: 1, name: 'GPKD_BanSao_2026.pdf', date: '12/04/2026', size: '3.5 MB', type: 'pdf' },
-    { id: 2, name: 'HopDong_NguyenTac_NDA.docx', date: '20/04/2026', size: '1.2 MB', type: 'docx' }
-  ]);
+  // Docs — local only (no backend endpoint)
+  const [docs, setDocs] = useState<any[]>([]);
   
   useEffect(() => {
-    if (entity) setFormData(entity);
+    if (entity) {
+      setFormData(entity);
+      setTags(entity.tags || []);
+      if (entity.id) {
+        if (DEV_MODE) {
+          const { contacts, deals } = useMockStore.getState();
+          const compContacts = contacts.filter((c: any) => c.company_name === entity.name);
+          setSubContacts(compContacts.map((c: any) => ({
+            id: c.id,
+            name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Chưa có tên',
+            role: c.job_title || '',
+            phone: c.phone || '',
+            email: c.email || '',
+            isPrimary: c.id % 2 === 0, // Mock primary
+          })));
+          setDeals(deals.filter((d: any) => d.company_name === entity.name || (!d.company_name && Math.random() > 0.5)));
+        } else {
+          setSubLoading(true);
+          api.get('/contacts', { params: { company_id: entity.id, limit: 50 } })
+            .then(r => setSubContacts((r.data.data?.items || r.data.data || []).map((c: any) => ({
+              id: c.id,
+              name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Chưa có tên',
+              role: c.job_title || '',
+              phone: c.phone || '',
+              email: c.email || '',
+              isPrimary: c.is_primary || false,
+            }))))
+            .catch(() => setSubContacts([]))
+            .finally(() => setSubLoading(false));
+          
+          setDealsLoading(true);
+          api.get('/deals', { params: { company_id: entity.id } })
+            .then(r => setDeals(r.data.data?.items || r.data.data || []))
+            .catch(() => setDeals([]))
+            .finally(() => setDealsLoading(false));
+        }
+      }
+    }
   }, [entity]);
 
   if (!isOpen) return null;
@@ -322,24 +364,31 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   <div className="animate-fade">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                       <h4 className="panel-title" style={{ margin: 0 }}>Cơ hội Bán hàng (Deals)</h4>
-                      <button className="btn primary sm" onClick={() => addToast('Đang mở form tạo Deal mới...', 'info')}><Plus size={14}/> Tạo Deal</button>
+                      <button className="btn primary sm" onClick={() => addToast('Tạo Deal mới trong module Pipeline', 'info')}><Plus size={14}/> Tạo Deal</button>
                     </div>
-                    <div className="card-panel">
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                        <div>
-                          <h4 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-primary)' }}>Nâng cấp Hệ thống CRM Toàn diện</h4>
-                          <p className="text-xs text-light mt-1">Dự kiến: <strong style={{ color: 'var(--color-text)' }}>450.000.000 đ</strong> • Chốt: 30/06/2026</p>
-                        </div>
-                        <span className="badge warning">Thương lượng (50%)</span>
+                    {dealsLoading ? (
+                      <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+                        <Loader2 size={24} className="spin" style={{ margin: '0 auto' }} />
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '1rem' }}>
-                        <div>
-                          <h4 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-primary)' }}>Gói bảo trì Server Hàng năm</h4>
-                          <p className="text-xs text-light mt-1">Dự kiến: <strong style={{ color: 'var(--color-text)' }}>25.000.000 đ</strong> • Chốt: 15/01/2026</p>
-                        </div>
-                        <span className="badge success">Đã chốt (100%)</span>
+                    ) : deals.length === 0 ? (
+                      <div className="card-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                        <Briefcase size={32} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
+                        <p style={{ fontWeight: 600 }}>Chưa có deal nào</p>
+                        <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>Tạo deal mới từ module Pipeline</p>
                       </div>
-                    </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {deals.map((d: any) => (
+                          <div key={d.id} className="card-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem' }}>
+                            <div>
+                              <h4 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-primary)' }}>{d.title}</h4>
+                              <p className="text-xs text-light mt-1">Dự kiến: <strong style={{ color: 'var(--color-text)' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</strong> • Chốt: {d.close_date ? new Date(d.close_date).toLocaleDateString('vi-VN') : 'Chưa xác định'}</p>
+                            </div>
+                            <span className={`badge ${d.stage_color ? '' : 'warning'}`} style={d.stage_color ? { background: d.stage_color + '20', color: d.stage_color } : {}}>{d.stage || d.pipeline_stage || 'Đang xử lý'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -468,7 +517,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             {/* Footer */}
             <div className={styles.footer}>
               <button className="btn ghost" onClick={onClose}>Hủy bỏ</button>
-              <button className="btn primary" onClick={() => onSave(formData)}>Lưu thông tin Công ty</button>
+              <button className="btn primary" onClick={() => onSave({ ...formData, tags })}>Lưu thông tin Công ty</button>
             </div>
           </motion.div>
         </>

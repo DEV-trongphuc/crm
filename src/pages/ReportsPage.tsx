@@ -7,24 +7,10 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { motion } from 'framer-motion';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 
-const MONTHLY = [
-  { month: 'T10/24', revenue: 72000000, target: 90000000 },
-  { month: 'T11/24', revenue: 68000000, target: 90000000 },
-  { month: 'T12/24', revenue: 112000000, target: 100000000 },
-  { month: 'T1/25', revenue: 85000000, target: 100000000 },
-  { month: 'T2/25', revenue: 132000000, target: 100000000 },
-  { month: 'T3/25', revenue: 98000000, target: 120000000 },
-  { month: 'T4/25', revenue: 175000000, target: 150000000 },
-  { month: 'T5/25', revenue: 220000000, target: 180000000 },
-  { month: 'T6/25', revenue: 195000000, target: 200000000 },
-];
-
-const BY_OWNER = [
-  { name: 'Admin', deals: 8, revenue: 820000000, calls: 12, emails: 8, meetings: 5, tasks: 6 },
-  { name: 'Sales Manager', deals: 5, revenue: 265000000, calls: 9, emails: 6, meetings: 4, tasks: 8 },
-  { name: 'Sales', deals: 3, revenue: 185000000, calls: 6, emails: 4, meetings: 2, tasks: 5 },
-];
+const MONTHLY: any[] = [];
+const BY_OWNER: any[] = [];
 
 const FMT = (n: number) => n >= 1e9 ? (n / 1e9).toFixed(1) + 'T' : n >= 1e6 ? (n / 1e6).toFixed(1) + 'M' : (n / 1e3).toFixed(0) + 'K';
 const FMT_VND = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
@@ -43,7 +29,24 @@ export const ReportsPage: React.FC = () => {
   const fetchSales = async () => {
     setLoading(true);
     if (DEV_MODE) {
-      setSalesData({ monthly: MONTHLY, byOwner: BY_OWNER });
+      const { expenses, contacts } = useMockStore.getState();
+      const totalWon = contacts.reduce((sum, c) => sum + (c.status === 'customer' ? (c.open_deal_value || 10000000) : 0), 0);
+      const totalExp = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+      setSalesData({ 
+        monthly: [
+          { month: 'T1', revenue: 45000000, cost: 30000000 },
+          { month: 'T2', revenue: 52000000, cost: 35000000 },
+          { month: 'T3', revenue: 61000000, cost: 42000000 },
+          { month: 'T4', revenue: totalWon * 0.9, cost: totalExp * 0.85 },
+          { month: 'T5', revenue: totalWon, cost: totalExp },
+        ], 
+        byOwner: [
+          { name: 'Admin Sales', revenue: totalWon * 0.6, count: 5 },
+          { name: 'Sale A', revenue: totalWon * 0.3, count: 3 },
+          { name: 'Sale B', revenue: totalWon * 0.1, count: 1 },
+        ] 
+      });
       setLoading(false);
       return;
     }
@@ -59,6 +62,18 @@ export const ReportsPage: React.FC = () => {
 
   const fetchPipeline = async () => {
     setLoading(true);
+    if (DEV_MODE) {
+      const { contacts } = useMockStore.getState();
+      const totalWon = contacts.reduce((sum, c) => sum + (c.status === 'customer' ? (c.open_deal_value || 10000000) : 0), 0);
+      setPipelineData([
+        { stage: 'Mới', count: 12, value: 0 },
+        { stage: 'Tiềm năng', count: 8, value: totalWon * 0.5 },
+        { stage: 'Đàm phán', count: 5, value: totalWon * 0.8 },
+        { stage: 'Thành công', count: 4, value: totalWon },
+      ]);
+      setLoading(false);
+      return;
+    }
     try {
       const r = await api.get('/reports/pipeline');
       setPipelineData(r.data.data);
@@ -69,11 +84,21 @@ export const ReportsPage: React.FC = () => {
 
   const fetchActivities = async () => {
     setLoading(true);
+    if (DEV_MODE) {
+      setActivityData([
+        { type: 'call', count: 45 },
+        { type: 'email', count: 120 },
+        { type: 'meeting', count: 18 },
+        { type: 'task', count: 34 },
+      ]);
+      setLoading(false);
+      return;
+    }
     try {
       const r = await api.get('/reports/activities');
       setActivityData(r.data.data);
-    } catch {
-      // silent fail
+    } catch (e) {
+      console.error("Failed to fetch activities", e);
     } finally { setLoading(false); }
   };
 
@@ -169,26 +194,33 @@ export const ReportsPage: React.FC = () => {
                   <tr><th>Nhân viên</th><th>Số Deal</th><th>Doanh thu</th><th>% Đóng góp</th></tr>
                 </thead>
                 <tbody>
-                  {(salesData?.by_owner || BY_OWNER).map((o: any) => (
-                    <tr key={o.name || o.user_name || Math.random()}>
-                      <td>
-                        <div className="flex items-center gap-2">
-                          <div className="avatar-placeholder sm" style={{ background: '#7c3aed', fontSize: '0.65rem' }}>{(o.name || o.user_name || 'U')[0]}</div>
-                          <span style={{ fontWeight: 600 }}>{o.name || o.user_name || 'Unknown'}</span>
-                        </div>
-                      </td>
-                      <td><span className="badge purple">{o.deals || o.total_deals} deals</span></td>
-                      <td className="font-semi" style={{ color: 'var(--color-primary)' }}>{FMT_VND(o.revenue)}</td>
-                      <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{ flex: 1, height: 7, background: 'var(--color-border)', borderRadius: 4 }}>
-                            <div style={{ width: `${Math.round((o.revenue / (salesData?.summary?.total_revenue || 1)) * 100)}%`, height: '100%', background: 'var(--color-primary)', borderRadius: 4 }} />
-                          </div>
-                          <span className="text-sm font-semi">{Math.round((o.revenue / (salesData?.summary?.total_revenue || 1)) * 100)}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {(() => {
+                    const rows = salesData?.by_owner || BY_OWNER;
+                    const total = rows.reduce((s: number, o: any) => s + Number(o.revenue || 0), 0);
+                    return rows.map((o: any) => {
+                      const pct = total > 0 ? Math.round((Number(o.revenue || 0) / total) * 100) : 0;
+                      return (
+                        <tr key={o.id || o.user_id || o.name || o.user_name}>
+                          <td>
+                            <div className="flex items-center gap-2">
+                              <div className="avatar-placeholder sm" style={{ background: '#7c3aed', fontSize: '0.65rem' }}>{(o.name || o.user_name || 'U')[0]}</div>
+                              <span style={{ fontWeight: 600 }}>{o.name || o.user_name || 'Unknown'}</span>
+                            </div>
+                          </td>
+                          <td><span className="badge purple">{o.deals || o.total_deals || 0} deals</span></td>
+                          <td className="font-semi" style={{ color: 'var(--color-primary)' }}>{FMT_VND(Number(o.revenue || 0))}</td>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <div style={{ flex: 1, height: 7, background: 'var(--color-border)', borderRadius: 4 }}>
+                                <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: 'var(--color-primary)', borderRadius: 4 }} />
+                              </div>
+                              <span className="text-sm font-semi" style={{ minWidth: 36 }}>{pct}%</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    });
+                  })()}
                 </tbody>
               </table>
             </div>

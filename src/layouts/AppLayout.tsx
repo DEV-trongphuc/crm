@@ -14,19 +14,21 @@ import { NotificationsDropdown } from '../components/ui/NotificationsDropdown';
 import { GlobalSearchModal } from '../components/ui/GlobalSearchModal';
 import { GlobalConfirmModal } from '../components/ui/GlobalConfirmModal';
 import { CommandPalette } from '../components/ui/CommandPalette';
+import { DemoIndicator } from '../components/ui/DemoIndicator';
+import { QRCodeCallModal } from '../components/ui/QRCodeCallModal';
 import styles from './AppLayout.module.css';
 
 const NAV_ITEMS = [
-  { to: '/',          icon: LayoutDashboard, label: 'Tổng quan',     end: true },
-  { to: '/contacts',  icon: Users,           label: 'Khách hàng' },
-  { to: '/companies', icon: Building2,       label: 'Công ty' },
-  { to: '/deals',     icon: Briefcase,       label: 'Pipeline' },
-  { to: '/activities',icon: CalendarCheck,   label: 'Hoạt động' },
-  { to: '/products',  icon: Package,         label: 'Sản phẩm' },
-  { to: '/invoices',  icon: FileSpreadsheet, label: 'Hóa đơn & PO' },
-  { to: '/expenses',  icon: Wallet,          label: 'Chi phí' },
-  { to: '/tickets',   icon: LifeBuoy,        label: 'Hỗ trợ' },
-  { to: '/reports',   icon: BarChart3,       label: 'Báo cáo' },
+  { to: '/', icon: LayoutDashboard, label: 'Tổng quan', end: true },
+  { to: '/contacts', icon: Users, label: 'Khách hàng' },
+  { to: '/companies', icon: Building2, label: 'Công ty' },
+  { to: '/deals', icon: Briefcase, label: 'Pipeline' },
+  { to: '/activities', icon: CalendarCheck, label: 'Hoạt động' },
+  { to: '/products', icon: Package, label: 'Sản phẩm' },
+  { to: '/invoices', icon: FileSpreadsheet, label: 'Invoices' },
+  { to: '/expenses', icon: Wallet, label: 'Chi phí' },
+  { to: '/tickets', icon: LifeBuoy, label: 'Hỗ trợ' },
+  { to: '/reports', icon: BarChart3, label: 'Báo cáo' },
 ];
 
 export const AppLayout: React.FC = () => {
@@ -77,6 +79,7 @@ export const AppLayout: React.FC = () => {
         )}
       </AnimatePresence>
 
+      <DemoIndicator />
       {/* SIDEBAR */}
       <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileVisible : ''}`}>
         {/* Logo */}
@@ -146,20 +149,20 @@ export const AppLayout: React.FC = () => {
             </button>
           </div>
 
-            <div className={styles.topbarRight}>
+          <div className={styles.topbarRight}>
 
-              <button className={styles.iconBtn} onClick={toggleDark} title="Chế độ tối">
-                {dark ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-              <NotificationsDropdown />
-              <div className={styles.userAvatar}>
-                <div className="avatar-placeholder sm" style={{ background: '#7c3aed', fontSize: '0.7rem' }}>{initials}</div>
-                <div className={styles.userMeta}>
-                  <span className={styles.topUserName}>{user?.full_name}</span>
-                  <span className={styles.topUserTenant}>{user?.tenant_name}</span>
-                </div>
+            <button className={styles.iconBtn} onClick={toggleDark} title="Chế độ tối">
+              {dark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <NotificationsDropdown />
+            <div className={styles.userAvatar}>
+              <div className="avatar-placeholder sm" style={{ background: '#7c3aed', fontSize: '0.7rem' }}>{initials}</div>
+              <div className={styles.userMeta}>
+                <span className={styles.topUserName}>{user?.full_name}</span>
+                <span className={styles.topUserTenant}>{user?.tenant_name}</span>
               </div>
             </div>
+          </div>
         </header>
 
         {/* PAGE CONTENT */}
@@ -179,13 +182,14 @@ export const AppLayout: React.FC = () => {
       {/* Global POS Modal */}
       <AnimatePresence>
         {showPOS && (
-          <POSModal 
-            onClose={() => setShowPOS(false)} 
-            defaultContact={typeof showPOS === 'object' ? showPOS : null} 
+          <POSModal
+            onClose={() => setShowPOS(false)}
+            defaultContact={typeof showPOS === 'object' ? showPOS : null}
           />
         )}
       </AnimatePresence>
       <CommandPalette />
+      <QRCodeCallModal />
     </div>
   );
 };

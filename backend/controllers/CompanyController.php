@@ -12,10 +12,12 @@ class CompanyController {
         $offset = ($page - 1) * $limit;
         $search = $_GET['search'] ?? '';
         $status = $_GET['status'] ?? '';
+        $stage  = $_GET['stage_id'] ?? '';
 
         $where = ['c.tenant_id=?','c.deleted_at IS NULL']; $params = [$tid];
         if ($search) { $where[] = 'MATCH(c.name,c.email) AGAINST(? IN BOOLEAN MODE)'; $params[] = "$search*"; }
         if ($status) { $where[] = 'c.status=?'; $params[] = $status; }
+        if ($stage)  { $where[] = 'c.stage_id=?'; $params[] = (int)$stage; }
         $w = implode(' AND ', $where);
 
         $total = (int)$this->db->prepare("SELECT COUNT(*) FROM companies c WHERE $w")->execute($params) ? 0 : 0;
@@ -24,10 +26,12 @@ class CompanyController {
         $total = (int)$cnt->fetchColumn();
 
         $stmt = $this->db->prepare("
-            SELECT c.*, u.full_name as owner_name,
+            SELECT c.*, u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color,
                    (SELECT COUNT(*) FROM contacts ct WHERE ct.company_id=c.id) as contact_count,
                    (SELECT COUNT(*) FROM deals d WHERE d.company_id=c.id) as deal_count
-            FROM companies c LEFT JOIN users u ON c.owner_id=u.id
+            FROM companies c 
+            LEFT JOIN users u ON c.owner_id=u.id
+            LEFT JOIN pipeline_stages ps ON c.stage_id=ps.id
             WHERE $w ORDER BY c.created_at DESC LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
@@ -39,28 +43,36 @@ class CompanyController {
     public function store(array $auth): void {
         $b = getBody();
         if (empty($b['name'])) respond(422, null, 'Tên công ty là bắt buộc', false);
+        $stageId = $b['stage_id'] ?? null;
+        if (!$stageId) {
+            $s = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id=? ORDER BY order_index LIMIT 1");
+            $s->execute([$auth['tenant_id']]); $stageId = $s->fetchColumn();
+        }
+
         $stmt = $this->db->prepare("
-            INSERT INTO companies (tenant_id,owner_id,created_by,name,industry,website,phone,email,address,city,country,size,status,tags,notes)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO companies (tenant_id,owner_id,created_by,name,tax_id,industry,website,social_link,phone,email,address,ward,city,country,size,status,tags,notes,stage_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $stmt->execute([
             $auth['tenant_id'], $b['owner_id'] ?? $auth['user_id'], $auth['user_id'],
-            $b['name'], $b['industry']??null, $b['website']??null, $b['phone']??null,
-            $b['email']??null, $b['address']??null, $b['city']??null,
+            $b['name'], $b['tax_id']??null, $b['industry']??null, $b['website']??null, $b['social_link']??null,
+            $b['phone']??null, $b['email']??null, $b['address']??null, $b['ward']??null, $b['city']??null,
             $b['country']??'Việt Nam', $b['size']??null, $b['status']??'prospect',
-            json_encode($b['tags']??[]), $b['notes']??null,
+            json_encode($b['tags']??[]), $b['notes']??null, $stageId
         ]);
         $id = (int)$this->db->lastInsertId();
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Thêm Công ty mới', "Công ty \"{$b['name']}\" đã được tạo.", 'company', $id);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Thêm Công ty mới', "Công ty \"{$b['name']}\" đã được tạo.", 'company', $id);
         $this->show($auth, $id);
     }
 
     public function show(array $auth, int $id): void {
         $stmt = $this->db->prepare("
-            SELECT c.*, u.full_name as owner_name,
+            SELECT c.*, u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color,
                    (SELECT COUNT(*) FROM contacts ct WHERE ct.company_id=c.id) as contact_count,
                    (SELECT COUNT(*) FROM deals d WHERE d.company_id=c.id) as deal_count
-            FROM companies c LEFT JOIN users u ON c.owner_id=u.id
+            FROM companies c 
+            LEFT JOIN users u ON c.owner_id=u.id
+            LEFT JOIN pipeline_stages ps ON c.stage_id=ps.id
             WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL
         ");
         $stmt->execute([$id, $auth['tenant_id']]);
@@ -72,7 +84,7 @@ class CompanyController {
 
     public function update(array $auth, int $id): void {
         $b = getBody();
-        $fields = ['owner_id','name','industry','website','phone','email','address','city','country','size','status','notes'];
+        $fields = ['owner_id','name','tax_id','industry','website','social_link','phone','email','address','ward','city','country','size','status','notes','stage_id'];
         $sets=[]; $params=[];
         foreach ($fields as $f) { if (array_key_exists($f,$b)) { $sets[]="$f=?"; $params[]=$b[$f]; } }
         if (isset($b['tags'])) { $sets[]='tags=?'; $params[]=json_encode($b['tags']); }
@@ -82,11 +94,22 @@ class CompanyController {
         $this->show($auth, $id);
     }
 
+    public function moveStage(array $auth, int $id): void {
+        $b = getBody();
+        if (empty($b['stage_id'])) respond(422, null, 'stage_id là bắt buộc', false);
+        
+        $stmt = $this->db->prepare("UPDATE companies SET stage_id=? WHERE id=? AND tenant_id=?");
+        $stmt->execute([$b['stage_id'], $id, $auth['tenant_id']]);
+        
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', "Công ty đã được chuyển trạng thái.", 'company', $id);
+        respond(200, null, 'Đã cập nhật stage thành công');
+    }
+
     public function destroy(array $auth, int $id): void {
         $stmt = $this->db->prepare("UPDATE companies SET deleted_at=NOW() WHERE id=? AND tenant_id=?");
         $stmt->execute([$id, $auth['tenant_id']]);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy công ty', false);
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Xóa Công ty', "Một công ty đã bị đưa vào thùng rác.", 'company', $id);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Công ty', "Một công ty đã bị đưa vào thùng rác.", 'company', $id);
         respond(200, null, 'Đã xóa công ty (vào thùng rác)');
     }
 

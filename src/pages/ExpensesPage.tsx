@@ -2,29 +2,26 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   DollarSign, Plus, Search, Download, Truck, Coffee, Home,
   Briefcase, CreditCard, Tag, Eye, Pencil, Trash2, Loader2,
-  CheckCircle2, Clock, TrendingDown, X, ArrowUpRight, ArrowDownRight, ChevronDown
+  CheckCircle2, Clock, TrendingDown, X, ArrowUpRight, ArrowDownRight, ChevronDown, Building2, Wallet, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
+import { CustomSelect } from '../components/ui/CustomSelect';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 
 const PAGE_SIZE = 50;
 
 const MOCK_EXPENSES: any[] = [
-  { id: 1, title: 'Thuê văn phòng tháng 5/2026', category: 'Vận hành', amount: 15000000, date: '2026-05-01', creator_name: 'Kế toán', status: 'approved', notes: 'Thanh toán trước hạn' },
-  { id: 2, title: 'Quảng cáo Google Ads tháng 5', category: 'Marketing', amount: 8500000, date: '2026-05-02', creator_name: 'Admin', status: 'approved', notes: 'Campaign Q2 2026' },
-  { id: 3, title: 'Ăn trưa tiếp đối tác TechGlobal', category: 'Ăn uống', amount: 1800000, date: '2026-05-03', creator_name: 'Sales Manager', status: 'pending', notes: 'Tiếp khách tại Nhà hàng Hoàng Yến' },
-  { id: 4, title: 'Chi phí di chuyển gặp khách TP.HCM', category: 'Di chuyển', amount: 2200000, date: '2026-05-04', creator_name: 'Sales', status: 'approved', notes: 'Vé máy bay + taxi' },
-  { id: 5, title: 'Bản quyền phần mềm Figma năm 2026', category: 'Công cụ', amount: 4500000, date: '2026-04-28', creator_name: 'Admin', status: 'approved', notes: 'Gia hạn 12 tháng' },
-  { id: 6, title: 'Tiền điện văn phòng tháng 4', category: 'Vận hành', amount: 3200000, date: '2026-04-30', creator_name: 'Kế toán', status: 'approved', notes: '' },
-  { id: 7, title: 'Quảng cáo Facebook tháng 5', category: 'Marketing', amount: 6000000, date: '2026-05-03', creator_name: 'Marketing', status: 'pending', notes: 'Chiến dịch ra mắt sản phẩm mới' },
-  { id: 8, title: 'Mua nội thất phòng họp', category: 'Vận hành', amount: 12000000, date: '2026-04-25', creator_name: 'Admin', status: 'approved', notes: 'Bàn họp + ghế 8 người' },
-  { id: 9, title: 'Đào tạo nhân sự Sales Q2', category: 'Nhân sự', amount: 5000000, date: '2026-05-05', creator_name: 'HR', status: 'pending', notes: 'Khóa kỹ năng đàm phán' },
-  { id: 10, title: 'In ấn tài liệu marketing', category: 'Marketing', amount: 1200000, date: '2026-05-01', creator_name: 'Marketing', status: 'approved', notes: 'Brochure + card visit' },
+  { id: 1, title: 'Thuê văn phòng tháng 6', amount: 15000000, date: '2026-05-01', category: 'Vận hành', creator_name: 'Admin', status: 'approved', vendor_name: 'Minh House', has_vat_invoice: true, is_vat_inclusive: true },
+  { id: 2, title: 'Tiền điện nước T5', amount: 2450000, date: '2026-05-05', category: 'Vận hành', creator_name: 'Kế toán', status: 'pending', vendor_name: 'EVN/VWA', has_vat_invoice: true, is_vat_inclusive: true },
+  { id: 3, title: 'Chạy quảng cáo Facebook Ads', amount: 8000000, date: '2026-05-03', category: 'Marketing', creator_name: 'Marketing Dept', status: 'approved', vendor_name: 'Facebook Ireland', has_vat_invoice: false, is_vat_inclusive: true },
+  { id: 4, title: 'Mua máy pha cà phê mới', amount: 4200000, date: '2026-05-04', category: 'Vận hành', creator_name: 'Admin', status: 'pending', vendor_name: 'Coffee Store', has_vat_invoice: true, is_vat_inclusive: false },
+  { id: 5, title: 'Grab công tác gặp khách hàng', amount: 320000, date: '2026-05-05', category: 'Di chuyển', creator_name: 'Sale A', status: 'approved', vendor_name: 'Grab Vietnam', has_vat_invoice: true, is_vat_inclusive: true },
 ];
 
 const CATEGORIES = [
@@ -44,7 +41,19 @@ const fmtShort = (n: number) => {
   return n.toLocaleString('vi-VN');
 };
 
-const EMPTY_FORM = { title: '', amount: '', category: 'Vận hành', date: new Date().toISOString().slice(0, 10), notes: '' };
+const EMPTY_FORM = {
+  title: '',
+  category: 'Khác',
+  amount: '',
+  vat_amount: '',
+  date: new Date().toISOString().split('T')[0],
+  notes: '',
+  approver_id: null as number | null,
+  related_user_ids: [] as number[],
+  vendor_name: '',
+  has_vat_invoice: false,
+  is_vat_inclusive: false
+};
 
 export const ExpensesPage: React.FC = () => {
   const { addToast } = useUIStore();
@@ -65,10 +74,17 @@ export const ExpensesPage: React.FC = () => {
   const [viewItem, setViewItem] = useState<any>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [catOpen, setCatOpen] = useState(false);
+  const [users, setUsers] = useState<any[]>(DEV_MODE ? useMockStore.getState().users : []); // for approver dropdown
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
-    if (DEV_MODE) { setItems(MOCK_EXPENSES); setTotal(MOCK_EXPENSES.length); setLoading(false); return; }
+    if (DEV_MODE) {
+      const { expenses } = useMockStore.getState();
+      setItems(expenses);
+      setTotal(expenses.length);
+      setLoading(false);
+      return;
+    }
     try {
       const r = await api.get('/expenses', { params: { from: dateRange.from, to: dateRange.to, status: statusFilter } });
       const data = r.data.data?.items || r.data.data || [];
@@ -78,10 +94,17 @@ export const ExpensesPage: React.FC = () => {
       setItems([]);
       setTotal(0);
       addToast('Không thể tải danh sách chi phí', 'error');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [dateRange, statusFilter]);
+
+  // Fetch users for approver dropdown
+  useEffect(() => {
+    if (DEV_MODE) {
+      setUsers(useMockStore.getState().users);
+      return;
+    }
+    api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => {});
+  }, []);
 
   useEffect(() => { fetchExpenses(); setPage(1); }, [fetchExpenses]);
 
@@ -104,12 +127,56 @@ export const ExpensesPage: React.FC = () => {
   })).sort((a, b) => b.total - a.total).filter(c => c.total > 0);
 
   const openCreate = () => { setEditItem(null); setForm(EMPTY_FORM); setShowModal(true); };
-  const openEdit = (item: any) => { setEditItem(item); setForm({ ...item, amount: String(item.amount) }); setShowModal(true); };
+  const openEdit = (item: any) => { 
+    setEditItem(item); 
+    setForm({ 
+      title: item.title || '',
+      category: item.category || 'Khác',
+      amount: String(item.amount || 0),
+      date: item.date || new Date().toISOString().split('T')[0],
+      approver_id: item.approver_id ? Number(item.approver_id) : null,
+      related_user_ids: Array.isArray(item.related_user_ids) 
+        ? item.related_user_ids.map(Number) 
+        : (typeof item.related_user_ids === 'string' && item.related_user_ids 
+            ? item.related_user_ids.split(',').map(Number) 
+            : []),
+      vendor_name: item.vendor_name || '',
+      has_vat_invoice: Boolean(item.has_vat_invoice),
+      is_vat_inclusive: Boolean(item.is_vat_inclusive),
+      notes: item.notes || ''
+    });
+    setShowModal(true); 
+  };
 
   const handleSave = async () => {
     if (!form.title || !form.amount) { addToast('Điền đầy đủ nội dung và số tiền', 'error'); return; }
+    if (form.approver_id === null) { addToast('Vui lòng chọn người duyệt', 'error'); return; }
     setSaving(true);
     try {
+      if (DEV_MODE) {
+        if (editItem) {
+          const updated = { ...editItem, ...form, amount: Number(form.amount) };
+          useMockStore.setState((state) => ({
+            expenses: state.expenses.map(e => e.id === editItem.id ? updated : e)
+          }));
+        } else {
+          const newExp = { 
+            id: Date.now(), 
+            ...form, 
+            amount: Number(form.amount), 
+            date: new Date().toISOString().split('T')[0], 
+            creator_name: 'Quản trị viên', 
+            status: 'pending' 
+          };
+          useMockStore.getState().addExpense(newExp);
+        }
+        setShowModal(false);
+        fetchExpenses();
+        setSaving(false);
+        addToast(editItem ? 'Đã cập nhật chi phí' : 'Đã nhập chi phí mới – chờ phê duyệt', 'success');
+        return;
+      }
+
       if (editItem) {
         await api.put(`/expenses/${editItem.id}`, { ...form, amount: Number(form.amount) });
         addToast('Đã cập nhật chi phí', 'success');
@@ -254,15 +321,16 @@ export const ExpensesPage: React.FC = () => {
           <table>
             <thead>
               <tr>
-                <th className="col-check">
-                  <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+                <th style={{ width: 44, padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border)' }}>
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--color-primary)' }} />
                 </th>
-                <th>NỘI DUNG CHI</th>
-                <th>DANH MỤC</th>
-                <th>SỐ TIỀN</th>
-                <th>NGÀY CHI</th>
-                <th>NGƯỜI NHẬP</th>
-                <th>TRẠNG THÁI</th>
+                <th>Nội dung chi</th>
+                <th>Danh mục</th>
+                <th>Số tiền</th>
+                <th>Ngày chi</th>
+                <th>Người tạo</th>
+                <th>Người duyệt</th>
+                <th>Trạng thái</th>
                 <th style={{ textAlign: 'right' }}>THAO TÁC</th>
               </tr>
             </thead>
@@ -276,8 +344,9 @@ export const ExpensesPage: React.FC = () => {
               ))}
               <AnimatePresence>
                 {!loading && paginated.map(exp => {
-                  const catInfo = getCatInfo(exp.category);
-                  const CatIcon = catInfo.icon;
+                    const catInfo = getCatInfo(exp.category);
+                    const CatIcon = catInfo.icon;
+                    const approver = users.find((u: any) => u.id === Number(exp.approver_id));
                   return (
                     <motion.tr 
                       key={exp.id} 
@@ -301,6 +370,18 @@ export const ExpensesPage: React.FC = () => {
                       <td><span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-danger)' }}>{FMT(exp.amount)}</span></td>
                       <td><span style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{new Date(exp.date).toLocaleDateString('vi-VN')}</span></td>
                       <td><span style={{ fontSize: '0.8125rem' }}>{exp.creator_name}</span></td>
+                      <td>
+                        {approver ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
+                              {approver.full_name.charAt(0)}
+                            </div>
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 500 }}>{approver.full_name}</span>
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa chọn</span>
+                        )}
+                      </td>
                       <td>
                         <span className={`badge ${exp.status === 'approved' ? 'success' : 'warning'}`}>
                           {exp.status === 'approved' ? <><CheckCircle2 size={11} /> Đã duyệt</> : <><Clock size={11} /> Chờ duyệt</>}
@@ -332,29 +413,105 @@ export const ExpensesPage: React.FC = () => {
         {showModal && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !saving && setShowModal(false)} />
-            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 500, maxWidth: 'calc(100vw - 2rem)', zIndex: 300 }}
-              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
-              <div className="modal-header">
-                <h3>{editItem ? 'Sửa chi phí' : 'Nhập chi phí mới'}</h3>
-                <button onClick={() => setShowModal(false)} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
+            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 520, maxWidth: 'calc(100vw - 2rem)', zIndex: 300, overflow: 'visible', borderRadius: 'var(--radius-2xl)' }}
+              initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}>
+              
+              <div className="modal-header" style={{ padding: '1.5rem 2rem', background: 'linear-gradient(to right, var(--color-bg), var(--color-surface))', borderBottom: '1px solid var(--color-border)', borderTopLeftRadius: 'var(--radius-2xl)', borderTopRightRadius: 'var(--radius-2xl)' }}>
+                <div>
+                  <h3 style={{ fontWeight: 800, fontSize: '1.25rem' }}>{editItem ? 'Cập nhật khoản chi' : 'Nhập chi phí mới'}</h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', marginTop: 4 }}>Vui lòng điền thông tin chi tiết và người phê duyệt.</p>
+                </div>
+                <button onClick={() => setShowModal(false)} className="btn-icon-bare" disabled={saving}><X size={20} /></button>
               </div>
-              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '2rem', maxHeight: '70vh', overflowY: 'auto' }}>
                 <div className="form-group">
-                  <label className="form-label">Nội dung chi *</label>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Nội dung chi *</label>
                   <input className="form-input" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="VD: Thuê văn phòng tháng 6..." />
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>Đơn vị thụ hưởng (Thanh toán cho ai?)</label>
+                  <div style={{ position: 'relative' }}>
+                    <input className="form-input" style={{ paddingLeft: '2.5rem' }} value={form.vendor_name} onChange={e => setForm({ ...form, vendor_name: e.target.value })} placeholder="VD: Công ty ABC, Grab, Highland..." />
+                    <Building2 size={14} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: '1rem' }}>
                   <div className="form-group">
-                    <label className="form-label">Số tiền (VNĐ) *</label>
-                    <input className="form-input" type="number" min="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0" />
+                    <label className="form-label" style={{ fontWeight: 600 }}>Số tiền (VNĐ) *</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input" type="number" min="0" style={{ paddingLeft: '2.5rem', fontWeight: 800, color: 'var(--color-danger)', fontSize: '1.1rem' }} value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0" />
+                      <Wallet size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                    </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Ngày chi</label>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Ngày chi</label>
                     <input className="form-input" type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
                   </div>
                 </div>
+
+                {/* VAT Settings Panel */}
+                <div style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div 
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}
+                      onClick={() => setForm({ ...form, has_vat_invoice: !form.has_vat_invoice })}
+                    >
+                      <div className={`custom-toggle ${form.has_vat_invoice ? 'active' : ''}`} />
+                      <div>
+                        <p style={{ fontSize: '0.8rem', fontWeight: 700 }}>Có hóa đơn VAT</p>
+                        <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Chứng từ thuế</p>
+                      </div>
+                    </div>
+                    <div 
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}
+                      onClick={() => setForm({ ...form, is_vat_inclusive: !form.is_vat_inclusive })}
+                    >
+                      <div className={`custom-toggle ${form.is_vat_inclusive ? 'active' : ''}`} />
+                      <div>
+                        <p style={{ fontSize: '0.8rem', fontWeight: 700 }}>Bao gồm VAT</p>
+                        <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Giá sau thuế</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {form.has_vat_invoice && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-primary)' }}>Thuế %</label>
+                        <select 
+                          className="form-input" 
+                          value={form.amount ? Math.round((Number(form.vat_amount) / Number(form.amount)) * 100) : 10}
+                          onChange={e => {
+                            const pct = Number(e.target.value);
+                            const amt = Math.round(Number(form.amount) * (pct / 100));
+                            setForm({ ...form, vat_amount: amt.toString() });
+                          }}
+                        >
+                          <option value="0">0%</option>
+                          <option value="5">5%</option>
+                          <option value="8">8%</option>
+                          <option value="10">10%</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-primary)' }}>Tiền thuế VAT (VND)</label>
+                        <input 
+                          className="form-input" 
+                          type="number" 
+                          value={form.vat_amount || ''} 
+                          onChange={e => setForm({ ...form, vat_amount: e.target.value })} 
+                          placeholder="Nhập số tiền thuế..." 
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
                 <div className="form-group">
-                  <label className="form-label">Danh mục</label>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Danh mục chi phí</label>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                     {CATEGORIES.map(c => {
                       const Icon = c.icon;
@@ -367,15 +524,59 @@ export const ExpensesPage: React.FC = () => {
                     })}
                   </div>
                 </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: 'var(--color-danger)', fontWeight: 700 }}>Người duyệt *</label>
+                    <CustomSelect 
+                      options={users.map((u: any) => ({ value: u.id, label: u.full_name, icon: <User size={12}/> }))}
+                      value={form.approver_id}
+                      onChange={val => setForm({ ...form, approver_id: Number(val) })}
+                      placeholder="Chọn người duyệt..."
+                      searchable
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>Người liên quan</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div style={{ maxHeight: '80px', overflowY: 'auto', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {form.related_user_ids.length === 0 ? <span style={{fontSize: '0.75rem', color: 'var(--color-text-muted)'}}>Chưa chọn ai</span> : 
+                          form.related_user_ids.map((uid: number) => {
+                            const u = users.find((x:any) => x.id === uid);
+                            return (
+                              <span key={uid} style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                {u?.full_name} <X size={10} style={{cursor:'pointer'}} onClick={() => setForm({...form, related_user_ids: form.related_user_ids.filter((x: number) => x !== uid)})} />
+                              </span>
+                            );
+                          })
+                        }
+                      </div>
+                      <select className="form-input" style={{ fontSize: '0.75rem', padding: '4px' }}
+                        onChange={e => {
+                          const val = Number(e.target.value);
+                          if (val && !form.related_user_ids.includes(val)) {
+                            setForm({ ...form, related_user_ids: [...form.related_user_ids, val] });
+                          }
+                          e.target.value = "";
+                        }}>
+                        <option value="">+ Thêm người liên quan</option>
+                        {users.filter((u:any) => !form.related_user_ids.includes(u.id)).map((u: any) => <option key={u.id} value={u.id}>{u.full_name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="form-group">
-                  <label className="form-label">Ghi chú</label>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Ghi chú chi tiết</label>
                   <textarea className="form-input" rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Mô tả thêm nếu cần..." style={{ resize: 'none' }} />
                 </div>
               </div>
-              <div className="modal-footer">
+
+              <div className="modal-footer" style={{ padding: '1.5rem 2rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderBottomLeftRadius: 'var(--radius-2xl)', borderBottomRightRadius: 'var(--radius-2xl)' }}>
                 <button className="btn secondary" onClick={() => setShowModal(false)} disabled={saving}>Hủy</button>
-                <button className="btn primary" onClick={handleSave} disabled={saving}>
-                  {saving && <Loader2 size={14} className="spin" />}{editItem ? 'Cập nhật' : 'Lưu chi phí'}
+                <button className="btn primary" onClick={handleSave} disabled={saving} style={{ minWidth: 140 }}>
+                  {saving ? <Loader2 size={16} className="spin" /> : <CheckCircle2 size={16} />}
+                  {saving ? 'Đang lưu...' : (editItem ? 'Cập nhật' : 'Gửi phê duyệt')}
                 </button>
               </div>
             </motion.div>
@@ -448,6 +649,23 @@ export const ExpensesPage: React.FC = () => {
 
               <div className="flex gap-3">
                 <button className="btn outline" style={{ flex: 1 }} onClick={() => setViewItem(null)}>Đóng</button>
+                {viewItem.status === 'pending' && (
+                  <button className="btn success" style={{ flex: 1, background: 'var(--color-success)', color: 'white', border: 'none' }} onClick={async () => {
+                    try {
+                      if (DEV_MODE) {
+                        useMockStore.setState(s => ({ expenses: s.expenses.map(e => e.id === viewItem.id ? {...e, status: 'approved'} : e) }));
+                      } else {
+                        await api.patch(`/expenses/${viewItem.id}`, { status: 'approved' });
+                      }
+                      setItems(prev => prev.map(e => e.id === viewItem.id ? {...e, status: 'approved'} : e));
+                      addToast('Đã phê duyệt chi phí', 'success');
+                      setViewItem(null);
+                      fetchExpenses();
+                    } catch {
+                      addToast('Lỗi khi phê duyệt chi phí', 'error');
+                    }
+                  }}><CheckCircle2 size={14} /> Phê duyệt</button>
+                )}
                 <button className="btn primary" style={{ flex: 1 }} onClick={() => { const item = viewItem; setViewItem(null); openEdit(item); }}><Pencil size={14} /> Chỉnh sửa</button>
               </div>
             </motion.div>

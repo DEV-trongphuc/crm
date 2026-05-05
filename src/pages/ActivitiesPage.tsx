@@ -8,17 +8,9 @@ import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 
 const PAGE_SIZE = 50;
+import { useMockStore } from '../store/mockStore';
 
-const MOCK_ACTIVITIES: any[] = [
-  { id: 1, type: 'call', subject: 'Gọi tư vấn triển khai ERP cho ABC Technology', status: 'done', priority: 'high', due_date: '2026-05-05T09:00:00', creator_name: 'Admin', related_type: 'contact', related_name: 'Nguyễn Văn An' },
-  { id: 2, type: 'meeting', subject: 'Demo sản phẩm CRM cho GreenSolar Corp', status: 'planned', priority: 'high', due_date: '2026-05-07T14:00:00', creator_name: 'Sales Manager', related_type: 'company', related_name: 'GreenSolar Corp' },
-  { id: 3, type: 'email', subject: 'Gửi báo giá dịch vụ tư vấn Q2/2026', status: 'done', priority: 'medium', due_date: '2026-05-04T11:00:00', creator_name: 'Admin', related_type: 'contact', related_name: 'Trần Thị Bình' },
-  { id: 4, type: 'task', subject: 'Chuẩn bị tài liệu demo POS nhà hàng', status: 'planned', priority: 'medium', due_date: '2026-05-06T08:00:00', creator_name: 'Sales', related_type: null, related_name: null },
-  { id: 5, type: 'note', subject: 'Ghi chú cuộc hữp chiến lược Q2 với Ban Giám đốc', status: 'done', priority: 'low', due_date: null, creator_name: 'Admin', related_type: null, related_name: null },
-  { id: 6, type: 'call', subject: 'Follow-up sau demo sản phẩm với TechGlobal Ltd', status: 'planned', priority: 'high', due_date: '2026-05-08T10:00:00', creator_name: 'Sales Manager', related_type: 'company', related_name: 'TechGlobal Ltd' },
-  { id: 7, type: 'email', subject: 'Gửi hợp đồng bảo trì cho Retail Pro Group', status: 'done', priority: 'medium', due_date: '2026-05-03T16:00:00', creator_name: 'Admin', related_type: 'company', related_name: 'Retail Pro Group' },
-  { id: 8, type: 'meeting', subject: 'Kick-off dự án ERP với MegaStore Vietnam', status: 'planned', priority: 'high', due_date: '2026-05-10T09:00:00', creator_name: 'PM', related_type: 'company', related_name: 'MegaStore Vietnam' },
-];
+const MOCK_ACTIVITIES: any[] = [];
 
 const TYPES = ['call', 'email', 'meeting', 'task', 'note'];
 const T_LABEL: Record<string, string> = { call: 'Cuộc gọi', email: 'Email', meeting: 'Cuộc họp', task: 'Task', note: 'Ghi chú' };
@@ -59,7 +51,13 @@ export const ActivitiesPage: React.FC = () => {
 
   const fetchActivities = useCallback(async () => {
     setLoading(true);
-    if (DEV_MODE) { setItems(MOCK_ACTIVITIES); setTotal(MOCK_ACTIVITIES.length); setLoading(false); return; }
+    if (DEV_MODE) {
+      const stateActivities = useMockStore.getState().activities;
+      setItems(stateActivities);
+      setTotal(stateActivities.length);
+      setLoading(false);
+      return;
+    }
     try {
       const params: Record<string, string> = { page: page.toString(), search };
       if (filterType) params.type = filterType;
@@ -180,7 +178,7 @@ export const ActivitiesPage: React.FC = () => {
             {items.filter(act => !search || act.subject.toLowerCase().includes(search.toLowerCase())).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(act => (
               <motion.div key={act.id} className="card"
                 initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} layout
-                style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', opacity: act.status === 'done' ? 0.65 : 1 }}>
+                style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', opacity: act.status === 'done' ? 0.4 : 1 }}>
                 <div style={{ width: 36, height: 36, borderRadius: '10px', background: T_COLOR[act.type] + '18', color: T_COLOR[act.type], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   {T_ICON[act.type]}
                 </div>
@@ -243,8 +241,10 @@ export const ActivitiesPage: React.FC = () => {
         {showModal && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !saving && setShowModal(false)} />
-            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '520px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 300 }}
-              initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', width: '520px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 300 }}
+              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} 
+              animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} 
+              exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
                 <h3 style={{ fontWeight: 700 }}>{editItem ? 'Sửa hoạt động' : 'Thêm hoạt động'}</h3>
                 <button onClick={() => setShowModal(false)} style={{ color: 'var(--color-text-muted)' }}><X size={18} /></button>

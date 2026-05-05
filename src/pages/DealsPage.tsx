@@ -1,149 +1,124 @@
-import React, { useState, useMemo } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useUIStore } from '../store/uiStore';
-import { DealDrawer } from './DealDrawer';
+import { CustomerProfileDrawer } from './CustomerProfileDrawer';
+import { CompanyDrawer } from './CompanyDrawer';
 import api from '../api/axios';
-import { DEV_MODE } from '../config/env';
-
-// STAGES and INIT_DEALS removed - using API state
+import { CustomSelect } from '../components/ui/CustomSelect';
 
 const FMT = (n: number) => {
+  if (!n) return '0 đ';
   if (n >= 1e9) return (n / 1e9).toFixed(1) + 'T';
   if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
   return (n / 1e3).toFixed(0) + 'K';
 };
 
-const MOCK_STAGES: any[] = [
-  { id: 1, name: 'Lead mới', color: '#6366f1', position: 1 },
-  { id: 2, name: 'Đã liên hệ', color: '#f59e0b', position: 2 },
-  { id: 3, name: 'Thương lượng', color: '#8b5cf6', position: 3 },
-  { id: 4, name: 'Báo giá', color: '#3b82f6', position: 4 },
-  { id: 5, name: 'Chốt hợp đồng', color: '#10b981', position: 5 },
-];
-
-const MOCK_DEALS_GROUPED: Record<number, any[]> = {
-  1: [
-    { id: 1, title: 'Hệ thống ERP cho ABC Technology', value: 350000000, company: 'ABC Technology', contact: 'Nguyễn Văn An', prob: 60, close: '2026-06-30', stage_id: 1, assignee: 'admin' },
-    { id: 2, title: 'Phần mềm CRM cho GreenSolar', value: 85000000, company: 'GreenSolar Corp', contact: 'Trần Thị Bình', prob: 40, close: '2026-07-15', stage_id: 1, assignee: 'sale1' },
-  ],
-  2: [
-    { id: 3, title: 'Dịch vụ Tư vấn Chuyển đổi số', value: 45000000, company: 'TechGlobal Ltd', contact: 'Lê Hoàng Chính', prob: 65, close: '2026-06-15', stage_id: 2, assignee: 'admin' },
-  ],
-  3: [
-    { id: 4, title: 'Hệ thống POS Nhà hàng MegaStore', value: 125000000, company: 'MegaStore Vietnam', contact: 'Phạm Minh Dũng', prob: 75, close: '2026-05-31', stage_id: 3, assignee: 'sale2' },
-  ],
-  4: [
-    { id: 5, title: 'Platform E-learning EduTech', value: 95000000, company: 'EduTech Vietnam', contact: 'Hoàng Minh Lộc', prob: 85, close: '2026-05-25', stage_id: 4, assignee: 'admin' },
-  ],
-  5: [
-    { id: 6, title: 'Gói Bảo trì VIP - LogiTrans', value: 36000000, company: 'LogiTrans Express', contact: 'Võ Thanh Hà', prob: 100, close: '2026-05-10', stage_id: 5, assignee: 'sale1' },
-  ],
-};
-
-const EMPTY_DEAL = { title: '', value: '', company: '', contact: '', prob: 50, close: '' };
-
 export const DealsPage: React.FC = () => {
   const { addToast } = useUIStore();
+  const [pipelineView, setPipelineView] = useState<'contacts' | 'companies'>('contacts');
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
+  const [activeStageFilter, setActiveStageFilter] = useState<string | number>('all');
   const [stages, setStages] = useState<any[]>([]);
-  const [deals, setDeals] = useState<Record<number, any[]>>({});
-  const [users, setUsers] = useState<any[]>([]);
+  const [items, setItems] = useState<Record<number, any[]>>({});
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showDrawer, setShowDrawer] = useState(false);
-  const [editItem, setEditItem] = useState<any>(null);
-  const [deleteItem, setDeleteItem] = useState<any>(null);
+  
+  // Drawers
+  const [showContactDrawer, setShowContactDrawer] = useState(false);
+  const [showCompanyDrawer, setShowCompanyDrawer] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  
   const [dragging, setDragging] = useState<{ id: number, fromStage: number } | null>(null);
-  const [transitionModal, setTransitionModal] = useState<{ isOpen: boolean; dealId: number; toStage: number; fromStage: number; note: string } | null>(null);
+  const [transitionModal, setTransitionModal] = useState<{ isOpen: boolean; itemId: number; toStage: number; fromStage: number; note: string } | null>(null);
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterMonth, setFilterMonth] = useState('');
+  const [dateFilterType, setDateFilterType] = useState('');
+  const [filterDateFrom, setFilterDateFrom] = useState('');
+  const [filterDateTo, setFilterDateTo] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('');
+  const [filterStage, setFilterStage] = useState('');
+  
+  // Temp states for Filter Panel
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [tempDateType, setTempDateType] = useState('');
+  const [tempDateFrom, setTempDateFrom] = useState('');
+  const [tempDateTo, setTempDateTo] = useState('');
+  const [tempAssignee, setTempAssignee] = useState('');
+  const [tempStage, setTempStage] = useState('');
+  
+  const [activeFilterPill, setActiveFilterPill] = useState<string>('');
 
   const fetchUsers = async () => {
     try {
       const r = await api.get('/users');
-      setUsers(r.data.data || []);
+      setAllUsers(r.data.data || []);
     } catch (e) {
       console.error("Failed to fetch users", e);
     }
   };
 
   const fetchStages = async () => {
-    if (DEV_MODE) {
-      setStages(MOCK_STAGES);
-      setDeals(MOCK_DEALS_GROUPED);
-      setLoading(false);
-      return;
-    }
     try {
-      const r = await api.get('/deals/stages');
-      const data = r.data.data || [];
-      setStages(data);
-      if (data.length) fetchDeals();
+      const r = await api.get('/pipeline-stages');
+      setStages(r.data.data || []);
     } catch {
       setStages([]);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const fetchDeals = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const r = await api.get('/deals');
-      const items = r.data.data?.items || [];
+      const endpoint = pipelineView === 'contacts' ? '/contacts' : '/companies';
+      const r = await api.get(endpoint);
+      const dataItems = r.data.data?.items || [];
       const grouped: Record<number, any[]> = {};
-      items.forEach((d: any) => {
-        if (!grouped[d.stage_id]) grouped[d.stage_id] = [];
-        grouped[d.stage_id].push(d);
+      dataItems.forEach((d: any) => {
+        const sid = d.stage_id || stages[0]?.id;
+        if (!grouped[sid]) grouped[sid] = [];
+        grouped[sid].push(d);
       });
-      setDeals(grouped);
+      setItems(grouped);
     } catch {
-      setDeals({});
+      setItems({});
     } finally { setLoading(false); }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchUsers();
-    fetchStages();
-  }, []);
+    fetchStages().then(() => fetchData());
+  }, [pipelineView]);
 
-  const openCreate = (stageId: number) => {
-    setEditItem({ ...EMPTY_DEAL, stageId }); setShowDrawer(true);
-  };
+  useEffect(() => {
+    if (stages.length > 0) fetchData();
+  }, [stages, pipelineView]);
 
-  const openEdit = (deal: any, stageId: number) => {
-    setEditItem({ ...deal, stageId }); setShowDrawer(true);
-  };
-
-  const handleSave = async (data: any) => {
-    if (!data.title?.trim()) { addToast('Tiêu đề deal là bắt buộc', 'error'); return; }
-    try {
-      if (editItem?.id) {
-        await api.put(`/deals/${editItem.id}`, data);
-        addToast('Đã cập nhật Deal', 'success');
-      } else {
-        await api.post('/deals', data);
-        addToast('Đã tạo Deal mới', 'success');
-      }
-      fetchDeals();
-      setShowDrawer(false);
-    } catch { addToast('Lỗi khi lưu deal', 'error'); }
+  // Update a single item in the local items state without a full refetch
+  const updateItemLocally = (updated: any) => {
+    setItems(prev => {
+      const next: Record<number, any[]> = {};
+      Object.keys(prev).forEach(sid => {
+        next[sid as any] = (prev[sid as any] || []).map((it: any) =>
+          it.id === updated.id ? { ...it, ...updated } : it
+        );
+      });
+      return next;
+    });
   };
 
   const handleDrop = (toStage: number) => {
     if (!dragging || dragging.fromStage === toStage) return;
-    
     setTransitionModal({
       isOpen: true,
-      dealId: dragging.id,
+      itemId: dragging.id,
       fromStage: dragging.fromStage,
       toStage: toStage,
       note: ''
     });
-    
     setDragging(null);
   };
 
@@ -152,70 +127,84 @@ export const DealsPage: React.FC = () => {
     if (!transitionModal.note.trim()) { addToast('Vui lòng nhập ghi chú bắt buộc (Audit Trail)', 'warning'); return; }
 
     try {
-      await api.post(`/deals/${transitionModal.dealId}/move`, { 
+      const endpoint = pipelineView === 'contacts' ? `/contacts/${transitionModal.itemId}/stage` : `/companies/${transitionModal.itemId}/stage`;
+      await api.patch(endpoint, { 
         stage_id: transitionModal.toStage,
         note: transitionModal.note
       });
-      fetchDeals(); // Refresh
+      fetchData(); // Refresh
       
-      const deal = deals[transitionModal.fromStage]?.find(d => d.id === transitionModal.dealId);
-      if (transitionModal.toStage === 5) { // Won
+      const item = items[transitionModal.fromStage]?.find(d => d.id === transitionModal.itemId);
+      const toStage = stages.find(s => s.id === transitionModal.toStage);
+      if (toStage?.is_won) {
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-        addToast(`TUYỆT VỜI! Chúc mừng bạn đã chốt thành công deal "${deal?.title}"`, 'success');
+        addToast(`TUYỆT VỜI! Chúc mừng bạn đã chốt thành công "${pipelineView === 'contacts' ? item?.first_name : item?.name}"`, 'success');
       } else {
         addToast('Đã chuyển trạng thái & lưu Audit Log', 'success');
       }
-    } catch { addToast('Lỗi khi di chuyển deal', 'error'); }
+    } catch { addToast('Lỗi khi di chuyển thẻ', 'error'); }
     
     setTransitionModal(null);
   };
 
-  const handleDelete = async () => {
-    if (!deleteItem) return;
-    try {
-      await api.delete(`/deals/${deleteItem.id}`);
-      fetchDeals();
-      addToast('Đã xóa cơ hội bán hàng thành công', 'success');
-    } catch {
-      // Fallback for demo/missing API
-      setDeals(prev => ({ ...prev, [deleteItem.stageId]: prev[deleteItem.stageId].filter(d => d.id !== deleteItem.id) }));
-      addToast('Đã xóa cơ hội (Local/Demo Mode)', 'success');
-    } finally {
-      setDeleteItem(null);
-    }
-  };
-
-  const confirmDelete = (deal: any, stageId: number) => {
-    setDeleteItem({ ...deal, stageId });
-  };
-
-  const filteredDeals = useMemo(() => {
-    const result: Record<number, any[]> = {};
-    Object.keys(deals).forEach(stageIdStr => {
-      const stageId = parseInt(stageIdStr);
-      result[stageId] = deals[stageId].filter(deal => {
+  const filteredItems = useMemo(() => {
+    const result: Record<string, any[]> = {};
+    Object.keys(items).forEach(stageIdStr => {
+      const stageItems = items[stageIdStr as any] || [];
+      result[stageIdStr] = stageItems.filter(item => {
+        // Text Search
         if (searchTerm) {
           const lowerSearch = searchTerm.toLowerCase();
-          if (!deal.title?.toLowerCase().includes(lowerSearch) && 
-              !deal.company?.toLowerCase().includes(lowerSearch) &&
-              !deal.contact?.toLowerCase().includes(lowerSearch)) {
-            return false;
+          const nameMatch = pipelineView === 'contacts' 
+            ? `${item.first_name || ''} ${item.last_name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch)
+            : `${item.name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch);
+          
+          if (!nameMatch) return false;
+        }
+        // Date Filter (using updated_at as proxy for pipeline move time)
+        const dateToCheck = item.updated_at || item.created_at;
+        if (dateToCheck) {
+          const itemDate = dateToCheck.split(' ')[0]; // YYYY-MM-DD
+          if (dateFilterType && dateFilterType !== 'custom') {
+            if (!itemDate.startsWith(dateFilterType)) return false;
+          } else if (dateFilterType === 'custom') {
+            if (filterDateFrom && itemDate < filterDateFrom) return false;
+            if (filterDateTo && itemDate > filterDateTo) return false;
           }
         }
-        if (filterMonth && deal.close) {
-          if (!deal.close.startsWith(filterMonth)) return false;
-        }
+        // Assignee Filter
         if (filterAssignee) {
           const val = String(filterAssignee);
-          if (String(deal.owner_id) !== val && deal.assignee !== val) return false;
+          if (String(item.owner_id) !== val) return false;
+        }
+        // Stage Filter
+        if (filterStage) {
+          if (String(item.stage_id) !== String(filterStage)) return false;
         }
         return true;
       });
     });
     return result;
-  }, [deals, searchTerm, filterMonth, filterAssignee]);
+  }, [items, searchTerm, dateFilterType, filterDateFrom, filterDateTo, filterAssignee, filterStage, pipelineView]);
 
-  const totalPipeline = Object.values(filteredDeals).flat().reduce((sum, d) => sum + (d.value || 0), 0);
+  const totalRevenue = Object.values(filteredItems).flat().reduce((sum, d) => sum + (Number(d.expected_revenue) || 0), 0);
+
+  const filterPills = [
+    { id: '', label: 'Tất cả' },
+    { id: 'my', label: 'Của tôi' },
+    { id: 'recent', label: 'Tương tác gần đây' },
+    { id: 'won', label: 'Đã chốt' }
+  ];
+
+  const handlePillClick = (id: string) => {
+    setActiveFilterPill(id);
+    if (id === 'my') {
+       // logic to filter by current user
+       setFilterAssignee('1'); // Assuming '1' is the current user ID for demo, usually from auth store
+    } else {
+       setFilterAssignee('');
+    }
+  };
 
   return (
     <div style={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column' }}>
@@ -223,52 +212,441 @@ export const DealsPage: React.FC = () => {
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Target size={24} color="var(--color-primary)" />
-            Pipeline Bán hàng
+            Pipeline {pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp'}
           </h1>
           <p className="page-subtitle">
-            {Object.values(deals).flat().length} cơ hội · Tổng dự kiến: <strong style={{ color: 'var(--color-success)', fontSize: '1.1rem' }}>{totalPipeline.toLocaleString()} đ</strong>
+            {Object.values(items).flat().length} thẻ · Tổng dự kiến: <strong style={{ color: 'var(--color-success)', fontSize: '1.1rem' }}>{FMT(totalRevenue)}</strong>
           </p>
         </div>
-        <button className="btn primary" onClick={() => openCreate(stages[0]?.id || 1)}><Plus size={16} /> Tạo Deal Mới</button>
+        <div style={{ flex: 1 }} />
+
+        {/* Kanban vs List Toggle */}
+        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', marginRight: '1rem' }}>
+          <button 
+            className={`btn ${viewMode === 'kanban' ? 'primary' : 'ghost'} sm`} 
+            style={{ borderRadius: 'var(--radius-md)', padding: '6px 10px' }}
+            onClick={() => setViewMode('kanban')}
+            title="Dạng bảng (Kanban)"
+          ><LayoutGrid size={18}/></button>
+          <button 
+            className={`btn ${viewMode === 'list' ? 'primary' : 'ghost'} sm`} 
+            style={{ borderRadius: 'var(--radius-md)', padding: '6px 10px' }}
+            onClick={() => setViewMode('list')}
+            title="Dạng danh sách"
+          ><List size={18}/></button>
+        </div>
+
+        {/* Toggle View */}
+        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)' }}>
+          <button 
+            className={`btn ${pipelineView === 'contacts' ? 'primary' : 'ghost'} sm`} 
+            style={{ borderRadius: 'var(--radius-md)' }}
+            onClick={() => setPipelineView('contacts')}
+          >
+            <User size={16} /> Khách hàng
+          </button>
+          <button 
+            className={`btn ${pipelineView === 'companies' ? 'primary' : 'ghost'} sm`} 
+            style={{ borderRadius: 'var(--radius-md)' }}
+            onClick={() => setPipelineView('companies')}
+          >
+            <Building2 size={16} /> Doanh nghiệp
+          </button>
+        </div>
       </div>
 
-      {/* Filter Bar */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexShrink: 0, background: 'var(--color-surface)', padding: '1rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', alignItems: 'center', flexWrap: 'wrap' }}>
-        <div className="search-wrap" style={{ flex: '1 1 300px', minWidth: 200 }}>
-          <Search size={18} className="text-light" />
-          <input 
-            className="form-input" 
-            placeholder="Tìm theo tên deal, công ty, người liên hệ..." 
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
+      {/* Filter Bar with CSS Alignment Fixes */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', flexShrink: 0, background: 'var(--color-surface)', padding: '1rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* SEARCH INPUT ALIGNMENT FIX */}
+          <div className="search-wrap" style={{ flex: '1 1 300px', minWidth: 200, position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Search size={18} className="text-light" style={{ position: 'absolute', left: '12px', pointerEvents: 'none' }} />
+            <input 
+              className="form-input" 
+              style={{ paddingLeft: '38px', width: '100%' }}
+              placeholder={pipelineView === 'contacts' ? "Tìm theo tên khách hàng, email, sđt..." : "Tìm theo tên doanh nghiệp, mã số thuế..."}
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <button className={`btn ${showFilterPanel ? 'primary' : 'outline'}`} onClick={() => {
+            if (!showFilterPanel) {
+              setTempDateType(dateFilterType); setTempDateFrom(filterDateFrom); setTempDateTo(filterDateTo);
+              setTempAssignee(filterAssignee); setTempStage(filterStage);
+            }
+            setShowFilterPanel(!showFilterPanel);
+          }}>
+            <Filter size={16} /> Bộ lọc nâng cao {(dateFilterType || filterAssignee || filterStage) ? '(Đang bật)' : ''}
+          </button>
+          
+          {(dateFilterType || filterAssignee || filterStage || activeFilterPill) && (
+            <button className="btn ghost sm" onClick={() => { setSearchTerm(''); setDateFilterType(''); setFilterDateFrom(''); setFilterDateTo(''); setFilterAssignee(''); setFilterStage(''); setActiveFilterPill(''); setShowFilterPanel(false); }}>
+              Bỏ lọc
+            </button>
+          )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 150 }}>
-          <Calendar size={18} className="text-light" />
-          <select className="form-input" style={{ paddingLeft: '0.5rem' }} value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
-            <option value="">Tất cả thời gian chốt</option>
-            {Array.from({ length: 12 }).map((_, i) => {
-              const d = new Date();
-              d.setMonth(d.getMonth() + i - 2); // Show 2 months past and 9 months future
-              const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-              const label = `Tháng ${d.getMonth() + 1} / ${d.getFullYear()}`;
-              return <option key={val} value={val}>{label}</option>;
-            })}
-          </select>
+
+        {/* The Filter Panel */}
+        <AnimatePresence>
+          {showFilterPanel && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              style={{ overflow: 'hidden' }}
+            >
+              <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', marginTop: '0.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                 {/* Khung thời gian */}
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Thời gian chuyển Pipeline</label>
+                    <CustomSelect options={[
+                       {value: '', label: 'Tất cả thời gian'},
+                       ...Array.from({ length: 6 }).map((_, i) => {
+                         const d = new Date(); d.setMonth(d.getMonth() - i);
+                         const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                         return { value: val, label: `Tháng ${d.getMonth() + 1}/${d.getFullYear()}` };
+                       }),
+                       {value: 'custom', label: 'Tùy chỉnh (Từ ngày - Đến ngày)...'}
+                    ]} value={tempDateType} onChange={v => setTempDateType(v as string)} />
+                    {tempDateType === 'custom' && (
+                       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                         <input type="date" className="form-input" style={{ width: '100%' }} value={tempDateFrom} onChange={e => setTempDateFrom(e.target.value)} title="Từ ngày" />
+                         <span style={{ alignSelf: 'center', fontWeight: 600, color: 'var(--color-text-light)' }}>-</span>
+                         <input type="date" className="form-input" style={{ width: '100%' }} value={tempDateTo} onChange={e => setTempDateTo(e.target.value)} title="Đến ngày" />
+                       </div>
+                    )}
+                 </div>
+
+                 {/* Phụ trách */}
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Sale phụ trách (Owner)</label>
+                    <CustomSelect options={[
+                       {value: '', label: 'Tất cả Sale'},
+                       ...allUsers.map(u => ({value: String(u.id), label: u.full_name}))
+                    ]} value={tempAssignee} onChange={v => setTempAssignee(v as string)} searchable />
+                 </div>
+
+                 {/* Giai đoạn */}
+                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Giai đoạn Pipeline</label>
+                    <CustomSelect options={[
+                       {value: '', label: 'Tất cả giai đoạn'},
+                       ...stages.map(s => ({value: String(s.id), label: s.name}))
+                    ]} value={tempStage} onChange={v => setTempStage(v as string)} />
+                 </div>
+              </div>
+              
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
+                 <button className="btn outline" onClick={() => setShowFilterPanel(false)}>Hủy</button>
+                 <button className="btn primary" onClick={() => {
+                    setDateFilterType(tempDateType); setFilterDateFrom(tempDateFrom); setFilterDateTo(tempDateTo);
+                    setFilterAssignee(tempAssignee); setFilterStage(tempStage); setActiveFilterPill('');
+                    setShowFilterPanel(false);
+                 }}>Áp dụng Lọc</button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+        {/* Quick Filter Pills */}
+        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
+          {filterPills.map(pill => (
+            <button
+              key={pill.id}
+              onClick={() => handlePillClick(pill.id)}
+              style={{
+                padding: '6px 16px',
+                borderRadius: '99px',
+                fontSize: '0.8125rem',
+                fontWeight: 600,
+                border: `1px solid ${activeFilterPill === pill.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                background: activeFilterPill === pill.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
+                color: activeFilterPill === pill.id ? 'var(--color-primary)' : 'var(--color-text-light)',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s'
+              }}
+            >
+              {pill.label}
+            </button>
+          ))}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 150 }}>
-          <Users size={18} className="text-light" />
-          <select className="form-input" style={{ paddingLeft: '0.5rem' }} value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)}>
-            <option value="">Tất cả Sale (Assignee)</option>
-            {users.map(u => (
-              <option key={u.id} value={u.id || u.full_name}>{u.full_name}</option>
-            ))}
-          </select>
-        </div>
-        <button className="btn outline sm" onClick={() => { setSearchTerm(''); setFilterMonth(''); setFilterAssignee(''); }}>
-          <Filter size={14} /> Bỏ lọc
-        </button>
+
       </div>
+
+      {viewMode === 'list' && (
+        <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'none', alignItems: 'center' }}>
+          <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', marginRight: '0.5rem' }}>Giai đoạn:</span>
+          <button
+            onClick={() => setActiveStageFilter('all')}
+            style={{
+              padding: '6px 16px', borderRadius: '99px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s',
+              border: `1px solid ${activeStageFilter === 'all' ? 'var(--color-primary)' : 'var(--color-border)'}`,
+              background: activeStageFilter === 'all' ? 'var(--color-primary-light)' : 'var(--color-surface)',
+              color: activeStageFilter === 'all' ? 'var(--color-primary)' : 'var(--color-text-light)',
+            }}
+          >
+            Tất cả ({Object.values(filteredItems).flat().length})
+          </button>
+          {stages.map(stage => {
+            const count = (filteredItems[stage.id] || []).length;
+            const isActive = activeStageFilter === stage.id;
+            return (
+              <button
+                key={stage.id}
+                onClick={() => setActiveStageFilter(stage.id)}
+                style={{
+                  padding: '6px 16px', borderRadius: '99px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  border: `1px solid ${isActive ? stage.color || 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: isActive ? `${stage.color || 'var(--color-primary)'}15` : 'var(--color-surface)',
+                  color: isActive ? stage.color || 'var(--color-primary)' : 'var(--color-text-light)',
+                }}
+              >
+                {stage.name} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      {viewMode === 'kanban' ? (
+        <div className="card" style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', padding: '1.5rem', paddingBottom: '2rem', flex: 1, alignItems: 'flex-start', background: 'var(--color-surface)' }}>
+          {loading ? (
+            // Skeleton columns while loading
+            <>
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} style={{ minWidth: 320, width: 320, flexShrink: 0, background: 'white', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
+                  <div style={{ padding: '1rem 1.25rem', borderBottom: '3px solid var(--color-border)' }}>
+                    <div style={{ height: 18, width: 120, background: '#e9ecef', borderRadius: 6, marginBottom: 8 }} />
+                    <div style={{ height: 14, width: 60, background: '#f1f3f5', borderRadius: 6 }} />
+                  </div>
+                  <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    {[1, 2].map(j => (
+                      <div key={j} style={{ background: '#f8f9fa', borderRadius: 'var(--radius-lg)', padding: '1.25rem', animation: 'pulse 1.5s ease-in-out infinite' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '1rem' }}>
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#e9ecef' }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ height: 14, width: '70%', background: '#dee2e6', borderRadius: 4, marginBottom: 6 }} />
+                            <div style={{ height: 11, width: '50%', background: '#e9ecef', borderRadius: 4 }} />
+                          </div>
+                        </div>
+                        <div style={{ height: 11, width: '60%', background: '#e9ecef', borderRadius: 4, marginBottom: 6 }} />
+                        <div style={{ height: 11, width: '80%', background: '#e9ecef', borderRadius: 4 }} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </>
+          ) : stages.map(stage => {
+            const stageItems = filteredItems[stage.id] || [];
+            const total = stageItems.reduce((s, d) => s + (Number(d.expected_revenue) || 0), 0);
+
+            return (
+              <div key={stage.id}
+                style={{ 
+                  minWidth: 320, width: 320, flexShrink: 0, 
+                  background: 'transparent',
+                  border: '1px solid var(--color-border-light)',
+                  borderRadius: 'var(--radius-xl)',
+                  display: 'flex', flexDirection: 'column', maxHeight: '100%',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
+                onDragOver={e => { 
+                  e.preventDefault(); 
+                  e.currentTarget.style.background = 'var(--color-primary-light)'; 
+                  e.currentTarget.style.border = '2px dashed var(--color-primary)';
+                  e.currentTarget.style.transform = 'scale(1.01)';
+                }}
+                onDragLeave={e => { 
+                  e.currentTarget.style.background = 'var(--color-surface)'; 
+                  e.currentTarget.style.border = '1px solid var(--color-border)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+                onDrop={e => { 
+                  e.currentTarget.style.background = 'var(--color-surface)'; 
+                  e.currentTarget.style.border = '1px solid var(--color-border)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  handleDrop(stage.id); 
+                }}
+              >
+                {/* Stage Header */}
+                <div style={{ padding: '1rem 1.25rem', borderBottom: `3px solid ${stage.color || 'var(--color-primary)'}`, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{stage.name}</h3>
+                      <span style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 8px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 700 }}>{stageItems.length}</span>
+                    </div>
+                    <button className="btn ghost sm" onClick={() => {
+                      if (pipelineView === 'contacts') { setSelectedContact({ stage_id: stage.id }); setShowContactDrawer(true); }
+                      else { setSelectedCompany({ stage_id: stage.id }); setShowCompanyDrawer(true); }
+                    }} style={{ padding: '4px', color: 'var(--color-text-light)' }} title="Thêm vào cột này"><Plus size={18} /></button>
+                  </div>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
+                    {FMT(total)}
+                  </div>
+                </div>
+
+                {/* Cards Container */}
+                <div style={{ padding: '1rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <AnimatePresence>
+                    {stageItems.map(item => {
+                      const itemName = pipelineView === 'contacts' ? `${item.first_name} ${item.last_name || ''}`.trim() : item.name;
+                      return (
+                      <motion.div key={item.id}
+                        draggable
+                        onDragStart={() => setDragging({ id: item.id, fromStage: stage.id })}
+                        onDragEnd={() => setDragging(null)}
+                        initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} layout
+                        style={{ 
+                          background: '#ffffff', borderRadius: 'var(--radius-lg)', padding: '1.25rem', 
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid var(--color-border-light)', 
+                          cursor: 'grab', userSelect: 'none', position: 'relative'
+                        }}
+                        onClick={() => {
+                          if (pipelineView === 'contacts') { setSelectedContact(item); setShowContactDrawer(true); }
+                          else { setSelectedCompany(item); setShowCompanyDrawer(true); }
+                        }}
+                        whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.08)' }}
+                        whileTap={{ cursor: 'grabbing' }}
+                      >
+                        {/* Header: Avatar and Name */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem' }}>
+                          <div style={{ width: 38, height: 38, borderRadius: '50%', background: `${stage.color || 'var(--color-primary)'}20`, color: stage.color || 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.0625rem', fontWeight: 800, flexShrink: 0, border: `1.5px solid ${stage.color || 'var(--color-primary)'}40` }}>
+                            {itemName?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {itemName}
+                            </h4>
+                            {item.company_name && (
+                              <p style={{ fontSize: '0.73rem', color: 'var(--color-text-light)', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '3px', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                                <Building2 size={11} style={{ flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.company_name}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Body: Contact Info */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.875rem' }}>
+                          {item.phone && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                              <Phone size={13} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.phone}</span>
+                            </div>
+                          )}
+                          {item.email && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                              <Mail size={13} style={{ color: 'var(--color-text-light)', flexShrink: 0 }} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.email}</span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Footer: Pipeline Update Time & Owner */}
+                        <div style={{ borderTop: '1px dashed var(--color-border)', paddingTop: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-light)' }} title="Cập nhật Pipeline lần cuối">
+                             <Clock size={12} />
+                             <span>{item.updated_at ? item.updated_at.substring(0,10) : (item.created_at?.substring(0,10) || '')}</span>
+                           </div>
+                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }} title={item.owner_name || 'Sale phụ trách'}>
+                             <User size={12} />
+                             <span>{item.owner_name?.split(' ').pop() || 'Sale'}</span>
+                           </div>
+                        </div>
+                      </motion.div>
+                    )})}
+                  </AnimatePresence>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="card-panel" style={{ flex: 1, overflow: 'auto', background: 'var(--color-surface)', padding: 0 }}>
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center" style={{ minHeight: 300 }}><Loader2 className="spin" size={32} /></div>
+          ) : (
+            <table className="table" style={{ width: '100%', minWidth: 800 }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Tên {pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp'}</th>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Dự kiến</th>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Giai đoạn</th>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Liên hệ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.values(filteredItems)
+                  .flat()
+                  .filter(item => activeStageFilter === 'all' || String(item.stage_id) === String(activeStageFilter))
+                  .map(item => {
+                  const itemName = pipelineView === 'contacts' ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : item.name;
+                  const stage = stages.find(s => s.id === item.stage_id);
+                  return (
+                    <tr 
+                      key={item.id} 
+                      onClick={() => {
+                        if (pipelineView === 'contacts') { setSelectedContact(item); setShowContactDrawer(true); }
+                        else { setSelectedCompany(item); setShowCompanyDrawer(true); }
+                      }}
+                      style={{ cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 800 }}>
+                            {itemName?.charAt(0)?.toUpperCase() || '?'}
+                          </div>
+                          <div>
+                            <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{itemName}</p>
+                            {item.company_name && <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{item.company_name}</p>}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.875rem' }}>{FMT(Number(item.expected_revenue) || 0)}</span>
+                        {pipelineView === 'contacts' && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{item.win_probability || 50}% win</div>}
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{ padding: '4px 10px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 600, background: stage ? `${stage.color || 'var(--color-primary)'}15` : 'var(--color-bg)', color: stage ? stage.color || 'var(--color-primary)' : 'var(--color-text-muted)' }}>
+                          {stage?.name || 'Không xác định'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        {item.phone && <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}><Phone size={12} className="text-light"/> {item.phone}</div>}
+                        {item.email && <div style={{ fontSize: '0.8125rem', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px' }}><Mail size={12} className="text-light"/> {item.email}</div>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {showContactDrawer && (
+        <CustomerProfileDrawer 
+          isOpen={showContactDrawer}
+          onClose={() => { setShowContactDrawer(false); fetchData(); }}
+          contact={selectedContact}
+          onUpdate={(updated) => { updateItemLocally(updated); fetchData(); }}
+        />
+      )}
+
+      {showCompanyDrawer && (
+        <CompanyDrawer
+          isOpen={showCompanyDrawer}
+          onClose={() => { setShowCompanyDrawer(false); fetchData(); }}
+          entity={selectedCompany}
+          onSave={() => fetchData()}
+        />
+      )}
 
       {/* Transition Modal */}
       <AnimatePresence>
@@ -279,7 +657,7 @@ export const DealsPage: React.FC = () => {
               onClick={e => e.stopPropagation()}
               style={{ background: 'var(--color-surface)', width: '100%', maxWidth: '400px', borderRadius: 'var(--radius-xl)', padding: '1.5rem', boxShadow: 'var(--shadow-2xl)' }}
             >
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Cập nhật trạng thái Pipeline</h3>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Cập nhật Pipeline</h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
                 Từ <strong>{stages.find(s => s.id === transitionModal.fromStage)?.name}</strong> 
                 {' '}➔{' '}
@@ -291,7 +669,7 @@ export const DealsPage: React.FC = () => {
                 <textarea 
                   className="form-input" 
                   rows={3} 
-                  placeholder="Ghi chú bắt buộc lý do hoặc tóm tắt trước khi chuyển bước..."
+                  placeholder="Ghi chú bắt buộc lý do chuyển..."
                   value={transitionModal.note}
                   onChange={e => setTransitionModal({ ...transitionModal, note: e.target.value })}
                   autoFocus
@@ -307,139 +685,6 @@ export const DealsPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Kanban Board Container */}
-      <div style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', paddingBottom: '2rem', flex: 1, alignItems: 'flex-start' }}>
-        {loading ? (
-          <div className="flex-1 flex items-center justify-center"><Loader2 className="spin" /></div>
-        ) : stages.map(stage => {
-          const stageDeals = filteredDeals[stage.id] || [];
-          const total = stageDeals.reduce((s, d) => s + (d.value || 0), 0);
-          const isDragOver = dragging && dragging.fromStage !== stage.id; // Could track active drag over
-
-          return (
-            <div key={stage.id}
-              style={{ 
-                minWidth: 320, width: 320, flexShrink: 0, 
-                background: 'var(--color-surface)', 
-                borderRadius: 'var(--radius-xl)', 
-                border: '1px solid var(--color-border)',
-                display: 'flex', flexDirection: 'column', maxHeight: '100%',
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-              }}
-              onDragOver={e => { 
-                e.preventDefault(); 
-                e.currentTarget.style.background = 'var(--color-primary-light)'; 
-                e.currentTarget.style.border = '2px dashed var(--color-primary)';
-                e.currentTarget.style.transform = 'scale(1.01)';
-              }}
-              onDragLeave={e => { 
-                e.currentTarget.style.background = 'var(--color-surface)'; 
-                e.currentTarget.style.border = '1px solid var(--color-border)';
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-              onDrop={e => { 
-                e.currentTarget.style.background = 'var(--color-surface)'; 
-                e.currentTarget.style.border = '1px solid var(--color-border)';
-                e.currentTarget.style.transform = 'scale(1)';
-                handleDrop(stage.id); 
-              }}>
-
-              {/* Column Header */}
-              <div style={{ padding: '1.25rem', borderBottom: `3px solid ${stage.color}`, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)' }}>{stage.name}</h3>
-                    <span style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 8px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 700 }}>{stageDeals.length}</span>
-                  </div>
-                  <button className="btn ghost sm" onClick={() => openCreate(stage.id)} style={{ padding: '4px', color: 'var(--color-text-light)' }} title="Thêm deal vào cột này"><Plus size={18} /></button>
-                </div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', fontWeight: 600 }}>
-                  {FMT(total)} đ
-                </div>
-              </div>
-
-              {/* Deal Cards Area */}
-              <div style={{ padding: '1rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <AnimatePresence>
-                  {stageDeals.map(deal => (
-                    <motion.div key={deal.id}
-                      draggable
-                      onDragStart={() => setDragging({ id: deal.id, fromStage: stage.id })}
-                      onDragEnd={() => setDragging(null)}
-                      initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} layout
-                      style={{ 
-                        background: '#ffffff', borderRadius: 'var(--radius-lg)', padding: '1.25rem', 
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid var(--color-border-light)', 
-                        cursor: 'grab', userSelect: 'none', position: 'relative'
-                      }}
-                      onClick={() => openEdit(deal, stage.id)}
-                      whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.08)' }}
-                      whileTap={{ cursor: 'grabbing' }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                        <h4 style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--color-text)', lineHeight: 1.4, paddingRight: '1rem' }}>{deal.title}</h4>
-                      </div>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: stage.color, fontWeight: 700, fontSize: '1rem' }}>
-                          <DollarSign size={14} /> {FMT(deal.value)}
-                        </div>
-                        <span style={{ fontSize: '0.75rem', background: 'var(--color-bg)', color: 'var(--color-text-light)', padding: '2px 8px', borderRadius: '99px', fontWeight: 600 }}>{deal.prob}% win</span>
-                      </div>
-                      
-                      <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {deal.company && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: '6px' }}><Building2 size={12} /> {deal.company}</p>}
-                        {deal.close && <p style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={12} /> {deal.close}</p>}
-                      </div>
-
-                      {/* Floating actions on hover could go here, for now relying on click to open drawer */}
-                      <button 
-                        style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', color: 'var(--color-danger)', cursor: 'pointer', opacity: 0.5 }}
-                        onClick={(e) => { e.stopPropagation(); confirmDelete(deal, stage.id); }}
-                        title="Xóa deal"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      <DealDrawer 
-        isOpen={showDrawer}
-        onClose={() => setShowDrawer(false)}
-        deal={editItem}
-        onSave={handleSave}
-        stages={stages}
-      />
-
-      {/* DELETE CONFIRM MODAL */}
-      <AnimatePresence>
-        {deleteItem && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onClick={() => setDeleteItem(null)} style={{ zIndex: 500 }} />
-            <motion.div className="modal" initial={{ opacity:0, scale:0.9 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0, scale:0.9 }} style={{ zIndex: 510 }}>
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <div style={{ width: 56, height: 56, background: 'var(--color-danger-light)', color: 'var(--color-danger)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
-                  <Trash2 size={24} />
-                </div>
-                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '0.5rem' }}>Xóa cơ hội bán hàng?</h3>
-                <p style={{ color: 'var(--color-text-light)', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-                  Bạn có chắc chắn muốn xóa <strong>{deleteItem.title}</strong>?<br/>Hành động này không thể hoàn tác.
-                </p>
-                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-                  <button className="btn ghost" onClick={() => setDeleteItem(null)}>Hủy bỏ</button>
-                  <button className="btn danger" onClick={handleDelete}>Xóa vĩnh viễn</button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

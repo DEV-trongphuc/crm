@@ -156,19 +156,27 @@ class FinanceController {
         $data = getBody();
         if (empty($data['title']) || empty($data['amount'])) respond(400, null, 'Thiếu tiêu đề hoặc số tiền', false);
 
-        $stmt = $this->db->prepare("INSERT INTO expenses (tenant_id,created_by,title,category,amount,date,status,notes) VALUES (?,?,?,?,?,?,?,?)");
+        $stmt = $this->db->prepare("
+            INSERT INTO expenses (tenant_id,created_by,title,category,amount,date,status,notes,
+                vendor_name,has_vat_invoice,is_vat_inclusive)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
+        ");
         $stmt->execute([
             $auth['tenant_id'], $auth['user_id'],
             $data['title'], $data['category']??'Khác',
             $data['amount'], $data['date']??date('Y-m-d'),
-            $data['status']??'pending', $data['notes']??null
+            $data['status']??'pending', $data['notes']??null,
+            $data['vendor_name']??null,
+            $data['has_vat_invoice']??0,
+            $data['is_vat_inclusive']??0
         ]);
         $this->showExpense($auth, (int)$this->db->lastInsertId());
     }
 
     public function updateExpense(array $auth, int $id): void {
         $data = getBody();
-        $fields = ['title','category','amount','date','status','notes'];
+        $fields = ['title','category','amount','date','status','notes',
+                   'vendor_name','has_vat_invoice','is_vat_inclusive'];
         $sets = []; $params = [];
         foreach ($fields as $f) { if (array_key_exists($f, $data)) { $sets[] = "$f=?"; $params[] = $data[$f]; } }
         if (!$sets) respond(422, null, 'Không có dữ liệu', false);
@@ -187,7 +195,13 @@ class FinanceController {
     public function approveExpense(array $auth, int $id): void {
         $data = getBody();
         $status = $data['status'] ?? 'approved';
-        $this->db->prepare("UPDATE expenses SET status=? WHERE id=? AND tenant_id=?")->execute([$status, $id, $auth['tenant_id']]);
+        if ($status === 'approved') {
+            $this->db->prepare("UPDATE expenses SET status=?, approver_id=?, approved_at=NOW() WHERE id=? AND tenant_id=?")
+                ->execute([$status, $auth['user_id'], $id, $auth['tenant_id']]);
+        } else {
+            $this->db->prepare("UPDATE expenses SET status=?, approver_id=NULL, approved_at=NULL WHERE id=? AND tenant_id=?")
+                ->execute([$status, $id, $auth['tenant_id']]);
+        }
         respond(200, null, 'Đã cập nhật trạng thái');
     }
 

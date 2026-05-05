@@ -11,8 +11,8 @@ class ProductController {
     public function store(array $auth): void {
         $b=getBody();
         if(empty($b['name'])) respond(422,null,'Tên sản phẩm là bắt buộc',false);
-        $this->db->prepare("INSERT INTO products (tenant_id,name,sku,description,price,currency,unit,stock) VALUES (?,?,?,?,?,?,?,?)")
-            ->execute([$auth['tenant_id'],$b['name'],$b['sku']??null,$b['description']??null,$b['price']??0,$b['currency']??'VND',$b['unit']??'cái',$b['stock']??0]);
+        $this->db->prepare("INSERT INTO products (tenant_id,name,sku,category,description,price,currency,unit,stock) VALUES (?,?,?,?,?,?,?,?,?)")
+            ->execute([$auth['tenant_id'],$b['name'],$b['sku']??null,$b['category']??null,$b['description']??null,$b['price']??0,$b['currency']??'VND',$b['unit']??'cái',$b['stock']??0]);
         $this->show($auth,(int)$this->db->lastInsertId());
     }
     public function show(array $auth,int $id): void {
@@ -22,7 +22,7 @@ class ProductController {
         respond(200,$row);
     }
     public function update(array $auth,int $id): void {
-        $b=getBody(); $fields=['name','sku','description','price','currency','unit','stock','is_active'];
+        $b=getBody(); $fields=['name','sku','category','description','price','currency','unit','stock','is_active'];
         $sets=[];$params=[];
         foreach($fields as $f){if(array_key_exists($f,$b)){$sets[]="$f=?";$params[]=$b[$f];}}
         if(!$sets) respond(422,null,'Không có dữ liệu',false);

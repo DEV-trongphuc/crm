@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND', maximumFractionDigits:0 }).format(n);
 
@@ -35,7 +36,7 @@ export const ProductsPage: React.FC = () => {
 
   const fetchProducts = () => {
     setLoading(true);
-    if (DEV_MODE) { setProducts(MOCK); setLoading(false); return; }
+    if (DEV_MODE) { setProducts(useMockStore.getState().products); setLoading(false); return; }
     api.get('/products')
       .then(r => { setProducts(r.data.data || []); })
       .catch(() => {
@@ -59,6 +60,22 @@ export const ProductsPage: React.FC = () => {
     if (!form.name.trim()) { addToast('Tên sản phẩm là bắt buộc', 'error'); return; }
     setSaving(true);
     try {
+      if (DEV_MODE) {
+        if (editItem) {
+          useMockStore.setState(state => ({
+            products: state.products.map(p => p.id === editItem.id ? { ...editItem, ...form, price: Number(form.price) } : p)
+          }));
+          addToast('Đã cập nhật sản phẩm', 'success');
+        } else {
+          useMockStore.getState().addProduct({ ...form, price: Number(form.price) });
+          addToast('Đã thêm sản phẩm mới', 'success');
+        }
+        fetchProducts();
+        setShowModal(false);
+        setSaving(false);
+        return;
+      }
+
       if (editItem) {
         await api.put(`/products/${editItem.id}`, { ...form, price: Number(form.price) });
         addToast('Đã cập nhật sản phẩm', 'success');
@@ -183,37 +200,65 @@ export const ProductsPage: React.FC = () => {
         {showModal && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onClick={() => setShowModal(false)} />
-            <motion.div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'480px', maxWidth:'calc(100vw - 2rem)', background:'var(--color-surface)', borderRadius:'var(--radius-xl)', boxShadow:'var(--shadow-xl)', border:'1px solid var(--color-border)', zIndex:300 }}
-              initial={{ opacity:0, scale:0.96 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--color-border)' }}>
-                <h3 style={{ fontWeight:700 }}>{editItem ? 'Sửa sản phẩm' : 'Thêm sản phẩm'}</h3>
-                <button onClick={() => setShowModal(false)} style={{ color:'var(--color-text-muted)' }}><X size={18} /></button>
+            <motion.div className="modal-sheet" style={{ position:'fixed', top:'50%', left:'50%', width:'500px', maxWidth:'calc(100vw - 2rem)', zIndex:300 }}
+              initial={{ opacity:0, scale:0.96, x: '-50%', y: '-45%' }} animate={{ opacity:1, scale:1, x: '-50%', y: '-50%' }} exit={{ opacity:0, scale:0.96, x: '-50%', y: '-45%' }}>
+              
+              <div className="modal-header">
+                <h3 style={{ fontWeight:800, fontSize: '1.15rem' }}>{editItem ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm mới'}</h3>
+                <button className="btn-icon-bare" onClick={() => setShowModal(false)}><X size={20} /></button>
               </div>
-              <div style={{ padding:'1.5rem', display:'flex', flexDirection:'column', gap:'1rem' }}>
-                <div className="form-group"><label className="form-label">Tên sản phẩm *</label><input className="form-input" value={form.name} onChange={e => setForm({...form, name:e.target.value})} /></div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
-                  <div className="form-group"><label className="form-label">SKU</label><input className="form-input" value={form.sku} onChange={e => setForm({...form, sku:e.target.value})} /></div>
+
+              <div className="modal-body" style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>Tên sản phẩm *</label>
+                  <input className="form-input" value={form.name} onChange={e => setForm({...form, name:e.target.value})} placeholder="VD: Phần mềm quản lý bán hàng..." />
+                </div>
+                
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.25rem' }}>
                   <div className="form-group">
-                    <label className="form-label">Nhóm danh mục</label>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Mã SKU</label>
+                    <input className="form-input" value={form.sku} onChange={e => setForm({...form, sku:e.target.value})} placeholder="VD: SW-CRM-01" />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>Nhóm danh mục</label>
                     <select className="form-input" value={form.category} onChange={e => setForm({...form, category:e.target.value})}>
                       {categories.map(c => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                 </div>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'1rem' }}>
-                  <div className="form-group"><label className="form-label">Đơn giá (đ)</label><input className="form-input" type="number" value={form.price} onChange={e => setForm({...form, price:e.target.value})} /></div>
-                  <div className="form-group"><label className="form-label">Đơn vị</label><input className="form-input" value={form.unit} onChange={e => setForm({...form, unit:e.target.value})} /></div>
-                  <div className="form-group"><label className="form-label">Tồn kho</label><input className="form-input" type="number" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} /></div>
+
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'1.25rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>Đơn giá (đ)</label>
+                    <input className="form-input" type="number" value={form.price} onChange={e => setForm({...form, price:e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>Đơn vị</label>
+                    <input className="form-input" value={form.unit} onChange={e => setForm({...form, unit:e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>Tồn kho</label>
+                    <input className="form-input" type="number" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
+                  </div>
                 </div>
-                <div className="form-group"><label className="form-label">Mô tả</label><textarea className="form-input" rows={2} value={form.description} onChange={e => setForm({...form, description:e.target.value})} /></div>
-                <label style={{ display:'flex', alignItems:'center', gap:'0.5rem', cursor:'pointer' }}>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>Mô tả sản phẩm</label>
+                  <textarea className="form-input" rows={2} value={form.description} onChange={e => setForm({...form, description:e.target.value})} placeholder="Mô tả ngắn gọn về sản phẩm..." style={{ resize: 'none' }} />
+                </div>
+
+                <label style={{ display:'flex', alignItems:'center', gap:'0.75rem', cursor:'pointer', padding: '0.5rem 0' }}>
                   <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active:e.target.checked})} />
-                  <span className="text-sm">Đang bán</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Sản phẩm đang kinh doanh</span>
                 </label>
               </div>
-              <div style={{ display:'flex', justifyContent:'flex-end', gap:'0.75rem', padding:'1.25rem 1.5rem', borderTop:'1px solid var(--color-border)' }}>
-                <button className="btn secondary" onClick={() => setShowModal(false)}>Hủy</button>
-                <button className="btn primary" onClick={handleSave} disabled={saving}>{saving && <Loader2 size={14} className="spin" />}{editItem ? 'Lưu' : 'Thêm'}</button>
+
+              <div className="modal-footer">
+                <button className="btn secondary" onClick={() => setShowModal(false)} disabled={saving}>Hủy bỏ</button>
+                <button className="btn primary" onClick={handleSave} disabled={saving} style={{ minWidth: 120 }}>
+                  {saving && <Loader2 size={16} className="spin" />}
+                  {editItem ? 'Cập nhật' : 'Thêm sản phẩm'}
+                </button>
               </div>
             </motion.div>
           </>

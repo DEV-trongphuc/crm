@@ -6,8 +6,15 @@ class DealController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function stages(array $auth): void {
-        $stmt = $this->db->prepare("SELECT * FROM pipeline_stages WHERE tenant_id=? ORDER BY order_index");
-        $stmt->execute([$auth['tenant_id']]);
+        $stmt = $this->db->prepare("
+            SELECT ps.*, COUNT(c.id) as deals
+            FROM pipeline_stages ps
+            LEFT JOIN contacts c ON c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id=?
+            WHERE ps.tenant_id=?
+            GROUP BY ps.id
+            ORDER BY ps.order_index
+        ");
+        $stmt->execute([$auth['tenant_id'], $auth['tenant_id']]);
         respond(200, $stmt->fetchAll());
     }
 
@@ -104,7 +111,7 @@ class DealController {
         $this->db->prepare("INSERT INTO deal_stage_history (deal_id,from_stage,to_stage,moved_by) VALUES (?,NULL,?,?)")
             ->execute([$id, $stageId, $auth['user_id']]);
         
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Tạo Deal mới', "Deal \"{$b['title']}\" được tạo thành công.", 'deal', $id);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Tạo Deal mới', "Deal \"{$b['title']}\" được tạo thành công.", 'deal', $id);
         $this->show($auth, $id);
     }
 
@@ -143,7 +150,7 @@ class DealController {
         // Get stage names for log
         $sn = $this->db->prepare("SELECT name FROM pipeline_stages WHERE id IN (?,?)");
         $sn->execute([$old, $b['stage_id']]); $names = $sn->fetchAll(PDO::FETCH_COLUMN);
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Chuyển giai đoạn Deal', "Deal đã được chuyển trạng thái.", 'deal', $id);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Chuyển giai đoạn Deal', "Deal đã được chuyển trạng thái.", 'deal', $id);
 
         respond(200, null, 'Đã cập nhật stage thành công');
     }
@@ -166,7 +173,7 @@ class DealController {
         $stmt->execute([$id,$auth['tenant_id']]);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy deal', false);
         
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'task', 'Xóa Deal', "Một cơ hội bán hàng đã bị xóa.", 'deal', $id);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Deal', "Một cơ hội bán hàng đã bị xóa.", 'deal', $id);
         respond(200, null, 'Đã xóa deal (vào thùng rác)');
     }
 

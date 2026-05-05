@@ -115,17 +115,23 @@ export const PeriodFilter: React.FC<PeriodFilterProps> = ({ value, onChange, cus
   return (
     <div style={{ position: 'relative' }} ref={ref}>
       <button 
-        className="btn secondary sm"
+        className="btn secondary"
         onClick={() => setIsOpen(!isOpen)}
-        style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '140px', justifyContent: 'space-between' }}
+        style={{ 
+          display: 'flex', alignItems: 'center', gap: '10px', minWidth: '180px', justifyContent: 'space-between',
+          padding: '0.625rem 1.25rem', fontSize: '0.9375rem', borderRadius: 'var(--radius-xl)',
+          background: isOpen ? 'var(--color-bg)' : 'white',
+          boxShadow: 'var(--shadow-sm)',
+          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
       >
-        <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Calendar size={14} />
+        <span style={{ display: 'flex', alignItems: 'center', gap: '10px', fontWeight: 600 }}>
+          <Calendar size={18} style={{ color: 'var(--color-text-muted)' }} />
           {value === 'custom' && customRange 
             ? `${customRange.from.slice(5)} → ${customRange.to.slice(5)}` 
             : currentLabel}
         </span>
-        <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        <ChevronDown size={18} style={{ color: 'var(--color-text-muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
       </button>
 
       {/* Period Dropdown */}
@@ -137,26 +143,28 @@ export const PeriodFilter: React.FC<PeriodFilterProps> = ({ value, onChange, cus
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             style={{
               position: 'absolute', top: 'calc(100% + 8px)', right: 0,
-              background: 'var(--color-surface)', border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xl)',
-              zIndex: 500, padding: '0.5rem', minWidth: '180px',
+              background: 'white', border: '1px solid var(--color-border-light)',
+              borderRadius: 'var(--radius-xl)', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
+              zIndex: 500, padding: '0.75rem', minWidth: '220px',
             }}
           >
+            <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', padding: '0 0.5rem', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>Chọn kỳ báo cáo</p>
             {PERIODS.map(p => (
               <button
                 key={p.key}
                 className={`dropdown-item ${value === p.key ? 'active' : ''}`}
                 onClick={() => handlePeriod(p.key)}
                 style={{ 
-                  width: '100%', textAlign: 'left', padding: '0.625rem 0.875rem',
-                  fontSize: '0.875rem', borderRadius: 'var(--radius-md)',
-                  display: 'flex', alignItems: 'center', gap: '8px',
-                  background: value === p.key ? 'var(--color-bg)' : 'transparent',
+                  width: '100%', textAlign: 'left', padding: '0.75rem 1rem',
+                  fontSize: '0.9375rem', borderRadius: '12px',
+                  display: 'flex', alignItems: 'center', gap: '10px',
+                  background: value === p.key ? 'var(--color-primary-light)' : 'transparent',
                   color: value === p.key ? 'var(--color-primary)' : 'var(--color-text)',
-                  border: 'none', cursor: 'pointer', fontWeight: value === p.key ? 600 : 500
+                  border: 'none', cursor: 'pointer', fontWeight: value === p.key ? 700 : 500,
+                  transition: 'background 0.2s'
                 }}
               >
-                {p.key === 'custom' && <Calendar size={13} />}
+                {p.key === 'custom' && <Calendar size={16} />}
                 {p.label}
               </button>
             ))}

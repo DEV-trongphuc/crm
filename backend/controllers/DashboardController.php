@@ -41,13 +41,24 @@ class DashboardController {
         $s4->execute([$tid]);
         $taskStats = $s4->fetch();
 
+        // Won deals (closed-won) this period
+        $sWon = $this->db->prepare("
+            SELECT COUNT(*) as won_count, COALESCE(SUM(d.value),0) as won_value
+            FROM deals d
+            JOIN pipeline_stages ps ON d.stage_id = ps.id
+            WHERE d.tenant_id=? AND ps.is_won=1 AND DATE(d.updated_at) BETWEEN ? AND ?
+        ");
+        $sWon->execute([$tid, $from, $to]);
+        $wonStats = $sWon->fetch();
+
         respond(200, [
-            'total_value'    => (float)$dealStats['total_value'],
-            'won_value'      => $rev,
-            'expenses'       => $exp,
-            'profit'         => $rev - $exp,
-            'new_contacts'   => (int)$contactStats['new_contacts'],
-            'tasks_due_today'=> (int)$taskStats['due_today'],
+            'total_value'       => (float)$dealStats['total_value'],   // all pipeline
+            'won_value'         => $rev > 0 ? $rev : (float)$wonStats['won_value'], // paid invoices or won deals
+            'won_count'         => (int)$wonStats['won_count'],
+            'expenses'          => $exp,
+            'profit'            => ($rev > 0 ? $rev : (float)$wonStats['won_value']) - $exp,
+            'new_contacts'      => (int)$contactStats['new_contacts'],
+            'tasks_due_today'   => (int)$taskStats['due_today'],
         ]);
     }
 
@@ -104,10 +115,10 @@ class DashboardController {
         $tid = $auth['tenant_id'];
         $stmt = $this->db->prepare("
             SELECT ps.id, ps.name, ps.color, ps.order_index, ps.is_won, ps.is_lost,
-                   COUNT(d.id) as deal_count,
-                   COALESCE(SUM(d.value),0) as total_value
+                   COUNT(c.id) as deal_count,
+                   COALESCE(SUM(c.expected_revenue),0) as total_value
             FROM pipeline_stages ps
-            LEFT JOIN deals d ON d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id=?
+            LEFT JOIN contacts c ON c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id=?
             WHERE ps.tenant_id=?
             GROUP BY ps.id ORDER BY ps.order_index ASC
         ");

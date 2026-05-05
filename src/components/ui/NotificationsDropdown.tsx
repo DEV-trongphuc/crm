@@ -14,11 +14,7 @@ interface Notification {
   created_at: string;
 }
 
-const MOCK_NOTIFS: Notification[] = [
-  { id: 1, title: 'Deal "Hệ thống ERP cho ABC" đã chuyển sang Thương lượng', body: 'Sales Manager đã cập nhật trạng thái', type: 'info', is_read: 0, link: '/deals', created_at: new Date(Date.now() - 300000).toISOString() },
-  { id: 2, title: 'Hoá đơn INV-2025-042 quá hạn thanh toán', body: 'Khách hàng GreenSolar Corp chưa thanh toán sau 7 ngày', type: 'warning', is_read: 0, link: '/invoices', created_at: new Date(Date.now() - 3600000).toISOString() },
-  { id: 3, title: 'Người dùng Sales Manager đã đăng nhập mới', body: null, type: 'success', is_read: 1, link: null, created_at: new Date(Date.now() - 86400000).toISOString() },
-];
+const MOCK_NOTIFS: Notification[] = [];
 
 const typeIcon: Record<string, React.ReactNode> = {
   info:    <Info size={14} color="#3b82f6" />,

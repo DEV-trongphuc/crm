@@ -28,6 +28,9 @@ interface UIStore {
   confirmModal: ConfirmModalState;
   showConfirm: (titleOrOptions: any, message?: string, onConfirm?: () => void) => void;
   closeConfirm: () => void;
+  callModal: { isOpen: boolean; phone: string };
+  showCall: (phone: string) => void;
+  closeCall: () => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -55,6 +58,9 @@ export const useUIStore = create<UIStore>((set) => ({
     }
   },
   closeConfirm: () => set((state) => ({ confirmModal: { ...state.confirmModal, isOpen: false } })),
+  callModal: { isOpen: false, phone: '' },
+  showCall: (phone: string) => set({ callModal: { isOpen: true, phone } }),
+  closeCall: () => set((state) => ({ callModal: { ...state.callModal, isOpen: false } })),
   addToast: (message, type = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
     set((state) => ({ toasts: [...state.toasts, { id, type, message }] }));

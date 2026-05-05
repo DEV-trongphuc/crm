@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock } from 'lucide-react';
+import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { AddressSelect } from '../components/ui/AddressSelect';
+import { PhoneLink } from '../components/ui/PhoneLink';
 import { ActivityModal } from '../components/ui/ActivityModal';
+import { MentionInput } from '../components/ui/MentionInput';
 import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
+import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 import styles from './EntityDrawer.module.css';
 
 /* ─── Types ─────────────────────────────────────────────────── */
@@ -19,33 +24,32 @@ interface Props {
   onUpdate?: (data: any) => void;
 }
 
-/* ─── Mock Data ───────────────────────────────────── */
-const buildTimeline = (c: any) => [
-  { id: 1, type: 'call', icon: <Phone size={16} />, color: '#10b981', title: `Gọi tư vấn sản phẩm ERP`, user: 'Admin', time: new Date(Date.now() - 1800000).toISOString(), note: 'Khách quan tâm, hẹn demo tuần tới' },
-  { id: 2, type: 'email', icon: <Mail size={16} />, color: '#3b82f6', title: `Gửi báo giá Q2/2026`, user: 'Admin', time: new Date(Date.now() - 86400000).toISOString(), note: 'Đã gửi PDF báo giá kèm brochure' },
-  { id: 3, type: 'meeting', icon: <MapPin size={16} />, color: '#8b5cf6', title: `Demo sản phẩm tại văn phòng`, user: 'Sales Manager', time: new Date(Date.now() - 172800000).toISOString(), note: 'Khách hài lòng, đang cân nhắc ngân sách' },
-  { id: 4, type: 'task', icon: <CheckSquare size={16} />, color: '#f43f5e', title: `Nhiệm vụ: Cập nhật hợp đồng`, user: 'Admin', time: new Date(Date.now() - 200000000).toISOString(), note: 'Đã gửi file hợp đồng cứng qua bưu điện' },
-  { id: 5, type: 'note', icon: <FileText size={16} />, color: '#f59e0b', title: `Ghi chú: Quyết định Q3`, user: 'Admin', time: new Date(Date.now() - 259200000).toISOString(), note: 'Khách cho biết sẽ quyết định vào Q3' },
-];
-
-const buildDeals = () => [
-  { id: 1, title: 'Hệ thống ERP Enterprise', value: 350000000, stage: 'Thương lượng', stage_color: '#8b5cf6', prob: 65, close: '2026-06-30' },
-  { id: 2, title: 'Gói Bảo trì hàng năm', value: 36000000, stage: 'Báo giá', stage_color: '#3b82f6', prob: 80, close: '2026-05-31' },
-];
-
-const buildTasks = () => [
-  { id: 1, title: 'Gửi hợp đồng mẫu để xem xét', due: '2026-05-07', priority: 'high', done: false },
-  { id: 2, title: 'Gọi xác nhận quyết định', due: '2026-05-10', priority: 'high', done: false },
-  { id: 3, title: 'Gửi case study tương tự', due: '2026-05-06', priority: 'medium', done: true },
-];
+const buildTimeline = (c: any): any[] => {
+  if (!c) return [];
+  const { activities } = useMockStore.getState();
+  return activities.filter((a: any) => a.contact_id === c.id);
+};
+const buildDeals = (c: any): any[] => {
+  if (!c) return [];
+  const { deals } = useMockStore.getState();
+  return deals.filter((d: any) => d.contact_id === c.id);
+};
+const buildTasks = (c: any): any[] => {
+  if (!c) return [];
+  const { activities } = useMockStore.getState();
+  return activities.filter((a: any) => a.contact_id === c.id && a.type === 'task');
+};
 
 /* ─── Helpers ────────────────────────────────────────────────── */
-const CONTACT_STATUSES = [
-  { id: 'lead', label: 'Lead mới', color: '#3b82f6' },
-  { id: 'qualified', label: 'Đủ điều kiện', color: '#f59e0b' },
-  { id: 'customer', label: 'Khách hàng', color: '#10b981' },
-  { id: 'churned', label: 'Đã rời bỏ', color: '#ef4444' }
+// Fallback statuses used when pipeline-stages API has no data or in DEV_MODE
+const DEFAULT_PIPELINE_STAGES = [
+  { id: 'lead', name: 'Lead mới', color: '#3b82f6', order_index: 0 },
+  { id: 'qualified', name: 'Đủ điều kiện', color: '#f59e0b', order_index: 1 },
+  { id: 'customer', name: 'Khách hàng', color: '#10b981', order_index: 2 },
+  { id: 'churned', name: 'Đã rời bỏ', color: '#ef4444', order_index: 3 },
 ];
+// Keep for pipelineModal label lookups
+const CONTACT_STATUSES = DEFAULT_PIPELINE_STAGES.map(s => ({ id: s.id, label: s.name, color: s.color }));
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
 const AGO = (iso: string) => {
@@ -70,35 +74,60 @@ const TABS = [
 ];
 
 export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate }) => {
-  const { addToast, showConfirm } = useUIStore();
+  const { addToast, showConfirm, showCall } = useUIStore();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('info');
+  const [activeTab, setActiveTab] = useState<string>('info');
   const [formData, setFormData] = useState<any>({});
   const [tags, setTags] = useState<string[]>([]);
   const [showCallLogger, setShowCallLogger] = useState(false);
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [showDealModal, setShowDealModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showTicketModal, setShowTicketModal] = useState(false);
   const [newNote, setNewNote] = useState('');
   const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string }[]>([]);
-  const [tasks, setTasks] = useState(buildTasks());
+  const [tasks, setTasks] = useState<any[]>([]);
   const [pipelineModal, setPipelineModal] = useState<{ isOpen: boolean; targetId: string; targetLabel: string; note: string }>({ isOpen: false, targetId: '', targetLabel: '', note: '' });
+  const [users, setUsers] = useState<any[]>([]);
+  const [allTags, setAllTags] = useState<any[]>([]);
+  const [pipelineStages, setPipelineStages] = useState<any[]>(DEFAULT_PIPELINE_STAGES);
 
-  const [docs, setDocs] = useState([
-    { id: 1, name: 'CCCD_MatTruoc.jpg', date: new Date().toLocaleDateString('vi-VN'), size: '1.2 MB', type: 'jpg' },
-    { id: 2, name: 'CCCD_MatSau.jpg', date: new Date().toLocaleDateString('vi-VN'), size: '1.1 MB', type: 'jpg' }
-  ]);
+  const [ticketForm, setTicketForm] = useState({ subject: '', priority: 'medium', description: '' });
+  const [dealForm, setDealForm] = useState({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '' });
+  const [taskForm, setTaskForm] = useState({ title: '', priority: 'medium', due_date: '', description: '' });
+
+  const [docs, setDocs] = useState<any[]>([]);
 
   useEffect(() => {
     if (contact) {
       setFormData(contact);
-      setTags(contact.tags || ['vip', 'erp']);
-      setNotes([{ id: 1, text: 'Khách rất quan tâm đến module HR, cần demo thêm.', time: new Date(Date.now() - 3600000).toISOString(), user: 'Admin' }]);
+      setTags(contact.tags || []);
+      // TODO: Fetch notes from API
+      setNotes([]);
+      setTasks(buildTasks(contact));
       setActiveTab('info');
     }
   }, [contact]);
 
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => { });
+      api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
+      api.get('/pipeline-stages')
+        .then(r => {
+          const stages = r.data.data || [];
+          if (stages.length > 0) {
+            // Map API stages to the shape used by the stepper
+            setPipelineStages(stages.map((s: any) => ({ id: s.id, name: s.name, color: s.color || '#6366f1', order_index: s.order_index })));
+          }
+        })
+        .catch(() => { /* keep default */ });
+    }
+  }, [isOpen]);
+
   const hasChanges = React.useMemo(() => {
     if (!contact) return false;
-    const baseTags = contact.tags || ['vip', 'erp'];
+    const baseTags = contact.tags || [];
     if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
     for (const key of Object.keys(formData)) {
       if (formData[key] !== contact[key]) return true;
@@ -106,14 +135,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return false;
   }, [formData, tags, contact]);
 
-  if (!contact) return null;
 
   const { score, rules } = (() => {
     let s = 0;
     const r = [];
-    if (formData.job_title?.toLowerCase().includes('giám đốc') || formData.job_title?.toLowerCase().includes('ceo')) {
+    const title = (formData.job_title || '').toLowerCase();
+    if (title.includes('giám đốc') || title.includes('ceo')) {
       s += 30; r.push({ rule: 'Chức danh C-Level (Giám đốc/CEO)', pts: 30, type: 'Demographic' });
-    } else if (formData.job_title) {
+    } else if (title) {
       s += 10; r.push({ rule: 'Có thông tin chức vụ', pts: 10, type: 'Demographic' });
     }
     if (formData.phone) { s += 15; r.push({ rule: 'Cung cấp số điện thoại', pts: 15, type: 'Demographic' }); }
@@ -128,21 +157,87 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return { score: Math.min(100, s || 15), rules: r };
   })();
 
-  const timeline = buildTimeline(contact);
-  const deals = buildDeals();
+  const mockStore = useMockStore();
+
+  const timeline = React.useMemo(() => {
+    if (!DEV_MODE) return buildTimeline(contact);
+    return mockStore.activities
+      .map((a: any) => ({
+        id: a.id,
+        title: a.subject,
+        type: a.type,
+        user: a.user_name,
+        time: a.created_at,
+        color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#8b5cf6' : '#10b981',
+        icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : <Mail size={16} />,
+        note: a.note || ''
+      }));
+  }, [mockStore.activities, formData.id, contact]);
+
+  const deals = React.useMemo(() => {
+    if (!DEV_MODE) return buildDeals(contact);
+    return mockStore.deals
+      .map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        value: d.value,
+        stage: d.stage,
+        prob: d.probability,
+        close: d.expected_close,
+        stage_color: d.stage === 'won' ? '#10b981' : d.stage === 'lost' ? '#ef4444' : '#3b82f6'
+      }));
+  }, [mockStore.deals, formData.id]);
+
+  const drawerInvoices = React.useMemo(() => {
+    if (!DEV_MODE) return [];
+    return mockStore.invoices;
+  }, [mockStore.invoices, formData.id]);
+
+  const drawerTickets = React.useMemo(() => {
+    if (!DEV_MODE) return [];
+    return mockStore.tickets;
+  }, [mockStore.tickets, formData.id]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
 
-  const handleSave = () => {
-    onUpdate?.({ ...formData, tags });
-    addToast('Đã lưu thông tin khách hàng', 'success');
+  const handleSave = async () => {
+    // Only send fields that ContactController accepts
+    const allowedFields = [
+      'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
+      'mobile', 'job_title', 'department', 'source', 'status', 'notes',
+      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact'
+    ];
+    const payload: Record<string, any> = {};
+    allowedFields.forEach(f => { if (formData[f] !== undefined) payload[f] = formData[f]; });
+    payload.tags = tags;
+    try {
+      const res = await api.put(`/contacts/${contact.id}`, payload);
+      const updated = res.data?.data || { ...formData, tags };
+      setFormData(updated);
+      onUpdate?.(updated);
+      addToast('Đã lưu thông tin khách hàng', 'success');
+    } catch (e: any) {
+      addToast(e?.response?.data?.message || 'Lỗi khi lưu thông tin', 'error');
+    }
   };
 
-  const addNote = () => {
+  const addNote = async () => {
     if (!newNote.trim()) return;
-    setNotes(p => [{ id: Date.now(), text: newNote.trim(), time: new Date().toISOString(), user: 'Admin' }, ...p]);
+    const text = newNote.trim();
     setNewNote('');
-    addToast('Đã lưu ghi chú', 'success');
+    try {
+      // NoteController routes expect entity_type + entity_id as query params
+      await api.post(`/notes?entity_type=contact&entity_id=${contact.id}`, {
+        body: text, type: 'internal'
+      });
+      setNotes(p => [{ id: Date.now(), text, time: new Date().toISOString(), user: 'Admin' }, ...p]);
+      addToast('Đã lưu ghi chú', 'success');
+    } catch {
+      setNotes(p => [{ id: Date.now(), text, time: new Date().toISOString(), user: 'Admin' }, ...p]);
+      addToast('Đã lưu ghi chú (offline)', 'warning');
+    }
   };
+
+  if (!contact) return null;
 
   return (
     <>
@@ -161,80 +256,138 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
               {/* ── Header ── */}
-              <div className={styles.header}>
-                <div className={styles.headerProfile}>
-                  <div className="avatar-placeholder lg" style={{ background: 'var(--color-primary)', fontSize: '1.25rem', width: 56, height: 56 }}>
-                    {(formData.first_name?.[0] || '?').toUpperCase()}
+              <div style={{ padding: '2rem 2.5rem', background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)', borderBottom: '1px solid var(--color-border-light)', position: 'relative' }}>
+                <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
+                  {/* Avatar Section */}
+                  <div style={{ position: 'relative' }}>
+                    <div className="avatar-placeholder lg" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #4338ca 100%)', fontSize: '1.5rem', width: 80, height: 80, borderRadius: '24px', boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.4)' }}>
+                      {(formData.first_name?.[0] || '?').toUpperCase()}
+                    </div>
+                    <div style={{ position: 'absolute', bottom: -4, right: -4, width: 28, height: 28, borderRadius: '10px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid white' }}>
+                      <UserCheck size={14} className="text-success" />
+                    </div>
                   </div>
-                  <div>
-                    <h2 className={styles.title}>{fullName}</h2>
-                    <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Briefcase size={14} /> {formData.job_title || 'Chưa cập nhật chức vụ'} tại {formData.company_name || 'Chưa cập nhật công ty'}
+
+                  {/* Info Section */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+                      <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>{fullName}</h2>
+                      <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`} style={{ padding: '4px 12px', fontSize: '0.75rem', borderRadius: '8px' }}>
+                        {formData.status === 'customer' ? 'Khách hàng VIP' : formData.status === 'qualified' ? 'Đã thẩm định' : 'Tiềm năng'}
+                      </span>
+                    </div>
+
+                    <p style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-light)', fontSize: '0.9375rem', marginBottom: '1rem' }}>
+                      <Briefcase size={16} /> <strong>{formData.job_title || 'Chủ doanh nghiệp'}</strong> tại <span style={{ color: 'var(--color-primary)', fontWeight: 600 }}>{formData.company_name || 'Công ty TNHH'}</span>
                     </p>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Phone size={12} /> {formData.phone || 'Chưa có SĐT'}
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Mail size={12} /> {formData.email || 'Chưa có Email'}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Phụ trách:</span>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--color-primary)', background: 'rgba(99, 102, 241, 0.1)', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
-                        {formData.owner_name || 'Admin Sales'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className={styles.headerActions}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginRight: '16px' }}>
-                    <LeadScoreRing score={score} size={42} />
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Lead Score</span>
-                      <span style={{ fontSize: '1rem', fontWeight: 800 }}>{score}</span>
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} onClick={() => formData.phone && showCall(formData.phone)}>
+                          <Phone size={14} style={{ color: 'var(--color-primary)' }} />
+                        </div>
+                        <PhoneLink phone={formData.phone} style={{ fontSize: '0.875rem' }} />
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Mail size={14} className="text-muted" />
+                        </div>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: 'white', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
+                          {formData.owner_name ? formData.owner_name.charAt(0).toUpperCase() : '?'}
+                        </div>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{formData.owner_name || 'Sale phụ trách'}</span>
+                      </div>
                     </div>
                   </div>
-                  <span className={`badge ${formData.status === 'customer' ? 'success' : formData.status === 'qualified' ? 'warning' : 'info'}`}>
-                    {formData.status === 'customer' ? 'Khách hàng' : formData.status === 'qualified' ? 'Đủ điều kiện' : 'Tiềm năng'}
-                  </span>
-                  <button
-                    className={`btn sm flex items-center gap-2 ${hasChanges ? 'primary' : 'secondary'}`}
-                    disabled={!hasChanges}
-                    onClick={handleSave}
-                  >
-                    <CheckSquare size={14} /> Lưu thay đổi
-                  </button>
-                  <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
+
+                  {/* Actions Section */}
+                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <button className={styles.closeBtn} onClick={onClose} style={{ order: 2 }}><X size={24} /></button>
+                      <button
+                        className={`btn ${hasChanges ? 'primary' : 'outline'} lg`}
+                        disabled={!hasChanges}
+                        onClick={handleSave}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 24px', borderRadius: '14px' }}
+                      >
+                        <CheckSquare size={18} /> {hasChanges ? 'Lưu thay đổi' : 'Đã đồng bộ'}
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'white', padding: '10px 16px', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Mã liên hệ</p>
+                        <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-primary)' }}>#CON-{formData.id}</p>
+                      </div>
+                      <div style={{ width: 1, height: 32, background: 'var(--color-border-light)' }} />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Lead Score</p>
+                          <p style={{ fontSize: '1rem', fontWeight: 800, color: score > 70 ? 'var(--color-success)' : 'var(--color-warning)' }}>{score}/100</p>
+                        </div>
+                        <LeadScoreRing score={score} size={40} />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
               {/* ── Pipeline Stepper Bar ── */}
-              <div style={{ display: 'flex', padding: '1rem 1.5rem', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)', gap: '4px' }}>
-                {CONTACT_STATUSES.map((st, i) => {
-                  const currentIndex = CONTACT_STATUSES.findIndex(x => x.id === (formData.status || 'lead'));
-                  const isActive = i <= currentIndex;
-                  const isCurrent = i === currentIndex;
-                  return (
-                    <div
-                      key={st.id}
-                      onClick={() => {
-                        if (i === currentIndex) return;
-                        setPipelineModal({ isOpen: true, targetId: st.id, targetLabel: st.label, note: '' });
-                      }}
-                      style={{
-                        flex: 1, position: 'relative', height: '32px', cursor: i === currentIndex ? 'default' : 'pointer',
-                        opacity: i < currentIndex ? 0.6 : 1,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                      }}
-                    >
-                      <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '4px', background: isActive ? 'var(--color-primary)' : 'var(--color-border-light)', transform: 'translateY(-50%)', borderRadius: '2px', transition: 'background 0.3s' }} />
-                      <div style={{ position: 'relative', zIndex: 2, background: isCurrent ? 'var(--color-primary)' : 'var(--color-surface)', color: isCurrent ? '#fff' : (isActive ? 'var(--color-primary)' : 'var(--color-text-muted)'), border: `2px solid ${isActive ? 'var(--color-primary)' : 'var(--color-border)'}`, padding: '4px 12px', borderRadius: '16px', fontSize: '0.75rem', fontWeight: 700, transition: 'all 0.3s' }}>
-                        {st.label}
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'white', borderBottom: '1px solid var(--color-border-light)' }}>
+                <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '1rem', zIndex: 10, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
+                  <ChevronLeft size={16} />
+                </button>
+                <div id="pipeline-scroll-container" style={{ display: 'flex', padding: '1.25rem 3.5rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
+                  {pipelineStages.map((st, i) => {
+                    // contacts.status is always an enum string (lead/qualified/customer/churned)
+                    // Map the current status to an index position in pipelineStages by order
+                    const STATUS_ORDER: Record<string, number> = { lead: 0, qualified: 1, customer: 2, churned: 3 };
+                    const currentStatus = formData.status || 'lead';
+                    const currentIndex = STATUS_ORDER[currentStatus] ?? 0;
+                    const isActive = i <= currentIndex;
+                    const isCurrent = i === currentIndex;
+                    const stColor = st.color || '#6366f1';
+                    return (
+                      <div
+                        key={st.id}
+                        onClick={() => {
+                          if (isCurrent) return;
+                          setPipelineModal({ isOpen: true, targetId: String(st.id), targetLabel: st.name, note: '' });
+                        }}
+                        style={{
+                          flex: '0 0 auto', width: 'calc(25% - 9px)', position: 'relative', height: '40px', cursor: isCurrent ? 'default' : 'pointer',
+                          display: 'flex', alignItems: 'center', transition: 'all 0.3s'
+                        }}
+                      >
+                        {/* Connection Line */}
+                        {i < pipelineStages.length - 1 && (
+                          <div style={{ position: 'absolute', top: '50%', left: '50%', right: '-50%', height: '3px', background: i < currentIndex ? stColor : '#e2e8f0', transform: 'translateY(-50%)', zIndex: 1, borderRadius: '4px' }} />
+                        )}
+
+                        <div style={{
+                          position: 'relative', zIndex: 2, flex: 1,
+                          background: isCurrent ? stColor : 'white',
+                          color: isCurrent ? '#fff' : (isActive ? stColor : '#94a3b8'),
+                          border: `2px solid ${isActive ? stColor : '#f1f5f9'}`,
+                          padding: '6px 12px', borderRadius: '12px', fontSize: '0.8125rem', fontWeight: 800,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                          whiteSpace: 'nowrap',
+                          boxShadow: isCurrent ? `0 4px 12px ${stColor}40` : 'none',
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}>
+                          {isActive && <UserCheck size={14} />}
+                          {st.name}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+                <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '1rem', zIndex: 10, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
+                  <ChevronRight size={16} />
+                </button>
               </div>
 
               {/* ── Layout Split: Left Sidebar Tabs & Content ── */}
@@ -278,7 +431,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             {formData.last_contact ? AGO(formData.last_contact) : 'Cần liên hệ ngay'}
                           </span>
                         </div>
-                        <div className="card-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', borderLeft: '3px solid var(--color-warning)' }}>
+                        <div className="card-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
                           <span className="text-xs text-light" style={{ fontWeight: 600 }}>TƯƠNG TÁC</span>
                           <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.25rem' }}>{timeline.length} lần</span>
                           <span className="text-xs text-light mt-1">Gọi điện, Email, Gặp mặt</span>
@@ -319,8 +472,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <input className="form-input" placeholder="Tên công ty" value={formData.company_name || ''} onChange={e => setFormData({ ...formData, company_name: e.target.value })} />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">Chức vụ</label>
-                            <input className="form-input" placeholder="Ví dụ: Giám đốc, Kế toán trưởng..." value={formData.job_title || ''} onChange={e => setFormData({ ...formData, job_title: e.target.value })} />
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Clock size={13} style={{ color: 'var(--color-text-muted)' }} /> Thời gian
+                            </label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', gap: '6px' }}>
+                                <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Tạo lúc:</span>
+                                <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>
+                                  {formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', display: 'flex', gap: '6px' }}>
+                                <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Cập nhật:</span>
+                                <span style={{ color: 'var(--color-text)', fontWeight: 500 }}>
+                                  {formData.updated_at ? new Date(formData.updated_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -352,6 +520,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <label className="form-label">Xác suất chốt (%)</label>
                             <input className="form-input" type="number" min="0" max="100" placeholder="50" value={formData.win_probability || ''} onChange={e => setFormData({ ...formData, win_probability: e.target.value })} />
                           </div>
+                          <div className="form-group">
+                            <label className="form-label">Người đang chăm sóc (Sale)</label>
+                            <CustomSelect
+                              options={users.map(u => ({ value: u.id, label: u.full_name, icon: <UserCheck size={14} /> }))}
+                              value={formData.owner_id || ''}
+                              onChange={val => {
+                                const u = users.find(x => x.id === Number(val));
+                                setFormData({ ...formData, owner_id: val, owner_name: u?.full_name || '' });
+                              }}
+                              placeholder="Chọn sale phụ trách..."
+                              searchable
+                            />
+                          </div>
                         </div>
                       </div>
 
@@ -373,12 +554,39 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {/* TAGS TAB */}
                   {activeTab === 'tags' && (
                     <div className="animate-fade">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Phân loại khách hàng (Tags)</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                        <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <TagIcon size={24} />
+                        </div>
+                        <div>
+                          <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-text)', letterSpacing: '-0.01em' }}>Phân loại khách hàng</h3>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)' }}>Sử dụng các thẻ tag để phân nhóm và tối ưu hóa quy trình tìm kiếm.</p>
+                        </div>
                       </div>
-                      <div className="card-panel" style={{ minHeight: '200px' }}>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>Sử dụng thẻ để nhóm và tìm kiếm khách hàng dễ dàng hơn.</p>
-                        <TagInput tags={tags} onChange={setTags} />
+
+                      <div className="card-panel" style={{ padding: '2.5rem', background: 'linear-gradient(to bottom right, #ffffff, #f8fafc)', border: '1px solid var(--color-border-light)' }}>
+                        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+                          <label className="form-label" style={{ fontWeight: 700, marginBottom: '1rem', display: 'block', fontSize: '0.9375rem' }}>Gắn thẻ thông minh</label>
+                          <TagInput
+                            tags={tags}
+                            onChange={setTags}
+                            suggestions={allTags.map(t => t.name)}
+                            placeholder="Chọn thẻ tag..."
+                          />
+                          <div style={{ marginTop: '1.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', width: '100%', marginBottom: '0.25rem' }}>Gợi ý hệ thống:</span>
+                            {allTags.slice(0, 8).map(t => (
+                              <button
+                                key={t.id}
+                                onClick={() => !tags.includes(t.name) && setTags([...tags, t.name])}
+                                className="btn ghost sm"
+                                style={{ borderRadius: '10px', fontSize: '0.75rem', padding: '4px 12px', border: '1px dashed var(--color-border)' }}
+                              >
+                                + {t.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -498,31 +706,31 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Cơ hội (Deals) - {deals.length}</h3>
-                        <button className="btn primary sm" onClick={() => addToast('Mở form tạo deal mới...', 'info')}><Plus size={14} /> Tạo deal mới</button>
+                        <button className="btn primary sm" onClick={() => setShowDealModal(true)}><Plus size={14} /> Tạo deal mới</button>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
-                        {deals.map(d => (
-                          <div key={d.id} className="card-panel" style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-                            <div style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-surface)' }}>
+                        {deals.map((d: any) => (
+                          <div key={d.id} className="card-panel" style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer', borderRadius: '16px' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.05)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+                            <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--color-surface)' }}>
                               <div>
-                                <h4 style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--color-text)', marginBottom: '0.375rem' }}>{d.title}</h4>
-                                <span className="badge" style={{ background: `${d.stage_color}15`, color: d.stage_color, fontSize: '0.75rem' }}>{d.stage}</span>
+                                <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>{d.title}</h4>
+                                <span className="badge" style={{ background: `${d.stage_color}15`, color: d.stage_color, fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '8px' }}>{d.stage}</span>
                               </div>
                               <div style={{ textAlign: 'right' }}>
-                                <span style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '1.25rem' }}>{FMT(d.value)}</span>
+                                <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</span>
                               </div>
                             </div>
-                            <div style={{ padding: '1rem 1.25rem', background: 'var(--color-bg)' }}>
+                            <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(to right, var(--color-bg), var(--color-surface))', borderTop: '1px solid var(--color-border-light)' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
-                                <span style={{ color: 'var(--color-text-muted)' }}>Xác suất chốt</span>
-                                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{d.prob}%</span>
+                                <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Activity size={14} /> Xác suất chốt</span>
+                                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{d.prob}%</span>
                               </div>
-                              <div style={{ height: 6, background: 'var(--color-border)', borderRadius: 3, overflow: 'hidden', marginBottom: '1rem' }}>
-                                <div style={{ width: `${d.prob}%`, height: '100%', background: d.stage_color, borderRadius: 3 }} />
+                              <div style={{ height: 8, background: 'var(--color-border-light)', borderRadius: 4, overflow: 'hidden', marginBottom: '1.25rem' }}>
+                                <div style={{ width: `${d.prob}%`, height: '100%', background: `linear-gradient(90deg, ${d.stage_color}88 0%, ${d.stage_color} 100%)`, borderRadius: 4 }} />
                               </div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                                <span style={{ color: 'var(--color-text-muted)' }}>Ngày dự kiến</span>
-                                <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{d.close}</span>
+                                <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={14} /> Ngày dự kiến</span>
+                                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{new Date(d.close).toLocaleDateString('vi-VN')}</span>
                               </div>
                             </div>
                           </div>
@@ -536,7 +744,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Công việc cần làm</h3>
-                        <button className="btn primary sm" onClick={() => addToast('Tạo task mới...', 'info')}><Plus size={14} /> Thêm công việc</button>
+                        <button className="btn primary sm" onClick={() => setShowTaskModal(true)}><Plus size={14} /> Thêm công việc</button>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         {tasks.map(t => (
@@ -571,10 +779,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Ghi chú nội bộ</h3>
                       </div>
                       <div className="card-panel" style={{ marginBottom: '1.5rem', background: 'var(--color-surface)' }}>
-                        <textarea
+                        <MentionInput
                           value={newNote}
                           onChange={e => setNewNote(e.target.value)}
-                          placeholder="Nhập nội dung ghi chú về khách hàng này..."
+                          placeholder="Nhập nội dung ghi chú về khách hàng này (Sử dụng @ để tag user/sale)..."
                           style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', resize: 'vertical', minHeight: 100, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)', marginBottom: '1rem' }}
                           onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
                           onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
@@ -660,12 +868,85 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Invoices</h3>
-                        <button className="btn outline sm" onClick={() => { onClose(); useUIStore.getState().setShowPOS(formData); }}><Plus size={14} /> Tạo hóa đơn</button>
+                        <button className="btn outline sm" onClick={() => { useUIStore.getState().setShowPOS(formData); }}><Plus size={14} /> Tạo hóa đơn</button>
                       </div>
-                      <div className="empty-state" style={{ padding: '3rem 1rem', textAlign: 'center', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
-                        <DollarSign size={48} color="var(--color-border)" style={{ margin: '0 auto 1rem auto' }} />
-                        <p style={{ fontWeight: 600, color: 'var(--color-text)' }}>Chưa có lịch sử thanh toán</p>
-                      </div>
+                      {drawerInvoices.length === 0 ? (
+                        <div className="empty-state" style={{ padding: '3rem 1rem', textAlign: 'center', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
+                          <DollarSign size={48} color="var(--color-border)" style={{ margin: '0 auto 1rem auto' }} />
+                          <p style={{ fontWeight: 600, color: 'var(--color-text)' }}>Chưa có lịch sử thanh toán</p>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                          {/* Invoice Summary */}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                            <div className="card-panel" style={{ padding: '1.25rem 1rem', background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)', border: '1px solid #e2e8f0', position: 'relative', overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '6px', background: '#e2e8f0', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <FileText size={14} />
+                                </div>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Tổng hóa đơn</span>
+                              </div>
+                              <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0f172a' }}>
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(drawerInvoices.reduce((acc: number, inv: any) => acc + inv.total, 0))}
+                              </h4>
+                            </div>
+                            <div className="card-panel" style={{ padding: '1.25rem 1rem', background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: '1px solid #bbf7d0', position: 'relative', overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '6px', background: '#bbf7d0', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <CheckCircle2 size={14} />
+                                </div>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase' }}>Đã thu</span>
+                              </div>
+                              <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#166534' }}>
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(drawerInvoices.filter((i: any) => i.status === 'paid').reduce((acc: number, inv: any) => acc + inv.total, 0))}
+                              </h4>
+                            </div>
+                            <div className="card-panel" style={{ padding: '1.25rem 1rem', background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fde68a', position: 'relative', overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '6px', background: '#fde68a', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <Clock size={14} />
+                                </div>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase' }}>Chờ xử lý</span>
+                              </div>
+                              <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#92400e' }}>
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(drawerInvoices.filter((i: any) => i.status === 'pending').reduce((acc: number, inv: any) => acc + inv.total, 0))}
+                              </h4>
+                            </div>
+                            <div className="card-panel" style={{ padding: '1.25rem 1rem', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', border: '1px solid #fecaca', position: 'relative', overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '6px', background: '#fecaca', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <AlertCircle size={14} />
+                                </div>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b91c1c', textTransform: 'uppercase' }}>Quá hạn nợ</span>
+                              </div>
+                              <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#991b1b' }}>
+                                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(drawerInvoices.filter((i: any) => i.status === 'overdue').reduce((acc: number, inv: any) => acc + inv.total, 0))}
+                              </h4>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gap: '1rem' }}>
+                            {drawerInvoices.map((inv: any) => (
+                              <div key={inv.id} className="card-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.05)'; e.currentTarget.style.borderColor = 'var(--color-primary-light)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = 'var(--color-border)'; }}>
+                                <div>
+                                  <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', letterSpacing: '-0.01em' }}>{inv.invoice_number}</h4>
+                                  <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Calendar size={12} /> Xuất ngày: {new Date(inv.issue_date).toLocaleDateString('vi-VN')}
+                                  </p>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <div style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1.05rem', marginBottom: '6px', letterSpacing: '-0.01em' }}>
+                                    {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(inv.total)}
+                                  </div>
+                                  <span className={`badge ${inv.status === 'paid' ? 'success' : inv.status === 'overdue' ? 'danger' : 'warning'}`} style={{ padding: '4px 10px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700 }}>
+                                    {inv.status === 'paid' ? 'Đã thanh toán' : inv.status === 'overdue' ? 'Quá hạn' : 'Chờ xử lý'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -673,49 +954,49 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     <div className="animate-fade">
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Hỗ trợ / Khiếu nại (Tickets)</h3>
-                        <button className="btn outline sm" onClick={() => { onClose(); navigate('/tickets'); }}>
+                        <button className="btn outline sm" onClick={() => setShowTicketModal(true)}>
                           <Plus size={14} /> Tạo Ticket
                         </button>
                       </div>
-                      <div className="card-panel" style={{ padding: 0, overflow: 'hidden' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                          <thead>
-                            <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Mã & Tiêu đề</th>
-                              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Trạng thái</th>
-                              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Phụ trách</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                              <td style={{ padding: '0.875rem 1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                  <AlertCircle size={14} color="#f59e0b" style={{ marginTop: '2px' }} />
-                                  <div>
-                                    <p style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '2px' }}>Không đăng nhập được app điện thoại</p>
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>#1003 • Mở: 5/5/2026</p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td style={{ padding: '0.875rem 1rem' }}><span className="badge warning">Đang xử lý</span></td>
-                              <td style={{ padding: '0.875rem 1rem', fontSize: '0.8125rem', fontWeight: 600 }}>Hải Support</td>
-                            </tr>
-                            <tr>
-                              <td style={{ padding: '0.875rem 1rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                                  <AlertCircle size={14} color="#10b981" style={{ marginTop: '2px' }} />
-                                  <div>
-                                    <p style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '2px' }}>Hỗ trợ xuất báo cáo doanh thu tháng</p>
-                                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>#1004 • Mở: 2/5/2026</p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td style={{ padding: '0.875rem 1rem' }}><span className="badge success">Đã giải quyết</span></td>
-                              <td style={{ padding: '0.875rem 1rem', fontSize: '0.8125rem', fontWeight: 600 }}>Admin</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
+                      {drawerTickets.length === 0 ? (
+                        <div className="empty-state" style={{ padding: '3rem 1rem', textAlign: 'center', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
+                          <LifeBuoy size={48} color="var(--color-border)" style={{ margin: '0 auto 1rem auto' }} />
+                          <p style={{ fontWeight: 600, color: 'var(--color-text)' }}>Chưa có ticket nào</p>
+                        </div>
+                      ) : (
+                        <div className="card-panel" style={{ padding: 0, overflow: 'hidden' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                              <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                                <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Mã & Tiêu đề</th>
+                                <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Trạng thái</th>
+                                <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Phụ trách</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {drawerTickets.map((t: any) => (
+                                <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                  <td style={{ padding: '0.875rem 1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                      <AlertCircle size={14} color={t.priority === 'high' || t.priority === 'urgent' ? '#ef4444' : t.priority === 'medium' ? '#f59e0b' : '#10b981'} style={{ marginTop: '2px' }} />
+                                      <div>
+                                        <p style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '2px' }}>{t.subject}</p>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>#{t.id} • Mở: {new Date(t.created_at).toLocaleDateString('vi-VN')}</p>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td style={{ padding: '0.875rem 1rem' }}>
+                                    <span className={`badge ${t.status === 'resolved' ? 'success' : t.status === 'in_progress' ? 'warning' : 'danger'}`}>
+                                      {t.status === 'resolved' ? 'Đã giải quyết' : t.status === 'in_progress' ? 'Đang xử lý' : 'Đang mở'}
+                                    </span>
+                                  </td>
+                                  <td style={{ padding: '0.875rem 1rem', fontSize: '0.8125rem', fontWeight: 600 }}>{t.assignee_name || 'Chưa phân công'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -730,7 +1011,37 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         isOpen={showCallLogger}
         onClose={() => setShowCallLogger(false)}
         contact={{ id: contact?.id, full_name: fullName, phone: contact?.phone }}
-        onSave={() => addToast('Đã ghi nhận cuộc gọi và thêm vào Timeline', 'success')}
+        onSave={async (log) => {
+          try {
+            // Map CallLog to activities table schema exactly
+            const subject = `Cuộc gọi ${log.direction === 'outbound' ? 'đi' : 'đến'}: ${log.outcome === 'reached' ? 'Đã kết nối' :
+                log.outcome === 'no_answer' ? 'Không nghe máy' :
+                  log.outcome === 'busy' ? 'Máy bận' :
+                    log.outcome === 'voicemail' ? 'Hộp thư thoại' : 'Sai số'
+              }`;
+            await api.post('/activities', {
+              type: 'call',
+              subject,
+              body: log.note || null,
+              status: 'done',
+              related_type: 'contact',
+              related_id: contact?.id,
+              due_date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+              done_at: new Date().toISOString().slice(0, 19).replace('T', ' '),
+            });
+
+            // Update local mock store for immediate timeline reflect
+            const { addActivity } = useMockStore.getState();
+            addActivity({
+              id: Date.now(), subject, type: 'call', status: 'done',
+              user_name: 'Admin', created_at: new Date().toISOString(), contact_id: contact?.id
+            });
+
+            addToast('Đã ghi nhận cuộc gọi và thêm vào Timeline', 'success');
+          } catch (err) {
+            addToast('Lỗi khi lưu nhật ký cuộc gọi', 'error');
+          }
+        }}
       />
       <ActivityModal
         isOpen={showActivityModal}
@@ -753,7 +1064,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             >
               <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Cập nhật trạng thái Pipeline</h3>
               <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1.25rem' }}>
-                Từ {CONTACT_STATUSES.find(x => x.id === formData.status)?.label || 'Lead mới'} <span style={{ margin: '0 4px' }}>→</span> <strong style={{ color: CONTACT_STATUSES.find(x => x.id === pipelineModal.targetId)?.color }}>{pipelineModal.targetLabel}</strong>
+                Từ <strong>{pipelineStages.find(x => String(x.id) === String(formData.stage_id || formData.status))?.name || pipelineStages[0]?.name || 'Bước 1'}</strong>
+                <span style={{ margin: '0 4px' }}>→</span>
+                <strong style={{ color: pipelineStages.find(x => String(x.id) === pipelineModal.targetId)?.color || 'var(--color-primary)' }}>{pipelineModal.targetLabel}</strong>
               </p>
 
               <div className="form-group" style={{ marginBottom: '1.5rem' }}>
@@ -773,15 +1086,183 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <button
                   className="btn primary"
                   disabled={!pipelineModal.note.trim()}
-                  onClick={() => {
-                    setFormData({ ...formData, status: pipelineModal.targetId });
-                    setNotes(p => [{ id: Date.now(), text: `[Chuyển trạng thái] -> ${pipelineModal.targetLabel}: ${pipelineModal.note}`, time: new Date().toISOString(), user: 'Admin' }, ...p]);
-                    addToast(`Đã cập nhật trạng thái Pipeline thành ${pipelineModal.targetLabel}`, 'success');
+                  onClick={async () => {
+                    const targetId = pipelineModal.targetId;   // string, e.g. 'lead' or '3'
+                    const targetLabel = pipelineModal.targetLabel;
+                    const note = pipelineModal.note;
                     setPipelineModal({ isOpen: false, targetId: '', targetLabel: '', note: '' });
+
+                    // contacts.status is an ENUM (lead/qualified/customer/churned).
+                    // Pipeline stages from settings are display-only for the stepper.
+                    // We always persist to the 'status' field.
+                    // Map numeric stage ID back to the DEFAULT fallback status string
+                    const isNumericId = !isNaN(Number(targetId)) && targetId !== '';
+                    let statusValue = targetId;
+                    if (isNumericId) {
+                      // Find in pipelineStages by index position and map to DEFAULT enum
+                      const idx = pipelineStages.findIndex(s => String(s.id) === targetId);
+                      const defaults = ['lead', 'qualified', 'customer', 'churned'];
+                      statusValue = defaults[idx] ?? 'lead';
+                    }
+
+                    // Optimistically update UI
+                    setFormData((prev: any) => ({ ...prev, status: statusValue }));
+
+                    try {
+                      // Persist status change
+                      await api.put(`/contacts/${contact.id}`, { status: statusValue });
+                      // Log audit note with correct query params
+                      await api.post(`/notes?entity_type=contact&entity_id=${contact.id}`, {
+                        body: `[Chuyển trạng thái Pipeline] → ${targetLabel}: ${note}`,
+                        type: 'internal'
+                      });
+                      setNotes(p => [{ id: Date.now(), text: `[Chuyển trạng thái] → ${targetLabel}: ${note}`, time: new Date().toISOString(), user: 'Admin' }, ...p]);
+                      addToast(`Đã cập nhật Pipeline thành ${targetLabel}`, 'success');
+                    } catch (e: any) {
+                      addToast(e?.response?.data?.message || 'Lỗi khi cập nhật Pipeline', 'error');
+                    }
                   }}
                 >
                   Lưu cập nhật
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CREATE DEAL MODAL */}
+      <AnimatePresence>
+        {showDealModal && (
+          <div className="overlay-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowDealModal(false)}>
+            <motion.div
+              className="modal-sheet"
+              style={{ width: '100%', maxWidth: 500 }}
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3>Tạo cơ hội (Deal) mới</h3>
+                <button className="btn-icon-bare" onClick={() => setShowDealModal(false)}><X size={20} /></button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Tên Deal *</label>
+                  <input className="form-input" placeholder="VD: Triển khai ERP cho {fullName}" value={dealForm.title} onChange={e => setDealForm({ ...dealForm, title: e.target.value })} autoFocus />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Giá trị dự kiến (VNĐ)</label>
+                  <input className="form-input" type="number" placeholder="0" value={dealForm.value} onChange={e => setDealForm({ ...dealForm, value: e.target.value })} />
+                </div>
+                <div className="grid grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Giai đoạn</label>
+                    <select className="form-input" value={dealForm.stage} onChange={e => setDealForm({ ...dealForm, stage: e.target.value })}>
+                      <option value="lead">Mới (Lead)</option>
+                      <option value="negotiation">Đàm phán</option>
+                      <option value="proposal">Đã báo giá</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Xác suất (%)</label>
+                    <input className="form-input" type="number" value={dealForm.probability} onChange={e => setDealForm({ ...dealForm, probability: Number(e.target.value) })} />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn outline" onClick={() => setShowDealModal(false)}>Hủy</button>
+                <button className="btn primary" onClick={() => { addToast('Đã tạo Deal thành công', 'success'); setShowDealModal(false); }}>Tạo Deal</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CREATE TASK MODAL */}
+      <AnimatePresence>
+        {showTaskModal && (
+          <div className="overlay-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowTaskModal(false)}>
+            <motion.div
+              className="modal-sheet"
+              style={{ width: '100%', maxWidth: 500 }}
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3>Thêm công việc cho {formData.last_name}</h3>
+                <button className="btn-icon-bare" onClick={() => setShowTaskModal(false)}><X size={20} /></button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Tên công việc *</label>
+                  <input className="form-input" placeholder="VD: Gửi báo giá, Demo tính năng..." value={taskForm.title} onChange={e => setTaskForm({ ...taskForm, title: e.target.value })} autoFocus />
+                </div>
+                <div className="grid grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Mức độ ưu tiên</label>
+                    <select className="form-input" value={taskForm.priority} onChange={e => setTaskForm({ ...taskForm, priority: e.target.value })}>
+                      <option value="low">Thấp</option>
+                      <option value="medium">Trung bình</option>
+                      <option value="high">Cao</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Hạn hoàn thành</label>
+                    <input className="form-input" type="date" value={taskForm.due_date} onChange={e => setTaskForm({ ...taskForm, due_date: e.target.value })} />
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn outline" onClick={() => setShowTaskModal(false)}>Hủy</button>
+                <button className="btn primary" onClick={() => { addToast('Đã thêm công việc mới', 'success'); setShowTaskModal(false); }}>Lưu công việc</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CREATE TICKET MODAL */}
+      <AnimatePresence>
+        {showTicketModal && (
+          <div className="overlay-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowTicketModal(false)}>
+            <motion.div
+              className="modal-sheet"
+              style={{ width: '100%', maxWidth: 500 }}
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3>Tạo Ticket hỗ trợ</h3>
+                <button className="btn-icon-bare" onClick={() => setShowTicketModal(false)}><X size={20} /></button>
+              </div>
+              <div className="modal-body">
+                <div className="form-group">
+                  <label className="form-label">Khách hàng</label>
+                  <input className="form-input" value={fullName} disabled style={{ background: 'var(--color-bg)' }} />
+                </div>
+                <div className="grid grid-2">
+                  <div className="form-group">
+                    <label className="form-label">Tiêu đề hỗ trợ *</label>
+                    <input className="form-input" placeholder="Tóm tắt yêu cầu/lỗi..." value={ticketForm.subject} onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })} autoFocus />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Độ ưu tiên</label>
+                    <select className="form-input" value={ticketForm.priority} onChange={e => setTicketForm({ ...ticketForm, priority: e.target.value })}>
+                      <option value="low">Thấp</option>
+                      <option value="medium">Trung bình</option>
+                      <option value="high">Cao</option>
+                      <option value="urgent">Khẩn cấp</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Mô tả chi tiết</label>
+                  <textarea className="form-input" rows={4} placeholder="Nội dung chi tiết..." value={ticketForm.description} onChange={e => setTicketForm({ ...ticketForm, description: e.target.value })} style={{ resize: 'none' }} />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn outline" onClick={() => setShowTicketModal(false)}>Hủy</button>
+                <button className="btn primary" onClick={() => { addToast('Đã tạo Ticket thành công', 'success'); setShowTicketModal(false); }}>Tạo Ticket</button>
               </div>
             </motion.div>
           </div>

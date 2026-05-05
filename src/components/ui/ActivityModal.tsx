@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, AlignLeft, Phone, Mail, Users, CheckSquare, Zap } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
 import { CustomSelect } from './CustomSelect';
+import { MentionInput } from './MentionInput';
 import api from '../../api/axios';
 
 interface ActivityModalProps {
@@ -66,54 +67,56 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
       <div className="overlay-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
         <motion.div 
           className="modal-sheet" 
-          style={{ width: '100%', maxWidth: 500, padding: 0 }}
+          style={{ width: '100%', maxWidth: 640, padding: 0 }}
           initial={{ opacity: 0, y: 20, scale: 0.95 }} 
           animate={{ opacity: 1, y: 0, scale: 1 }} 
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
           onClick={e => e.stopPropagation()}
         >
-          <div className="modal-header" style={{ borderBottom: '1px solid var(--color-border)' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              Thêm hoạt động mới
-            </h2>
+          <div className="modal-header">
+            <h3>Thêm hoạt động mới</h3>
             <button className="btn-icon-bare" onClick={onClose}><X size={20}/></button>
           </div>
           
-          <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <form onSubmit={handleSubmit} className="modal-body">
             {/* Type selector */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem' }}>
               {TYPES.map(t => (
                 <button 
                   key={t.id} type="button"
                   onClick={() => setFormData({ ...formData, type: t.id })}
                   style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-                    padding: '0.75rem 0', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem',
+                    padding: '1.25rem 0', borderRadius: 'var(--radius-xl)', cursor: 'pointer',
                     background: formData.type === t.id ? `${t.color}15` : 'var(--color-surface)',
                     border: `2px solid ${formData.type === t.id ? t.color : 'var(--color-border)'}`,
                     color: formData.type === t.id ? t.color : 'var(--color-text-muted)',
-                    fontWeight: formData.type === t.id ? 700 : 500, transition: 'all 0.2s'
+                    fontWeight: formData.type === t.id ? 700 : 500, transition: 'all 0.2s',
+                    boxShadow: formData.type === t.id ? `0 8px 16px ${t.color}15` : 'none'
                   }}
                 >
-                  {t.icon}
-                  <span style={{ fontSize: '0.8125rem' }}>{t.label}</span>
+                  <div style={{ transform: formData.type === t.id ? 'scale(1.2)' : 'scale(1)', transition: 'transform 0.2s' }}>
+                    {t.icon}
+                  </div>
+                  <span style={{ fontSize: '0.875rem' }}>{t.label}</span>
                 </button>
               ))}
             </div>
 
             <div className="form-group">
-              <label className="form-label">Tiêu đề <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+              <label className="form-label">Tiêu đề hoạt động <span style={{ color: 'var(--color-danger)' }}>*</span></label>
               <input 
                 className="form-input" 
                 placeholder="VD: Gọi điện chốt sale, Họp demo..." 
                 value={formData.subject}
                 onChange={e => setFormData({ ...formData, subject: e.target.value })}
                 autoFocus
+                style={{ fontSize: '1rem', padding: '0.75rem 1rem' }}
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <div className="form-group" style={{ flex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px', gap: '1.5rem' }}>
+              <div className="form-group">
                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Calendar size={14} /> Thời gian thực hiện
                 </label>
@@ -124,13 +127,13 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                   onChange={e => setFormData({ ...formData, due_date: e.target.value })}
                 />
               </div>
-              <div className="form-group" style={{ width: 140 }}>
-                <label className="form-label">Mức độ</label>
+              <div className="form-group">
+                <label className="form-label">Mức độ ưu tiên</label>
                 <CustomSelect 
                   options={[
                     { value: 'low', label: 'Thấp' },
                     { value: 'medium', label: 'Bình thường' },
-                    { value: 'high', label: 'Cao' }
+                    { value: 'high', label: 'Quan trọng' }
                   ]}
                   value={formData.priority}
                   onChange={val => setFormData({ ...formData, priority: val as string })}
@@ -140,44 +143,49 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
 
             <div className="form-group">
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <AlignLeft size={14} /> Ghi chú / Chi tiết
+                <AlignLeft size={14} /> Ghi chú chi tiết
               </label>
-              <textarea 
+              <MentionInput 
                 className="form-input" 
-                rows={3} 
-                placeholder="Nội dung hoạt động..."
+                rows={4} 
+                placeholder="Nhập nội dung chi tiết của hoạt động (Sử dụng @ để tag user/sale)..."
                 value={formData.body}
                 onChange={e => setFormData({ ...formData, body: e.target.value })}
+                style={{ resize: 'none' }}
               />
             </div>
 
             {/* Automation Trigger Toggle */}
             <div 
               style={{
-                background: 'linear-gradient(to right, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05))',
-                border: '1px solid var(--color-primary-light)', borderRadius: 'var(--radius-lg)',
-                padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer'
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08))',
+                border: '1px solid var(--color-primary-light)', borderRadius: 'var(--radius-xl)',
+                padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', cursor: 'pointer',
+                marginTop: '0.5rem'
               }}
               onClick={() => setFormData({ ...formData, auto_trigger: !formData.auto_trigger })}
             >
+              <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', boxShadow: 'var(--shadow-sm)' }}>
+                <Zap size={24} fill={formData.auto_trigger ? 'var(--color-primary)' : 'none'} />
+              </div>
               <div style={{ flex: 1 }}>
-                <h4 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
-                  <Zap size={16} /> Tích hợp Automation
+                <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)', marginBottom: '0.25rem' }}>
+                  Tích hợp Automation Workflow
                 </h4>
-                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-                  Tự động gửi email Follow-up hoặc Cập nhật Deal nếu đáp ứng điều kiện Workflow.
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', lineHeight: 1.4 }}>
+                  Hệ thống sẽ tự động gửi Email, cập nhật Lead Score hoặc chuyển trạng thái Deal dựa trên hành động này.
                 </p>
               </div>
               <div className={`custom-toggle ${formData.auto_trigger ? 'active' : ''}`} style={{ zoom: 1.2 }}></div>
             </div>
-
-            <div className="modal-footer" style={{ padding: 0, paddingTop: '1rem', border: 'none', background: 'transparent' }}>
-              <button type="button" className="btn outline" onClick={onClose} disabled={loading}>Hủy</button>
-              <button type="submit" className="btn primary" disabled={loading}>
-                {loading ? 'Đang lưu...' : 'Lưu hoạt động'}
-              </button>
-            </div>
           </form>
+
+          <div className="modal-footer">
+            <button type="button" className="btn outline lg" onClick={onClose} disabled={loading}>Hủy bỏ</button>
+            <button type="button" className="btn primary lg" onClick={handleSubmit} disabled={loading}>
+              {loading ? 'Đang lưu...' : 'Lưu hoạt động'}
+            </button>
+          </div>
         </motion.div>
       </div>
     </AnimatePresence>

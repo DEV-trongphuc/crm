@@ -7,22 +7,15 @@ import { Pagination } from '../components/ui/Pagination';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
+import { PhoneLink } from '../components/ui/PhoneLink';
 
 const STATUSES = ['active', 'inactive', 'prospect'];
 const ST_LABEL: Record<string, string> = { active: 'Hoạt động', inactive: 'Ngừng', prospect: 'Tiềm năng' };
 const ST_CLASS: Record<string, string> = { active: 'success', inactive: 'danger', prospect: 'warning' };
 const PAGE_SIZE = 50;
 
-const MOCK_COMPANIES: any[] = [
-  { id: 1, name: 'ABC Technology', industry: 'Công nghệ thông tin', status: 'active', phone: '024 3826 1234', email: 'contact@abctech.vn', website: 'abctech.vn', address: 'Hà Nội', employees_count: 3, deals_count: 2 },
-  { id: 2, name: 'GreenSolar Corp', industry: 'Năng lượng tái tạo', status: 'active', phone: '028 3917 4567', email: 'info@greensolar.vn', website: 'greensolar.vn', address: 'TP.HCM', employees_count: 2, deals_count: 1 },
-  { id: 3, name: 'TechGlobal Ltd', industry: 'Tư vấn doanh nghiệp', status: 'prospect', phone: '024 3928 5678', email: 'hello@techglobal.vn', website: 'techglobal.vn', address: 'Hà Nội', employees_count: 1, deals_count: 3 },
-  { id: 4, name: 'Retail Pro Group', industry: 'Bán lẻ', status: 'active', phone: '028 6250 8901', email: 'support@retailpro.vn', website: 'retailpro.vn', address: 'Đà Nẵng', employees_count: 5, deals_count: 1 },
-  { id: 5, name: 'MegaStore Vietnam', industry: 'Thương mại điện tử', status: 'active', phone: '028 3890 2345', email: 'biz@megastore.vn', website: 'megastore.vn', address: 'TP.HCM', employees_count: 4, deals_count: 2 },
-  { id: 6, name: 'FashionHub', industry: 'Thời trang & Bán lẻ', status: 'inactive', phone: '028 9988 4567', email: 'sale@fashionhub.vn', website: 'fashionhub.vn', address: 'TP.HCM', employees_count: 0, deals_count: 0 },
-  { id: 7, name: 'LogiTrans Express', industry: 'Vận tải & Logistics', status: 'active', phone: '024 3344 5566', email: 'ops@logitrans.vn', website: 'logitrans.vn', address: 'Hà Nội', employees_count: 3, deals_count: 4 },
-  { id: 8, name: 'EduTech Vietnam', industry: 'Giáo dục & Đào tạo', status: 'prospect', phone: '028 7123 6789', email: 'admin@edutech.vn', website: 'edutech.vn', address: 'TP.HCM', employees_count: 2, deals_count: 1 },
-];
+const MOCK_COMPANIES: any[] = [];
 
 export const CompaniesPage: React.FC = () => {
   const { addToast } = useUIStore();
@@ -41,7 +34,13 @@ export const CompaniesPage: React.FC = () => {
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true);
-    if (DEV_MODE) { setCompanies(MOCK_COMPANIES); setTotal(MOCK_COMPANIES.length); setLoading(false); return; }
+    if (DEV_MODE) { 
+      const { companies } = useMockStore.getState();
+      setCompanies(companies); 
+      setTotal(companies.length); 
+      setLoading(false); 
+      return; 
+    }
     try {
       const params: Record<string, string> = {};
       if (search) params.search = search;
@@ -189,7 +188,7 @@ export const CompaniesPage: React.FC = () => {
                   <span className={`badge ${ST_CLASS[co.status] || 'info'}`}>{ST_LABEL[co.status] || co.status}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', marginBottom: '1rem' }}>
-                  {co.phone && <span className="flex items-center gap-2 text-xs text-light"><Phone size={11} />{co.phone}</span>}
+                  {co.phone && <PhoneLink phone={co.phone} showIcon style={{ fontSize: '0.75rem' }} />}
                   {co.email && <span className="flex items-center gap-2 text-xs text-light"><Mail size={11} />{co.email}</span>}
                   {co.website && <span className="flex items-center gap-2 text-xs text-light"><Globe size={11} />{co.website}</span>}
                 </div>
@@ -258,8 +257,10 @@ export const CompaniesPage: React.FC = () => {
                       <td style={{ padding: '1rem' }}><span className={`badge ${ST_CLASS[co.status] || 'info'}`}>{ST_LABEL[co.status] || co.status}</span></td>
                       <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{co.industry || '—'}</td>
                       <td style={{ padding: '1rem' }}>
-                        <p className="text-sm">{co.phone || '—'}</p>
-                        <p className="text-xs text-light">{co.email}</p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          {co.phone && <PhoneLink phone={co.phone} style={{ fontSize: '0.875rem' }} />}
+                          <p className="text-xs text-light">{co.email}</p>
+                        </div>
                       </td>
                       <td style={{ padding: '1rem' }}>
                         <span className="text-xs text-light">{co.contact_count || 0} liên hệ · {co.deal_count || 0} deal</span>

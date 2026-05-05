@@ -6,6 +6,8 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
 import styles from './EntityDrawer.module.css';
+import { TagInput } from '../components/ui/TagInput';
+import { MentionInput } from '../components/ui/MentionInput';
 
 interface DealDrawerProps {
   isOpen: boolean;
@@ -24,24 +26,27 @@ const TABS = [
 
 export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, onSave, stages }) => {
   const { addToast, setShowPOS } = useUIStore();
-  const [activeTab, setActiveTab] = useState('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'activities' | 'products' | 'quotes' | string>('info');
   const [formData, setFormData] = useState(deal || {});
   const [notes, setNotes] = useState<any[]>([]);
   const [newNote, setNewNote] = useState('');
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [contacts, setContacts] = useState<any[]>([]);
   const [companies, setCompanies] = useState<any[]>([]);
+  const [allTags, setAllTags] = useState<any[]>([]);
   const [loadingLists, setLoadingLists] = useState(false);
 
   const fetchLists = async () => {
     setLoadingLists(true);
     try {
-      const [rC, rCo] = await Promise.all([
+      const [rC, rCo, rT] = await Promise.all([
         api.get('/contacts'),
-        api.get('/companies')
+        api.get('/companies'),
+        api.get('/tags')
       ]);
       setContacts(rC.data.data?.items || []);
       setCompanies(rCo.data.data?.items || []);
+      setAllTags(rT.data.data || []);
     } catch {
       // Keep empty or mock
     } finally {
@@ -53,10 +58,9 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
     if (!deal?.id) return;
     setLoadingNotes(true);
     try {
-      const r = await api.get(`/notes/deal/${deal.id}`);
+      const r = await api.get(`/notes?entity_type=deal&entity_id=${deal.id}`);
       setNotes(r.data.data || []);
     } catch {
-      // Fallback mock
       setNotes([
         { id: 1, author_name: 'Admin', body: 'Đã liên hệ khách hàng lần đầu, khách phản hồi tốt.', created_at: new Date().toISOString() },
         { id: 2, author_name: 'Sales', body: 'Khách yêu cầu gửi thêm báo giá chi tiết module ERP.', created_at: new Date(Date.now() - 86400000).toISOString() }
@@ -68,7 +72,10 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
 
   useEffect(() => {
     if (deal) {
-      setFormData(deal);
+      setFormData({
+        ...deal,
+        tags: Array.isArray(deal.tags) ? deal.tags : (typeof deal.tags === 'string' ? JSON.parse(deal.tags) : [])
+      });
       fetchNotes();
     }
     fetchLists();
@@ -77,12 +84,11 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
     try {
-      await api.post(`/notes/deal/${deal.id}`, { body: newNote });
+      await api.post(`/notes?entity_type=deal&entity_id=${deal.id}`, { body: newNote, type: 'internal' });
       setNewNote('');
       addToast('Đã lưu ghi chú mới', 'success');
       fetchNotes();
     } catch {
-      // Simulation
       const mockNote = { id: Date.now(), author_name: 'Bạn', body: newNote, created_at: new Date().toISOString() };
       setNotes(prev => [mockNote, ...prev]);
       setNewNote('');
@@ -165,8 +171,8 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                           <label className="form-label">Giai đoạn (Pipeline Stage)</label>
                           <CustomSelect 
                             options={stages.map(s => ({ value: s.id, label: s.name }))}
-                            value={formData?.stageId}
-                            onChange={val => setFormData({...formData, stageId: Number(val)})}
+                            value={formData?.stage_id}
+                            onChange={val => setFormData({...formData, stage_id: Number(val)})}
                           />
                         </div>
                         <div className="form-group">
@@ -207,19 +213,36 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                         </div>
                       </div>
                     </div>
+                    <div className="card-panel">
+                      <h4 className="panel-title">Phân loại & Tags</h4>
+                      <div className="form-group">
+                        <label className="form-label">Gắn Tags</label>
+                        <div style={{ padding: '0.5rem 0' }}>
+                          <TagInput 
+                            tags={formData?.tags || []} 
+                            onChange={newTags => setFormData({...formData, tags: newTags})}
+                            suggestions={allTags.map(t => t.name)}
+                            placeholder="Thêm tag cho deal này..."
+                          />
+                        </div>
+                        <p className="text-xs text-muted" style={{ marginTop: '0.5rem' }}>
+                          Tags giúp lọc và báo cáo hiệu quả chiến dịch bán hàng.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {activeTab === 'activities' && (
                   <div className="animate-fade">
                     <div className="card-panel" style={{ marginBottom: '1.5rem' }}>
-                      <textarea 
+                      <MentionInput 
                         className="form-textarea" 
                         rows={3} 
-                        placeholder="Viết ghi chú, cập nhật tiến độ deal..."
+                        placeholder="Viết ghi chú, cập nhật tiến độ deal (Sử dụng @ để tag user/sale)..."
                         value={newNote}
                         onChange={e => setNewNote(e.target.value)}
-                      ></textarea>
+                      />
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                         <button className="btn primary sm" onClick={handleAddNote} disabled={!newNote.trim()}>Lưu ghi chú</button>
                       </div>
@@ -250,7 +273,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                               <CheckCircle2 size={14} />
                             </div>
                             <div className="timeline-content" style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)' }}>
-                              <p style={{ fontSize: '0.875rem', margin: 0 }}><strong>System</strong> chuyển sang trạng thái "{stages.find(s=>s.id===formData?.stageId)?.name || 'Lead mới'}".</p>
+                              <p style={{ fontSize: '0.875rem', margin: 0 }}><strong>System</strong> chuyển sang trạng thái "{stages.find(s=>s.id===formData?.stage_id)?.name || 'Lead mới'}".</p>
                             </div>
                           </div>
                         </>

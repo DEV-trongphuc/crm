@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Search, Trash2, CheckCircle, Package, Plus, X, User, DollarSign, Loader2 } from 'lucide-react';
+import { ShoppingCart, Search, Trash2, CheckCircle2, Package, Plus, X, User, DollarSign, Loader2 } from 'lucide-react';
 import api from '../../api/axios';
 import { useUIStore } from '../../store/uiStore';
 
@@ -287,7 +287,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                   <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.04em', lineHeight: 1, marginTop: '4px' }}>{FMT_PRICE(totalAmount)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}><CheckCircle size={14} /> Đã bao gồm VAT</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}><CheckCircle2 size={14} /> Đã bao gồm VAT</span>
                 </div>
               </div>
               <button 
@@ -296,7 +296,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                 onClick={handleCheckout}
                 style={{ width: '100%', padding: '1.25rem', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', transition: 'all 0.2s', background: 'linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 100%)', fontSize: '1.05rem', fontWeight: 800, border: 'none', height: '64px', boxShadow: 'var(--shadow-lg)' }}
               >
-                {loading ? <Loader2 size={24} className="spin" /> : <CheckCircle size={22} />}
+                {loading ? <Loader2 size={24} className="spin" /> : <CheckCircle2 size={22} />}
                 THANH TOÁN & XUẤT HÓA ĐƠN
               </button>
             </div>

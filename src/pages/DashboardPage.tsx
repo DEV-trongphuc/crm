@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  TrendingUp, Users, DollarSign, Download, Phone, Mail, CheckSquare, FileText, ShoppingCart,
-  AlertTriangle, Trophy
+  TrendingUp, Users, DollarSign, Download, Trophy,
+  AlertTriangle, Tag as TagIcon, ShoppingCart
 } from 'lucide-react';
 import {
-  Area, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell, PieChart, Pie, ComposedChart
+  Bar, BarChart, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Cell, PieChart, Pie, ComposedChart, Area
 } from 'recharts';
 import api from '../api/axios';
 import styles from './DashboardPage.module.css';
@@ -13,53 +13,17 @@ import { motion } from 'framer-motion';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
+import { Skeleton } from '../components/ui/Skeleton';
 
-/* ── Mock fallback data (rich & realistic) ───────────────────── */
-const MOCK_REVENUE = [
-  { month: 'T11/24', revenue: 68000000, cost: 32000000 },
-  { month: 'T12/24', revenue: 112000000, cost: 48000000 },
-  { month: 'T1/25', revenue: 85000000, cost: 38000000 },
-  { month: 'T2/25', revenue: 132000000, cost: 55000000 },
-  { month: 'T3/25', revenue: 98000000, cost: 44000000 },
-  { month: 'T4/25', revenue: 175000000, cost: 68000000 },
-  { month: 'T5/25', revenue: 220000000, cost: 82000000 },
-  { month: 'T6/25', revenue: 195000000, cost: 74000000 },
-];
-
-const MOCK_PIPELINE_FUNNEL = [
-  { id: 1, name: 'Lead mới', deal_count: 42, total_value: 1850000000, color: '#6366f1' },
-  { id: 2, name: 'Đã liên hệ', deal_count: 28, total_value: 1240000000, color: '#f59e0b' },
-  { id: 3, name: 'Thương lượng', deal_count: 15, total_value: 820000000, color: '#8b5cf6' },
-  { id: 4, name: 'Báo giá', deal_count: 9, total_value: 490000000, color: '#3b82f6' },
-  { id: 5, name: 'Chốt hợp đồng', deal_count: 6, total_value: 320000000, color: '#10b981' },
-];
-
-const MOCK_SOURCES = [
-  { source: 'Google Ads', count: 38, color: '#3b82f6' },
-  { source: 'Facebook', count: 24, color: '#8b5cf6' },
-  { source: 'Referral', count: 18, color: '#10b981' },
-  { source: 'Cold Call', count: 12, color: '#f59e0b' },
-  { source: 'Website', count: 8, color: '#ef4444' },
-];
-
-const MOCK_LEADERBOARD = [
-  { id: 1, full_name: 'Nguyễn Văn An', won_count: 12, won_value: 450000000, avatar: 'A' },
-  { id: 2, full_name: 'Trần Thị Bình', won_count: 9, won_value: 380000000, avatar: 'B' },
-  { id: 3, full_name: 'Lê Hoàng Chính', won_count: 7, won_value: 210000000, avatar: 'C' },
-  { id: 4, full_name: 'Phạm Minh Dũng', won_count: 5, won_value: 185000000, avatar: 'D' },
-];
-
-const MOCK_ACTIVITIES = [
-  { id: 1, type: 'call', subject: 'Gọi tư vấn ERP cho ABC Technology', user_name: 'Admin', created_at: new Date(Date.now() - 600000).toISOString(), status: 'done' },
-  { id: 2, type: 'meeting', subject: 'Demo sản phẩm CRM cho GreenSolar Corp', user_name: 'Sales Manager', created_at: new Date(Date.now() - 7200000).toISOString(), status: 'planned' },
-  { id: 3, type: 'email', subject: 'Gửi báo giá dịch vụ tư vấn Q2/2026', user_name: 'Admin', created_at: new Date(Date.now() - 18000000).toISOString(), status: 'done' },
-  { id: 4, type: 'task', subject: 'Chuẩn bị tài liệu demo POS nhà hàng', user_name: 'Sales', created_at: new Date(Date.now() - 86400000).toISOString(), status: 'planned' },
-  { id: 5, type: 'note', subject: 'Ghi chú cuộc họp chiến lược Q2 với Ban Giám đốc', user_name: 'Admin', created_at: new Date(Date.now() - 172800000).toISOString(), status: 'done' },
-];
-
+/* ── Mock fallback data (cleared for production) ──────────────── */
+const MOCK_REVENUE: any[] = [];
+const MOCK_PIPELINE_FUNNEL: any[] = [];
+const MOCK_SOURCES: any[] = [];
+const MOCK_LEADERBOARD: any[] = [];
 const MOCK_STATS = {
-  total_value: 1085000000, won_value: 320000000, expenses: 28200000,
-  profit: 291800000, new_contacts: 14, tasks_due_today: 5,
+  total_value: 0, won_value: 0, expenses: 0,
+  profit: 0, new_contacts: 0, tasks_due_today: 0,
 };
 
 /* ── Formatters ─────────────────────────────────────────────── */
@@ -72,13 +36,6 @@ const FMT = (n: number) => {
 const FMT_VND = (n: number) =>
   new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
 
-const activityIcon: Record<string, React.ReactNode> = {
-  call:    <Phone    size={16} color="var(--color-info)" />,
-  email:   <Mail     size={16} color="var(--color-primary)" />,
-  meeting: <Users    size={16} color="var(--color-warning)" />,
-  task:    <CheckSquare size={16} color="var(--color-success)" />,
-  note:    <FileText size={16} color="var(--color-text-light)" />,
-};
 
 /* ── Component ──────────────────────────────────────────────── */
 export const DashboardPage: React.FC = () => {
@@ -87,7 +44,7 @@ export const DashboardPage: React.FC = () => {
   const [pipelineFunnel, setPipelineFunnel] = useState<any[]>([]);
   const [leadSources, setLeadSources] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [tagStats, setTagStats] = useState<any[]>([]);
   const [period, setPeriod] = useState<Period>('this_month');
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_month'));
   const [loadingStats, setLoadingStats] = useState(true);
@@ -95,27 +52,57 @@ export const DashboardPage: React.FC = () => {
   const fetchAll = useCallback(async () => {
     setLoadingStats(true);
 
-    // ── DEV MODE: skip API, load MOCK instantly ──────────────────
+    // ── DEV MODE: skip API, load MOCK from Store ────────────────
     if (DEV_MODE) {
-      setStats(MOCK_STATS);
-      setRevenueChart(MOCK_REVENUE);
-      setPipelineFunnel(MOCK_PIPELINE_FUNNEL);
-      setLeadSources(MOCK_SOURCES);
-      setLeaderboard(MOCK_LEADERBOARD);
-      setRecentActivities(MOCK_ACTIVITIES);
+      const { expenses, contacts, deals, invoices } = useMockStore.getState();
+      const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+      const totalWon = invoices.filter((i: any) => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
+      
+      setStats({
+        ...MOCK_STATS,
+        expenses: totalExpenses,
+        won_value: totalWon,
+        profit: totalWon - totalExpenses,
+        new_contacts: contacts.length,
+        tasks_due_today: 0,
+      });
+      setRevenueChart([
+        { month: 'T10', revenue: 450000000, cost: 30000000 },
+        { month: 'T11', revenue: 520000000, cost: 35000000 },
+        { month: 'T12', revenue: 480000000, cost: 32000000 },
+        { month: 'T1',  revenue: 610000000, cost: 38000000 },
+        { month: 'T2',  revenue: 550000000, cost: 40000000 },
+        { month: 'T3',  revenue: 670000000, cost: 42000000 },
+        { month: 'T4',  revenue: 1250000000, cost: 80000000 },
+        { month: 'T5',  revenue: totalWon, cost: totalExpenses },
+      ]);
+      setPipelineFunnel([
+        { name: 'Mới', deal_count: deals.filter((d:any)=>d.stage==='lead').length, total_value: deals.filter((d:any)=>d.stage==='lead').reduce((s,d)=>s+d.value,0), color: '#3b82f6' },
+        { name: 'Đàm phán/Báo giá', deal_count: deals.filter((d:any)=>d.stage==='negotiation'||d.stage==='proposal').length, total_value: deals.filter((d:any)=>d.stage==='negotiation'||d.stage==='proposal').reduce((s,d)=>s+d.value,0), color: '#f59e0b' },
+        { name: 'Thành công', deal_count: deals.filter((d:any)=>d.stage==='won').length, total_value: deals.filter((d:any)=>d.stage==='won').reduce((s,d)=>s+d.value,0), color: '#10b981' },
+      ]);
+      setLeadSources([
+        { source: 'Website', count: 12, color: '#3b82f6' },
+        { source: 'Facebook', count: 8, color: '#8b5cf6' },
+        { source: 'Referral', count: 5, color: '#10b981' },
+      ]);
+      setLeaderboard([
+        { id: 1, full_name: 'Admin Sales', won_count: 5, won_value: totalWon * 0.6 },
+        { id: 2, full_name: 'Sale Manager', won_count: 3, won_value: totalWon * 0.4 },
+      ]);
       setLoadingStats(false);
       return;
     }
     // ─────────────────────────────────────────────────────────────
 
     try {
-      const [s, rev, pipe, src, lead, acts] = await Promise.all([
+      const [s, rev, pipe, src, lead, tags] = await Promise.all([
         api.get('/dashboard/stats',             { params: { from: dateRange.from, to: dateRange.to } }),
         api.get('/dashboard/chart-revenue',     { params: { months: 8 } }),
         api.get('/dashboard/pipeline-funnel'),
         api.get('/dashboard/lead-sources',      { params: { from: dateRange.from, to: dateRange.to } }),
         api.get('/dashboard/sales-leaderboard', { params: { from: dateRange.from, to: dateRange.to } }),
-        api.get('/dashboard/recent-activities'),
+        api.get('/tags/stats',                  { params: { from: dateRange.from, to: dateRange.to } }),
       ]);
       setStats(s.data.data || null);
       setRevenueChart(rev.data.data || []);
@@ -124,14 +111,14 @@ export const DashboardPage: React.FC = () => {
       const srcData = (src.data.data || []).map((x: any, i: number) => ({ ...x, color: srcColors[i % srcColors.length] }));
       setLeadSources(srcData);
       setLeaderboard(lead.data.data || []);
-      setRecentActivities(acts.data.data || []);
+      setTagStats((tags.data.data || []).slice(0, 12));
     } catch {
       setStats(null);
       setRevenueChart([]);
       setPipelineFunnel([]);
       setLeadSources([]);
       setLeaderboard([]);
-      setRecentActivities([]);
+      setTagStats([]);
     } finally {
       setLoadingStats(false);
     }
@@ -163,11 +150,11 @@ export const DashboardPage: React.FC = () => {
       </div>
     },
     { 
-      label: 'Đơn & AOV', 
-      value: `${stats?.won_count ?? 0} đơn`, 
+      label: 'Lead mới', 
+      value: `${stats?.new_contacts ?? 0} lead`, 
       icon: ShoppingCart, 
       color: '#3b82f6', 
-      sub: <span>TB/Đơn: <strong>{FMT_VND(stats?.won_count ? stats.won_value / stats.won_count : 0)}</strong></span> 
+      sub: <span>Khách hàng tiềm năng mới trong kỳ</span>
     },
     { 
       label: 'Chi phí & Hao hụt', 
@@ -194,7 +181,7 @@ export const DashboardPage: React.FC = () => {
             value={period}
             onChange={(p, r) => { setPeriod(p); setDateRange(r); }}
           />
-          <button className="btn secondary sm"><Download size={14} /> Xuất PDF</button>
+          <button className="btn outline" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.625rem 1.25rem', fontSize: '0.9375rem', borderRadius: 'var(--radius-xl)' }}><Download size={18} /> Xuất PDF</button>
         </div>
       </div>
 
@@ -225,9 +212,9 @@ export const DashboardPage: React.FC = () => {
               <div className="stat-kpi__label">{card.label}</div>
             </div>
             {loadingStats
-              ? <div className="skeleton" style={{ height: 38, borderRadius: 6, width: '85%', marginBottom: 12 }} />
+              ? <Skeleton height="2.5rem" width="80%" style={{ margin: '0.5rem 0' }} />
               : <div className="stat-kpi__value">{card.value}</div>}
-            <div className="stat-kpi__sub">{card.sub}</div>
+            {loadingStats ? <Skeleton height="0.75rem" width="60%" /> : <div className="stat-kpi__sub">{card.sub}</div>}
           </motion.div>
         ))}
       </div>
@@ -246,7 +233,12 @@ export const DashboardPage: React.FC = () => {
               <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}><span style={{ width: 10, height: 10, background: '#ef4444', borderRadius: 2, opacity: 0.7 }}></span>Chi phí</span>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={240}>
+          {loadingStats ? (
+            <div style={{ height: 240, display: 'flex', alignItems: 'flex-end', gap: '8px', padding: '1rem' }}>
+              {Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} height={`${Math.random() * 60 + 20}%`} width="100%" />)}
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
             <ComposedChart data={revenueChart} margin={{ left: -10, right: 5 }}>
               <defs>
                 <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
@@ -264,7 +256,8 @@ export const DashboardPage: React.FC = () => {
               )}
             </ComposedChart>
           </ResponsiveContainer>
-        </div>
+        )}
+      </div>
 
         {/* Pipeline stages */}
         <div className="card" style={{ padding: '1.25rem' }}>
@@ -323,9 +316,9 @@ export const DashboardPage: React.FC = () => {
             <Users size={16} color="var(--color-primary)" /> Nguồn khách hàng
           </h3>
           <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginBottom: '0.5rem' }}>Kỳ được chọn</p>
-          <ResponsiveContainer width="100%" height={150}>
+          <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={leadSources} nameKey="source" dataKey="count" cx="50%" cy="50%" innerRadius={42} outerRadius={65} paddingAngle={4}>
+              <Pie data={leadSources} nameKey="source" dataKey="count" cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={4}>
                 {leadSources.map((_: any, i: number) => <Cell key={i} fill={leadSources[i]?.color || '#6366f1'} />)}
               </Pie>
               <Tooltip formatter={(v: any, _: any, entry: any) => [`${v} liên hệ`, entry.payload.source]} contentStyle={{ borderRadius: 8, border: 'none', boxShadow: 'var(--shadow-md)', fontSize: '0.8125rem' }} />
@@ -342,36 +335,46 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Recent Activities */}
+        {/* Tag Stats chart */}
         <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h3 style={{ fontSize: '1rem', fontWeight: 700 }}>Nhật ký hoạt động</h3>
-            <a href="/activities" style={{ color: 'var(--color-primary)', fontSize: '0.8125rem', fontWeight: 600, textDecoration: 'none' }}>Xem tất cả →</a>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px' }}>
+                <TagIcon size={16} color="var(--color-primary)" /> Thống kê Tags
+              </h3>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>Leads có tag theo kỳ được chọn</p>
+            </div>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-light)', padding: '3px 10px', borderRadius: 'var(--radius-full)' }}>
+              {tagStats.reduce((s, t) => s + t.count, 0)} tag-lead
+            </span>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1, overflowY: 'auto' }}>
-            {recentActivities.map((act: any) => {
-              const ago = (() => {
-                const diff = Date.now() - new Date(act.created_at).getTime();
-                if (diff < 3600000) return `${Math.round(diff / 60000)} phút trước`;
-                if (diff < 86400000) return `${Math.round(diff / 3600000)} giờ trước`;
-                return `${Math.round(diff / 86400000)} ngày trước`;
-              })();
-              return (
-                <div key={act.id} style={{ display: 'flex', gap: '0.625rem', alignItems: 'flex-start' }}>
-                  <div style={{ width: 30, height: 30, borderRadius: '9px', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    {activityIcon[act.type] || activityIcon.note}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '0.8125rem', fontWeight: 600, lineHeight: 1.35, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{act.subject}</p>
-                    <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{act.user_name || act.user} · {ago}</p>
-                  </div>
-                  <span className={`badge ${act.status === 'done' ? 'success' : 'warning'}`} style={{ fontSize: '0.65rem', flexShrink: 0 }}>
-                    {act.status === 'done' ? 'Xong' : 'Chờ'}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+
+          {loadingStats ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+              {[80,60,45,35,25].map((w, i) => <Skeleton key={i} height="28px" width={`${w}%`} />)}
+            </div>
+          ) : tagStats.length === 0 ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem', gap: '0.5rem' }}>
+              <TagIcon size={32} style={{ opacity: 0.3 }} />
+              <span>Chưa có tag nào trong kỳ này</span>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(180, tagStats.length * 34)}>
+              <BarChart data={tagStats} layout="vertical" margin={{ left: 4, right: 30, top: 2, bottom: 2 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <YAxis type="category" dataKey="tag" tick={{ fontSize: 11, fill: 'var(--color-text)', fontWeight: 600 }} width={90} axisLine={false} tickLine={false} />
+                <Tooltip
+                  cursor={{ fill: 'var(--color-primary-light)' }}
+                  formatter={(v: any) => [v + ' lead', 'Số lead']}
+                  contentStyle={{ borderRadius: 8, border: 'none', boxShadow: 'var(--shadow-md)', fontSize: '0.8125rem' }}
+                />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={22}>
+                  {tagStats.map((entry, i) => <Cell key={i} fill={entry.color || 'var(--color-primary)'} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>

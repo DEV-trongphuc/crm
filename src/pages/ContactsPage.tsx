@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User } from 'lucide-react';
+import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
@@ -9,8 +9,13 @@ import { Pagination } from '../components/ui/Pagination';
 import { ColumnCustomizer, type ColumnDef } from '../components/ui/ColumnCustomizer';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
+import { PhoneLink } from '../components/ui/PhoneLink';
+import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
+import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 
 const PAGE_SIZE = 50;
 
@@ -28,21 +33,13 @@ const calcScore = (c: any) => {
   return Math.min(100, Math.max(0,s));
 };
 
-// Mock data removed for production enforcement
 const MOCK: any[] = [
-  { id:1,  first_name:'Nguyễn', last_name:'Văn An',      email:'an.nguyen@abctech.vn',   phone:'0901234567', job_title:'Giám đốc',          status:'customer',  source:'referral',  company_name:'ABC Technology',   has_called:true,  city:'Hà Nội',   tags:['vip','erp','q3'],      last_contact:'2026-05-03', open_deal_value:350000000 },
-  { id:2,  first_name:'Trần',   last_name:'Thị Bình',    email:'binh.tran@abctech.vn',   phone:'0912345678', job_title:'Trưởng phòng IT',    status:'customer',  source:'website',   company_name:'ABC Technology',   has_called:false, city:'TP.HCM',    tags:['it','cloud'],          last_contact:'2026-04-28', open_deal_value:85000000  },
-  { id:3,  first_name:'Lê',     last_name:'Minh Cường',  email:'cuong.le@xyz.vn',        phone:'0923456789', job_title:'CFO',                status:'qualified', source:'cold_call', company_name:'XYZ Holdings',     has_called:true,  city:'Đà Nẵng', tags:['finance','priority'],  last_contact:'2026-05-01', open_deal_value:125000000 },
-  { id:4,  first_name:'Phạm',   last_name:'Thị Dung',    email:'dung.pham@green.vn',     phone:'0934567890', job_title:'CEO',                status:'lead',      source:'event',     company_name:'GreenSolar Corp',  has_called:false, city:'Hà Nội',   tags:['solar','new'],         last_contact:'2026-04-15', open_deal_value:0         },
-  { id:5,  first_name:'Hoàng',  last_name:'Văn Em',      email:'em.hoang@pho24.vn',      phone:'0945678901', job_title:'Quản lý',            status:'qualified', source:'social',    company_name:'Phở 24',           has_called:true,  city:'TP.HCM',    tags:['food','retail'],       last_contact:'2026-05-02', open_deal_value:45000000  },
-  { id:6,  first_name:'Vũ',     last_name:'Thanh Hà',    email:'ha.vu@logitrans.vn',     phone:'0956789012', job_title:'Giám đốc Vận hành', status:'customer',  source:'referral',  company_name:'LogiTrans Express', has_called:true, city:'Hà Nội',   tags:['logistics','vip'],     last_contact:'2026-05-04', open_deal_value:36000000  },
-  { id:7,  first_name:'Đinh',   last_name:'Minh Lộc',    email:'loc.dinh@edutech.vn',    phone:'0967890123', job_title:'CEO',                status:'qualified', source:'event',     company_name:'EduTech Vietnam',  has_called:false, city:'TP.HCM',    tags:['edu','startup'],       last_contact:'2026-04-20', open_deal_value:95000000  },
-  { id:8,  first_name:'Bùi',    last_name:'Thị Lan',     email:'lan.bui@fashion.vn',     phone:'0978901234', job_title:'Marketing Director', status:'lead',      source:'social',    company_name:'FashionHub',        has_called:false, city:'TP.HCM',    tags:['fashion','b2c'],       last_contact:'2026-03-10', open_deal_value:0         },
-  { id:9,  first_name:'Đỗ',     last_name:'Quang Minh',  email:'minh.do@retail.vn',      phone:'0989012345', job_title:'CTO',                status:'customer',  source:'referral',  company_name:'Retail Pro Group',  has_called:true, city:'Đà Nẵng', tags:['tech','pos'],          last_contact:'2026-05-01', open_deal_value:175000000 },
-  { id:10, first_name:'Cao',    last_name:'Thị Nga',     email:'nga.cao@megastore.vn',   phone:'0990123456', job_title:'COO',                status:'qualified', source:'cold_call', company_name:'MegaStore Vietnam', has_called:true, city:'TP.HCM',    tags:['ecom','enterprise'],   last_contact:'2026-04-25', open_deal_value:220000000 },
-  { id:11, first_name:'Trịnh',  last_name:'Văn Phúc',    email:'phuc.trinh@xyz.vn',      phone:'0901111222', job_title:'Sales Director',     status:'churned',   source:'cold_call', company_name:'XYZ Holdings',     has_called:true,  city:'Hà Nội',   tags:['churned'],             last_contact:'2026-02-01', open_deal_value:0         },
-  { id:12, first_name:'Lý',     last_name:'Thị Quỳnh',   email:'quynh.ly@startup.vn',    phone:'0902222333', job_title:'Founder',            status:'lead',      source:'website',   company_name:'StartupVN',         has_called:false, city:'TP.HCM',    tags:['startup','saas'],      last_contact:'2026-05-05', open_deal_value:0         },
+  { id: 1, first_name: 'Nguyễn', last_name: 'Văn An', email: 'an.nv@gmail.com', phone: '0901234567', company_name: 'Công ty TNHH Giải pháp Phần mềm', job_title: 'Giám đốc IT', status: 'customer', source: 'referral', last_contact: '2026-05-04', open_deal_value: 120000000, owner_name: 'Admin Sales', tags: ['vip', 'erp'] },
+  { id: 2, first_name: 'Trần', last_name: 'Thị Bình', email: 'binh.tt@outlook.com', phone: '0987654321', company_name: 'Tập đoàn Bán lẻ Miền Bắc', job_title: 'Trưởng phòng Mua hàng', status: 'qualified', source: 'website', last_contact: '2026-05-01', open_deal_value: 45000000, owner_name: 'Sale A', tags: ['lead_score_high'] },
+  { id: 3, first_name: 'Lê', last_name: 'Minh Cường', email: 'cuong.lm@vinabiz.vn', phone: '0911223344', company_name: 'VinaBiz Co.', job_title: 'CEO', status: 'lead', source: 'cold_call', last_contact: '2026-04-20', open_deal_value: 0, owner_name: 'Sale B', tags: ['potenial'] },
+  { id: 4, first_name: 'Phạm', last_name: 'Hồng Đào', email: 'dao.ph@hitech.vn', phone: '0933445566', company_name: 'HiTech Solution', job_title: 'Quản lý dự án', status: 'customer', source: 'social', last_contact: '2026-05-05', open_deal_value: 89000000, owner_name: 'Admin Sales', tags: ['loyal'] },
 ];
+
 
 const SEGMENTS = [
   { key:'all',         label:'Tất cả',              icon:'' },
@@ -67,27 +64,43 @@ export const ContactsPage: React.FC = () => {
   const [profileContact, setProfileContact] = useState<any>(null);
   const [showImportExport, setShowImportExport] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other' });
+  const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '' });
   const [creating, setCreating] = useState(false);
+  const [users, setUsers] = useState<any[]>([]);
 
   // New Enterprise Features State
   const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
   const [sortBy, setSortBy] = useState<'newest' | 'score_desc' | 'deal_desc'>('newest');
   
+  // Date filter
+  const [datePeriod, setDatePeriod] = useState<Period>('this_month');
+  const [dateRange, setDateRange] = useState<DateRange>({ from: '', to: '' });
+  const [filterDateField, setFilterDateField] = useState<'created_at' | 'updated_at'>('created_at');
+  const [dateFilterActive, setDateFilterActive] = useState(false);
+  
   const [columns, setColumns] = useState<ColumnDef[]>([
     { id: 'name', label: 'Tên liên hệ', visible: true },
-    { id: 'score', label: 'Lead Score', visible: true },
+    { id: 'email', label: 'Email', visible: true },
+    { id: 'phone', label: 'SĐT', visible: true },
+    { id: 'score', label: 'Lead Score', visible: false },
     { id: 'company', label: 'Công ty', visible: true },
     { id: 'tags', label: 'Phân loại (Tags)', visible: true },
     { id: 'contact', label: 'Liên lạc', visible: true },
-    { id: 'deal', label: 'Deal hiện tại', visible: true },
+    { id: 'deal', label: 'Deal hiện tại', visible: false },
+    { id: 'owner', label: 'Sale phụ trách', visible: true },
     { id: 'status', label: 'Trạng thái', visible: true },
   ]);
   const [showColumns, setShowColumns] = useState(false);
 
   React.useEffect(() => {
     setLoading(true);
-    if (DEV_MODE) { setContacts(MOCK); setLoading(false); return; }
+    if (DEV_MODE) {
+      setContacts(useMockStore.getState().contacts);
+      setLoading(false);
+      return;
+    }
+    
+    // Fetch contacts
     api.get('/contacts')
       .then(r => { const d = r.data.data?.items||r.data.data||[]; setContacts(d); })
       .catch(() => {
@@ -95,15 +108,27 @@ export const ContactsPage: React.FC = () => {
         addToast('Không thể lấy danh sách liên hệ', 'error');
       })
       .finally(() => setLoading(false));
+
+    // Fetch sales/users for assignment
+    api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => {});
   }, []);
 
   const filtered = useMemo(() => {
     return contacts
-      .map(c => ({ ...c, score: calcScore(c) }))
+      .filter(c => c && c.id != null)
+      .map((c, i) => ({ ...c, _idx: i, score: calcScore(c) }))
       .filter(c => {
         const q = search.toLowerCase();
         const matchSearch = !q || `${c.first_name} ${c.last_name} ${c.email} ${c.company_name} ${c.phone}`.toLowerCase().includes(q);
         if (!matchSearch) return false;
+        
+        // Date range filter (only when user has selected a period)
+        if (dateFilterActive && (dateRange.from || dateRange.to)) {
+          const dateVal = (c[filterDateField] || '').substring(0, 10);
+          if (dateRange.from && dateVal < dateRange.from) return false;
+          if (dateRange.to   && dateVal > dateRange.to)   return false;
+        }
+        
         const days = AGO_DAYS(c.last_contact);
         switch(segment) {
           case 'hot':        return c.score >= 80;
@@ -119,7 +144,7 @@ export const ContactsPage: React.FC = () => {
         if (sortBy === 'deal_desc') return (b.open_deal_value || 0) - (a.open_deal_value || 0);
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(); // newest
       });
-  }, [contacts, search, segment, sortBy]);
+  }, [contacts, search, segment, sortBy, dateRange, filterDateField, dateFilterActive]);
 
   const paged = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
 
@@ -155,13 +180,38 @@ export const ContactsPage: React.FC = () => {
 
   const handleCreateContact = async () => {
     if (!createForm.first_name.trim()) { addToast('Vui lòng nhập họ tên', 'error'); return; }
+    
+    // Yêu cầu ít nhất email hoặc số điện thoại
+    if (!createForm.email.trim() && !createForm.phone.trim()) {
+      addToast('Vui lòng cung cấp ít nhất Email hoặc Số điện thoại', 'error');
+      return;
+    }
+
     setCreating(true);
     try {
+      if (DEV_MODE) {
+        const newContact = { 
+          id: Date.now(), 
+          ...createForm, 
+          status: 'lead', 
+          source: 'website', 
+          last_contact: new Date().toISOString().split('T')[0], 
+          open_deal_value: 0, 
+          owner_name: 'Quản trị viên' 
+        };
+        useMockStore.getState().addContact(newContact);
+        setContacts([...useMockStore.getState().contacts]);
+        setShowCreateModal(false);
+        setCreateForm({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '' });
+        addToast('Đã thêm liên hệ thành công', 'success');
+        return;
+      }
+      
       const r = await api.post('/contacts', createForm);
       const newContact = r.data.data;
       setContacts(prev => [newContact, ...prev]);
       setShowCreateModal(false);
-      setCreateForm({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other' });
+      setCreateForm({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '' });
       addToast('Đã thêm liên hệ mới thành công', 'success');
     } catch (e: any) {
       addToast(e.response?.data?.message || 'Không thể tạo liên hệ', 'error');
@@ -217,6 +267,27 @@ export const ContactsPage: React.FC = () => {
         <button className="btn ghost sm" onClick={() => setSearch('')} style={{ opacity: search?1:0.4 }}>
           <X size={14}/>
         </button>
+
+        {/* Date filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <CustomSelect
+            value={filterDateField}
+            onChange={v => setFilterDateField(v as any)}
+            options={[
+              { value: 'created_at', label: 'Ngày tạo' },
+              { value: 'updated_at', label: 'Cập nhật' }
+            ]}
+          />
+          <PeriodFilter
+            value={datePeriod}
+            onChange={(p, r) => { setDatePeriod(p); setDateRange(r); setDateFilterActive(true); setPage(1); }}
+          />
+          {dateFilterActive && (
+            <button className="btn ghost sm" onClick={() => { setDateFilterActive(false); setDateRange({ from: '', to: '' }); }}>
+              <X size={13} /> Bỏ lọc ngày
+            </button>
+          )}
+        </div>
         
         <div style={{ flex: 1 }} />
         
@@ -298,8 +369,8 @@ export const ContactsPage: React.FC = () => {
 
       {/* Table */}
       {loading ? (
-        <div style={{ display:'flex', flexDirection:'column', gap:'0.5rem' }}>
-          {Array.from({length:6}).map((_,i) => <div key={i} className="skeleton" style={{ height:56, borderRadius:'var(--radius-lg)' }}/>)}
+        <div className="card">
+          <TableSkeleton rows={10} cols={8} />
         </div>
       ) : (
         <div className="card" style={{ overflow: 'hidden' }}>
@@ -313,11 +384,14 @@ export const ContactsPage: React.FC = () => {
                         style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--color-primary)' }} />
                     </th>
                     {columns.find(c => c.id === 'name')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>}
+                    {columns.find(c => c.id === 'email')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Email</th>}
+                    {columns.find(c => c.id === 'phone')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>SĐT</th>}
                     {columns.find(c => c.id === 'score')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Score</th>}
                     {columns.find(c => c.id === 'company')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Công ty</th>}
                     {columns.find(c => c.id === 'tags')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Tags</th>}
                     {columns.find(c => c.id === 'contact')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên lạc cuối</th>}
                     {columns.find(c => c.id === 'deal')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Deal đang mở</th>}
+                    {columns.find(c => c.id === 'owner')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Sale phụ trách</th>}
                     {columns.find(c => c.id === 'status')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>}
                     <th style={{ width: 120, borderBottom: '1px solid var(--color-border)' }}></th>
                   </tr>
@@ -343,9 +417,18 @@ export const ContactsPage: React.FC = () => {
                               </div>
                               <div>
                                 <p style={{ fontWeight: 700, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{fullName}</p>
-                                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{c.email}</p>
                               </div>
                             </div>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'email')?.visible && (
+                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{c.email || '—'}</p>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'phone')?.visible && (
+                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            {c.phone ? <PhoneLink phone={c.phone} style={{ fontSize: '0.8125rem', fontWeight: 500 }} /> : <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>—</span>}
                           </td>
                         )}
                         {columns.find(col => col.id === 'score')?.visible && (
@@ -389,6 +472,20 @@ export const ContactsPage: React.FC = () => {
                             </span>
                           </td>
                         )}
+                        {columns.find(col => col.id === 'owner')?.visible && (
+                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            {c.owner_name ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
+                                  {c.owner_name.charAt(0).toUpperCase()}
+                                </div>
+                                <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{c.owner_name}</span>
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa giao</span>
+                            )}
+                          </td>
+                        )}
                         {columns.find(col => col.id === 'status')?.visible && (
                           <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
@@ -404,9 +501,14 @@ export const ContactsPage: React.FC = () => {
                                   message: `Bạn có chắc chắn muốn xóa liên hệ ${fullName}? Hành động này không thể hoàn tác.`,
                                   isDanger: true,
                                   confirmText: 'Xóa',
-                                  onConfirm: () => {
-                                    setContacts(p => p.filter(x => x.id !== c.id));
-                                    addToast('Đã xóa liên hệ', 'success');
+                                  onConfirm: async () => {
+                                    try {
+                                      await api.delete(`/contacts/${c.id}`);
+                                      setContacts(p => p.filter(x => x.id !== c.id));
+                                      addToast('Đã xóa liên hệ thành công', 'success');
+                                    } catch (e: any) {
+                                      addToast(e.response?.data?.message || 'Lỗi khi xóa liên hệ', 'error');
+                                    }
                                   }
                                 });
                               }}>
@@ -427,7 +529,7 @@ export const ContactsPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div style={{ padding: '1rem', background: 'var(--color-bg)' }}>
+            <div style={{ padding: '1rem', background: 'var(--color-surface)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                 {paged.map(c => {
                   const days = AGO_DAYS(c.last_contact);
@@ -514,99 +616,140 @@ export const ContactsPage: React.FC = () => {
         entityName="Liên hệ" 
       />
 
-      {/* Quick Create Contact Modal */}
+      {/* Quick Create Contact Modal - Enhanced UI */}
       <AnimatePresence>
         {showCreateModal && (
           <>
-            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCreateModal(false)} style={{ zIndex: 400 }} />
+            <motion.div 
+              className="overlay-backdrop" 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+              onClick={() => !creating && setShowCreateModal(false)} 
+              style={{ zIndex: 400 }} 
+            />
             <motion.div
-              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}
+              className="modal-sheet"
+              initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
               animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-              exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}
-              style={{ position: 'fixed', top: '50%', left: '50%', width: 520, maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', zIndex: 410, overflow: 'hidden' }}
+              exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
+              style={{ 
+                position: 'fixed', top: '50%', left: '50%', width: 640, 
+                maxWidth: 'calc(100vw - 2rem)', zIndex: 410, overflow: 'visible'
+              }}
             >
               {/* Header */}
-              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <User size={18} style={{ color: 'var(--color-primary)' }} />
+              <div className="modal-header" style={{ padding: '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                  <div style={{ width: 52, height: 52, borderRadius: '16px', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <User size={26} style={{ color: 'var(--color-primary)' }} />
                   </div>
                   <div>
-                    <h3 style={{ fontWeight: 700, fontSize: '1rem' }}>Thêm Liên hệ mới</h3>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Nhập thông tin cơ bản — có thể bổ sung chi tiết sau</p>
+                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>Thêm Liên hệ mới</h3>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', marginTop: 2 }}>Nhập thông tin cơ bản để bắt đầu quản lý khách hàng</p>
                   </div>
                 </div>
-                <button onClick={() => setShowCreateModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '4px' }}><X size={18} /></button>
+                <button 
+                  onClick={() => setShowCreateModal(false)} 
+                  className="btn-icon-bare" 
+                  disabled={creating}
+                ><X size={24} /></button>
               </div>
 
               {/* Body */}
-              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="modal-body" style={{ padding: '2.5rem' }}>
                 {/* Name row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Họ <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                    <input className="form-input" placeholder="VD: Nguyễn" value={createForm.first_name} onChange={e => setCreateForm(f => ({ ...f, first_name: e.target.value }))} autoFocus />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Họ <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                    <input className="form-input lg" placeholder="VD: Nguyễn" value={createForm.first_name} onChange={e => setCreateForm(f => ({ ...f, first_name: e.target.value }))} autoFocus />
                   </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Tên</label>
-                    <input className="form-input" placeholder="VD: Văn An" value={createForm.last_name} onChange={e => setCreateForm(f => ({ ...f, last_name: e.target.value }))} />
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Tên đệm & Tên</label>
+                    <input className="form-input lg" placeholder="VD: Văn An" value={createForm.last_name} onChange={e => setCreateForm(f => ({ ...f, last_name: e.target.value }))} />
                   </div>
                 </div>
 
                 {/* Contact row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label"><Phone size={12} style={{ display: 'inline', marginRight: 4 }} />Số điện thoại</label>
-                    <input className="form-input" placeholder="09xx xxx xxx" value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Số điện thoại</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input lg" style={{ paddingLeft: '3rem' }} placeholder="09xx xxx xxx" value={createForm.phone} onChange={e => setCreateForm(f => ({ ...f, phone: e.target.value }))} />
+                      <Phone size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', opacity: 0.7 }} />
+                    </div>
                   </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label"><Mail size={12} style={{ display: 'inline', marginRight: 4 }} />Email</label>
-                    <input className="form-input" type="email" placeholder="email@congty.com" value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} />
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Email liên hệ</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input lg" style={{ paddingLeft: '3rem' }} type="email" placeholder="email@congty.com" value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} />
+                      <Mail size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', opacity: 0.7 }} />
+                    </div>
                   </div>
                 </div>
 
                 {/* Company + Job */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label"><Building2 size={12} style={{ display: 'inline', marginRight: 4 }} />Công ty</label>
-                    <input className="form-input" placeholder="Tên công ty..." value={createForm.company_name} onChange={e => setCreateForm(f => ({ ...f, company_name: e.target.value }))} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Công ty / Tổ chức</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input lg" style={{ paddingLeft: '3rem' }} placeholder="Tên công ty..." value={createForm.company_name} onChange={e => setCreateForm(f => ({ ...f, company_name: e.target.value }))} />
+                      <Building2 size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', opacity: 0.7 }} />
+                    </div>
                   </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label"><Briefcase size={12} style={{ display: 'inline', marginRight: 4 }} />Chức vụ</label>
-                    <input className="form-input" placeholder="VD: Giám đốc, Kế toán trưởng..." value={createForm.job_title} onChange={e => setCreateForm(f => ({ ...f, job_title: e.target.value }))} />
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Chức vụ</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input lg" style={{ paddingLeft: '3rem' }} placeholder="VD: Giám đốc, Kế toán..." value={createForm.job_title} onChange={e => setCreateForm(f => ({ ...f, job_title: e.target.value }))} />
+                      <Briefcase size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', opacity: 0.7 }} />
+                    </div>
                   </div>
                 </div>
 
                 {/* Status + Source */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Trạng thái</label>
-                    <select className="form-input" value={createForm.status} onChange={e => setCreateForm(f => ({ ...f, status: e.target.value }))}>
-                      <option value="lead">Lead mới</option>
-                      <option value="qualified">Đủ điều kiện</option>
-                      <option value="customer">Khách hàng</option>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Trạng thái Lead</label>
+                    <select className="form-input lg" value={createForm.status} onChange={e => setCreateForm(f => ({ ...f, status: e.target.value }))}>
+                      <option value="lead">Lead mới (Chưa xử lý)</option>
+                      <option value="qualified">Đủ điều kiện (Qualified)</option>
+                      <option value="customer">Khách hàng (Closed Won)</option>
                     </select>
                   </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label">Nguồn khách</label>
-                    <select className="form-input" value={createForm.source} onChange={e => setCreateForm(f => ({ ...f, source: e.target.value }))}>
-                      <option value="other">Khác</option>
-                      <option value="website">Website</option>
-                      <option value="referral">Giới thiệu</option>
-                      <option value="social">Mạng xã hội</option>
-                      <option value="cold_call">Cold Call</option>
-                      <option value="event">Sự kiện</option>
-                    </select>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700 }}>Phụ trách bởi (Sale)</label>
+                    <CustomSelect 
+                      options={users.map(u => ({ value: u.id, label: u.full_name, icon: <UserCheck size={14}/> }))}
+                      value={createForm.owner_id}
+                      onChange={val => setCreateForm(f => ({ ...f, owner_id: val.toString() }))}
+                      placeholder="Chọn sale phụ trách..."
+                      searchable
+                    />
                   </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 700 }}>Nguồn khách hàng</label>
+                  <select className="form-input lg" value={createForm.source} onChange={e => setCreateForm(f => ({ ...f, source: e.target.value }))}>
+                    <option value="website">Đăng ký từ Website</option>
+                    <option value="referral">Được giới thiệu</option>
+                    <option value="social">Mạng xã hội (FB/Zalo)</option>
+                    <option value="cold_call">Telesale / Cold Call</option>
+                    <option value="event">Sự kiện / Workshop</option>
+                    <option value="other">Nguồn khác</option>
+                  </select>
                 </div>
               </div>
 
               {/* Footer */}
-              <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', background: 'var(--color-bg)' }}>
-                <button className="btn outline" onClick={() => setShowCreateModal(false)}>Hủy bỏ</button>
-                <button className="btn primary" onClick={handleCreateContact} disabled={creating} style={{ minWidth: 130 }}>
-                  {creating ? <Loader2 size={14} className="spin" /> : <Plus size={14} />}
-                  {creating ? 'Đang tạo...' : 'Tạo Liên hệ'}
+              <div className="modal-footer" style={{ padding: '1.5rem 2.5rem' }}>
+                <button className="btn outline lg" onClick={() => setShowCreateModal(false)} disabled={creating}>Hủy bỏ</button>
+                <button 
+                  className="btn primary lg" 
+                  onClick={handleCreateContact} 
+                  disabled={creating} 
+                  style={{ minWidth: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                >
+                  {creating ? <Loader2 size={20} className="spin" /> : <Plus size={20} />}
+                  {creating ? 'Đang khởi tạo...' : 'Tạo Liên hệ ngay'}
                 </button>
               </div>
             </motion.div>

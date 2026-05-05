@@ -40,7 +40,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
 
-  const selectedOption = options.find(opt => opt.value === value);
+  const selectedOption = options.find(opt => opt.value == value);
   const filtered = searchable ? options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())) : options;
 
   return (
@@ -84,25 +84,26 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 />
               </div>
             )}
-            <div className={styles.optionsList}>
+            <div className={styles.list}>
               {filtered.length > 0 ? filtered.map((option) => (
                 <div 
                   key={option.value}
-                  className={`${styles.option} ${value === option.value ? styles.optionSelected : ''}`}
-                  onClick={() => {
+                  className={`${styles.option} ${value == option.value ? styles.optionSelected : ''}`}
+                  onMouseDown={(e) => {
+                    e.preventDefault(); 
                     onChange(option.value);
                     setIsOpen(false);
                     setSearch('');
                   }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1 }}>
+                  <span className={styles.optionLabel}>
                     {option.icon && <span style={{ display: 'flex' }}>{option.icon}</span>}
                     {option.label}
                   </span>
-                  {value === option.value && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor' }} />}
+                  {value == option.value && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor' }} />}
                 </div>
               )) : (
-                <div className={styles.noResult}>Không tìm thấy</div>
+                <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Không tìm thấy</div>
               )}
             </div>
           </motion.div>

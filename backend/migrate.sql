@@ -113,3 +113,16 @@ CREATE TABLE IF NOT EXISTS `ticket_comments` (
   FOREIGN KEY (`user_id`)   REFERENCES `users`(`id`) ON DELETE RESTRICT,
   INDEX `idx_tc_ticket` (`ticket_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 5. SOFT DELETE SUPPORT (Soft delete columns for main entities)
+ALTER TABLE `contacts`  ADD COLUMN `deleted_at` DATETIME NULL AFTER `updated_at`;
+ALTER TABLE `companies` ADD COLUMN `deleted_at` DATETIME NULL AFTER `updated_at`;
+ALTER TABLE `deals`     ADD COLUMN `deleted_at` DATETIME NULL AFTER `updated_at`;
+ALTER TABLE `products`  ADD COLUMN `deleted_at` DATETIME NULL AFTER `updated_at`;
+
+-- Update indexes for soft delete performance
+ALTER TABLE `contacts`  ADD INDEX `idx_contact_deleted` (`deleted_at`);
+ALTER TABLE `companies` ADD INDEX `idx_company_deleted` (`deleted_at`);
+ALTER TABLE `deals`     ADD INDEX `idx_deal_deleted` (`deleted_at`);
+ALTER TABLE `products`  ADD INDEX `idx_product_deleted` (`deleted_at`);

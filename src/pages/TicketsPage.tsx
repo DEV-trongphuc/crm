@@ -5,14 +5,10 @@ import { TicketDrawer } from './TicketDrawer';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
+import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 
-const MOCK_TICKETS = [
-  { id: 1001, subject: 'Lỗi không đồng bộ tồn kho với Haravan', status: 'open', priority: 'high', customer_name: 'Minh Tuấn', assignee_name: 'Hải Support', created_at: '2026-05-05T08:30:00', due_date: '2026-05-06T08:30:00' },
-  { id: 1002, subject: 'Yêu cầu đổi trả máy in mã vạch', status: 'in_progress', priority: 'medium', customer_name: 'Công ty ABC', assignee_name: 'Admin', created_at: '2026-05-04T14:15:00', due_date: '2026-05-07T14:15:00' },
-  { id: 1003, subject: 'Không đăng nhập được app điện thoại', status: 'urgent', priority: 'urgent', customer_name: 'Chị Lan - Tạp hóa', assignee_name: 'Hải Support', created_at: '2026-05-05T10:00:00', due_date: '2026-05-05T12:00:00' },
-  { id: 1004, subject: 'Hỗ trợ xuất báo cáo doanh thu tháng', status: 'resolved', priority: 'low', customer_name: 'Anh Vũ', assignee_name: 'Admin', created_at: '2026-05-02T09:00:00', due_date: '2026-05-04T09:00:00' },
-  { id: 1005, subject: 'Lỗi hiển thị sai font chữ trên template in', status: 'waiting', priority: 'medium', customer_name: 'Nhà hàng Biển Đông', assignee_name: 'Tech Lead', created_at: '2026-05-03T16:45:00', due_date: '2026-05-05T16:45:00' },
-];
+const MOCK_TICKETS: any[] = [];
 
 const TICKET_STATUSES = [
   { id: 'open', label: 'Mới mở', color: '#3b82f6' },
@@ -40,6 +36,8 @@ export const TicketsPage: React.FC = () => {
   const [createForm, setCreateForm] = useState({ subject: '', priority: 'medium', customer_name: '', description: '' });
   const [loading, setLoading] = useState(true);
 
+  const [now] = useState(() => Date.now());
+
   const fetchTickets = async () => {
     setLoading(true);
     if (DEV_MODE) {
@@ -60,6 +58,11 @@ export const TicketsPage: React.FC = () => {
   };
 
   React.useEffect(() => {
+    if (DEV_MODE) {
+      setTickets(useMockStore.getState().tickets);
+      setLoading(false);
+      return;
+    }
     fetchTickets();
   }, []);
 
@@ -138,7 +141,11 @@ export const TicketsPage: React.FC = () => {
         </div>
       </div>
 
-      {viewMode === 'list' ? (
+      {loading ? (
+        <div className="card">
+          <TableSkeleton rows={8} cols={6} />
+        </div>
+      ) : viewMode === 'list' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -185,7 +192,7 @@ export const TicketsPage: React.FC = () => {
                       {TICKET_STATUSES.find(p => p.id === t.status)?.label}
                     </span>
                   </td>
-                  <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: 600, color: new Date(t.due_date).getTime() < Date.now() ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                  <td style={{ padding: '1rem', fontSize: '0.875rem', fontWeight: 600, color: new Date(t.due_date).getTime() < now ? 'var(--color-danger)' : 'var(--color-text)' }}>
                     {new Date(t.due_date).toLocaleDateString('vi-VN')}
                   </td>
                 </motion.tr>

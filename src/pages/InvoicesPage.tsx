@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  FileText, Plus, Search, Download, CheckCircle, Clock, AlertCircle,
+  FileText, Plus, Search, Download, CheckCircle2, Clock, AlertCircle,
   Eye, Trash2, Printer, X, Loader2, ArrowUpRight, TrendingUp, DollarSign,
   Pencil, Copy, Send
 } from 'lucide-react';
@@ -12,19 +12,11 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 
 const PAGE_SIZE = 50;
 
-const MOCK_INVOICES: any[] = [
-  { id: 1, invoice_number: 'INV-2026-001', contact_name: 'Nguyễn Văn An', company_name: 'ABC Technology', title: 'Phần mềm CRM Enterprise', total: 85000000, status: 'paid', issue_date: '2026-04-10', due_date: '2026-05-10', creator_name: 'Admin' },
-  { id: 2, invoice_number: 'INV-2026-042', contact_name: 'Công ty TechGlobal', company_name: 'TechGlobal Ltd', title: 'Dịch vụ Tư vấn Chuyển đổi số', total: 45500000, status: 'pending', issue_date: '2026-05-02', due_date: '2026-06-02', creator_name: 'Sales Manager' },
-  { id: 3, invoice_number: 'INV-2026-045', contact_name: 'Trần Thị Bình', company_name: 'GreenSolar Corp', title: 'Module Quản lý Kho hàng', total: 28000000, status: 'overdue', issue_date: '2026-04-01', due_date: '2026-04-20', creator_name: 'Admin' },
-  { id: 4, invoice_number: 'INV-2026-048', contact_name: 'Lê Văn Chính', company_name: 'Retail Pro', title: 'Gói Bảo trì & Hỗ trợ năm 2026', total: 36000000, status: 'paid', issue_date: '2026-05-01', due_date: '2026-05-31', creator_name: 'Sales' },
-  { id: 5, invoice_number: 'INV-2026-050', contact_name: 'Phạm Minh Dũng', company_name: 'MegaStore', title: 'Hệ thống POS Nhà hàng', total: 125000000, status: 'pending', issue_date: '2026-05-04', due_date: '2026-06-04', creator_name: 'Admin' },
-  { id: 6, invoice_number: 'INV-2026-055', contact_name: 'Võ Thanh Hà', company_name: 'FashionHub', title: 'Triển khai phân hệ HRM', total: 52000000, status: 'pending', issue_date: '2026-05-06', due_date: '2026-06-06', creator_name: 'Sales Manager' },
-  { id: 7, invoice_number: 'INV-2026-060', contact_name: 'Nguyễn Bảo Khoa', company_name: 'LogiTrans', title: 'Phần mềm quản lý vận chuyển', total: 78000000, status: 'paid', issue_date: '2026-04-20', due_date: '2026-05-20', creator_name: 'Admin' },
-  { id: 8, invoice_number: 'INV-2026-063', contact_name: 'Hoàng Minh Lộc', company_name: 'EduTech Vietnam', title: 'Platform E-learning doanh nghiệp', total: 95000000, status: 'overdue', issue_date: '2026-03-15', due_date: '2026-04-15', creator_name: 'Sales' },
-];
+const MOCK_INVOICES: any[] = [];
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -44,7 +36,11 @@ export const InvoicesPage: React.FC = () => {
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
-    if (DEV_MODE) { setItems(MOCK_INVOICES); setLoading(false); return; }
+    if (DEV_MODE) { 
+      setItems(useMockStore.getState().invoices); 
+      setLoading(false); 
+      return; 
+    }
     try {
       const r = await api.get('/invoices', { params: { from: dateRange.from, to: dateRange.to, status: statusFilter } });
       const data = r.data.data || [];
@@ -73,7 +69,7 @@ export const InvoicesPage: React.FC = () => {
   const overdueAmt = filtered.filter(i => i.status === 'overdue').reduce((s, i) => s + Number(i.total), 0);
 
   const STATUS_CONFIG: Record<string, { label: string; class: string; icon: React.ReactNode }> = {
-    paid: { label: 'Đã thanh toán', class: 'success', icon: <CheckCircle size={11} /> },
+    paid: { label: 'Đã thanh toán', class: 'success', icon: <CheckCircle2 size={11} /> },
     pending: { label: 'Chờ thanh toán', class: 'warning', icon: <Clock size={11} /> },
     overdue: { label: 'Quá hạn', class: 'danger', icon: <AlertCircle size={11} /> },
   };
@@ -107,7 +103,7 @@ export const InvoicesPage: React.FC = () => {
       confirmText: 'Xác nhận',
       onConfirm: async () => {
         try {
-          await api.patch(`/invoices/${inv.id}`, { status: 'paid' });
+          await api.post(`/invoices/${inv.id}/pay`);
           setItems(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid' } : i));
           addToast(`Đã cập nhật ${inv.invoice_number} thành Đã thanh toán`, 'success');
         } catch (e: any) {
@@ -166,7 +162,7 @@ export const InvoicesPage: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
           { label: 'Tổng doanh thu', value: FMT(totalRev), icon: TrendingUp, color: '#7c3aed', sub: `${filtered.length} hóa đơn` },
-          { label: 'Đã thu hồi', value: FMT(paidAmt), icon: CheckCircle, color: '#10b981', sub: `${filtered.filter(i => i.status === 'paid').length} đã thanh toán` },
+          { label: 'Đã thu hồi', value: FMT(paidAmt), icon: CheckCircle2, color: '#10b981', sub: `${filtered.filter(i => i.status === 'paid').length} đã thanh toán` },
           { label: 'Chờ thanh toán', value: FMT(pendingAmt), icon: Clock, color: '#f59e0b', sub: `${filtered.filter(i => i.status === 'pending').length} hóa đơn đang đợi` },
           { label: 'Nợ quá hạn', value: FMT(overdueAmt), icon: AlertCircle, color: '#ef4444', sub: `${filtered.filter(i => i.status === 'overdue').length} hóa đơn quá hạn` },
         ].map((k, i) => (
@@ -264,7 +260,7 @@ export const InvoicesPage: React.FC = () => {
                         <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
                           <button className="btn-icon sm" title="Xem nhanh" onClick={() => setPreviewItem(inv)}><Eye size={14} /></button>
                           {inv.status !== 'paid' && (
-                            <button className="btn-icon sm" title="Đánh dấu đã thanh toán" onClick={() => handleMarkPaid(inv)} style={{ color: 'var(--color-success)' }}><CheckCircle size={14} /></button>
+                            <button className="btn-icon sm" title="Đánh dấu đã thanh toán" onClick={() => handleMarkPaid(inv)} style={{ color: 'var(--color-success)' }}><CheckCircle2 size={14} /></button>
                           )}
                           <button className="btn-icon sm" title="Gửi nhắc nhở" onClick={() => handleSendReminder(inv)} style={{ color: 'var(--color-primary)' }}><Send size={14} /></button>
                           <button className="btn-icon sm text-danger" title="Xóa" onClick={() => setDeleteItem(inv)}><Trash2 size={14} /></button>

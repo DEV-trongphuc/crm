@@ -84,6 +84,7 @@ require_once __DIR__ . '/controllers/ImportController.php';
 require_once __DIR__ . '/controllers/FinanceController.php';
 require_once __DIR__ . '/controllers/POSController.php';
 require_once __DIR__ . '/controllers/TicketController.php';
+require_once __DIR__ . '/controllers/TagController.php';
 
 // ── Parse route ───────────────────────────────────────────────
 $requestUri = strtok($_SERVER['REQUEST_URI'], '?');
@@ -139,6 +140,7 @@ switch ($resource) {
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
+        elseif ($resourceId  && $subResource === 'stage' && $method === 'PATCH') $ctrl->moveStage($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
@@ -152,6 +154,7 @@ switch ($resource) {
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
+        elseif ($resourceId  && $subResource === 'stage' && $method === 'PATCH') $ctrl->moveStage($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
@@ -292,7 +295,7 @@ switch ($resource) {
         elseif ($resourceId  && $method === 'GET')    $ctrl->showInvoice($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->updateInvoice($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->deleteInvoice($auth, (int)$resourceId);
-        elseif ($resourceId === 'pay' && $method === 'POST') $ctrl->markPaid($auth, (int)$segments[1]);
+        elseif ($subResource === 'pay' && $method === 'POST') $ctrl->markPaid($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
@@ -324,6 +327,17 @@ switch ($resource) {
         $auth = requireAuth();
         $ctrl = new POSController($db);
         if ($method === 'POST') $ctrl->createOrder($auth);
+        break;
+
+    case 'tags':
+        $auth = requireAuth();
+        $ctrl = new TagController($db);
+        if     ($resourceId === 'stats' && $method === 'GET') $ctrl->tagStats($auth);
+        elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
         break;
 
     default:

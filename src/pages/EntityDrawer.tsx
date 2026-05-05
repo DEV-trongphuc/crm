@@ -82,12 +82,6 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                   <span className={`badge ${formData?.status === 'customer' ? 'success' : 'warning'}`}>
                     {formData?.status === 'customer' ? 'Khách hàng' : 'Tiềm năng'}
                   </span>
-                  <button
-                    className="btn primary sm flex items-center gap-2"
-                    onClick={() => { onClose(); useUIStore.getState().setShowPOS(formData); }}
-                  >
-                    <ShoppingCart size={14} /> Bán tiếp
-                  </button>
                   <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
                 </div>
               </div>
@@ -111,24 +105,6 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                 <div className={styles.contentArea}>
                   {activeTab === 'info' && (
                     <div className="animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                      {/* Quick Stats Dashboard inside Modal */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-                        <div className="card-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-                          <span className="text-xs text-light" style={{ fontWeight: 600 }}>TỔNG DOANH THU</span>
-                          <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '0.25rem' }}>145.5M</span>
-                          <span className="text-xs text-light mt-1"><span style={{ color: 'var(--color-success)' }}>+12%</span> so với năm trước</span>
-                        </div>
-                        <div className="card-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-                          <span className="text-xs text-light" style={{ fontWeight: 600 }}>TỈ LỆ CHỐT (WIN RATE)</span>
-                          <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.25rem' }}>68%</span>
-                          <span className="text-xs text-light mt-1">Đã chốt 4/6 Deals</span>
-                        </div>
-                        <div className="card-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', borderLeft: '3px solid var(--color-danger)' }}>
-                          <span className="text-xs text-light" style={{ fontWeight: 600 }}>CHI PHÍ PHÁT SINH</span>
-                          <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-danger)', marginTop: '0.25rem' }}>1.2M</span>
-                          <span className="text-xs text-light mt-1">Ăn uống, Xăng xe, Tiếp khách</span>
-                        </div>
-                      </div>
 
                       <div className="card-panel">
                         <div className="flex items-center justify-between mb-4">
@@ -316,29 +292,10 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                         </div>
                         <button className="btn primary sm" onClick={() => addToast('Vui lòng chọn tệp từ máy tính của bạn...', 'info')}><Plus size={14} /> Tải lên tệp</button>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div className="card-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem' }}>
-                          <div style={{ width: 44, height: 44, background: 'var(--color-danger-light)', color: 'var(--color-danger)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><FileBadge size={22} /></div>
-                          <div style={{ flex: 1 }}>
-                            <h4 style={{ fontSize: '0.95rem', fontWeight: 600 }}>CCCD_MatTruoc_KH.jpg</h4>
-                            <p className="text-xs text-light mt-1">Tải lên hôm qua bởi Admin • 2.4 MB</p>
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button className="btn outline sm" title="Tải xuống"><Download size={14} /></button>
-                            <button className="btn outline sm" title="Xóa" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }}><Trash2 size={14} /></button>
-                          </div>
-                        </div>
-                        <div className="card-panel" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem' }}>
-                          <div style={{ width: 44, height: 44, background: 'var(--color-info-light)', color: 'var(--color-info)', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><FileText size={22} /></div>
-                          <div style={{ flex: 1 }}>
-                            <h4 style={{ fontSize: '0.95rem', fontWeight: 600 }}>HopDong_DichVu_Thang5.pdf</h4>
-                            <p className="text-xs text-light mt-1">Tải lên 3 ngày trước bởi Sales • 1.1 MB</p>
-                          </div>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button className="btn outline sm" title="Tải xuống" onClick={() => addToast('Đang tải xuống HopDong_DichVu_Thang5.pdf...', 'success')}><Download size={14} /></button>
-                            <button className="btn outline sm" title="Xóa" style={{ color: 'var(--color-danger)', borderColor: 'var(--color-danger-light)' }} onClick={() => addToast('Đã xóa tệp HopDong_DichVu_Thang5.pdf', 'info')}><Trash2 size={14} /></button>
-                          </div>
-                        </div>
+                      <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                        <FileBadge size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
+                        <p style={{ fontWeight: 600 }}>Chưa có tài liệu</p>
+                        <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>Upload CCCD, hợp đồng, file scan liên quan</p>
                       </div>
                     </div>
                   )}
@@ -440,40 +397,10 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                           </div>
                         </div>
                       ) : (
-                        <div className="card-panel">
-                          <div className="flex justify-between items-center mb-6">
-                            <div>
-                              <h4 className="text-lg font-bold">Lịch sử Giao dịch</h4>
-                              <p className="text-sm text-light">Tổng chi tiêu: <span className="font-bold text-primary">{(formData.total_spent || 0).toLocaleString()}đ</span></p>
-                            </div>
-                            <button className="btn primary sm" onClick={() => useUIStore.getState().setShowPOS(formData)}>
-                              <Plus size={14} /> Tạo đơn hàng mới
-                            </button>
-                          </div>
-                          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                            <thead>
-                              <tr style={{ borderBottom: '1px solid var(--color-border)' }}>
-                                <th style={{ padding: '0.75rem 0', fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>MÃ HÓA ĐƠN</th>
-                                <th style={{ padding: '0.75rem 0', fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>SỐ TIỀN</th>
-                                <th style={{ padding: '0.75rem 0', fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>TRẠNG THÁI</th>
-                                <th style={{ padding: '0.75rem 0', fontWeight: 600, fontSize: '0.85rem', color: 'var(--color-text-muted)', textAlign: 'right' }}>NGÀY LẬP</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                                <td style={{ padding: '1rem 0', fontWeight: 600, color: 'var(--color-primary)' }}>INV-2026-001</td>
-                                <td style={{ padding: '1rem 0', fontWeight: 600 }}>15.000.000 đ</td>
-                                <td style={{ padding: '1rem 0' }}><span className="badge success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={12} /> Đã thanh toán</span></td>
-                                <td style={{ padding: '1rem 0', textAlign: 'right', fontSize: '0.85rem' }}>10/04/2026</td>
-                              </tr>
-                              <tr>
-                                <td style={{ padding: '1rem 0', fontWeight: 600, color: 'var(--color-primary)' }}>INV-2026-042</td>
-                                <td style={{ padding: '1rem 0', fontWeight: 600 }}>45.500.000 đ</td>
-                                <td style={{ padding: '1rem 0' }}><span className="badge warning">Chờ thanh toán</span></td>
-                                <td style={{ padding: '1rem 0', textAlign: 'right', fontSize: '0.85rem' }}>02/05/2026</td>
-                              </tr>
-                            </tbody>
-                          </table>
+                        <div className="card-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                          <FileText size={32} style={{ margin: '0 auto 0.75rem', opacity: 0.4 }} />
+                          <p style={{ fontWeight: 600 }}>Chưa có giao dịch nào</p>
+                          <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>Tạo hóa đơn mới để bắt đầu ghi nhận doanh thu</p>
                         </div>
                       )}
                     </div>
