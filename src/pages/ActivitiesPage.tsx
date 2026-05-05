@@ -5,6 +5,7 @@ import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
 
 const PAGE_SIZE = 50;
 
@@ -58,16 +59,18 @@ export const ActivitiesPage: React.FC = () => {
 
   const fetchActivities = useCallback(async () => {
     setLoading(true);
+    if (DEV_MODE) { setItems(MOCK_ACTIVITIES); setTotal(MOCK_ACTIVITIES.length); setLoading(false); return; }
     try {
       const params: Record<string, string> = { page: page.toString(), search };
       if (filterType) params.type = filterType;
       if (filterStatus) params.status = filterStatus;
       const r = await api.get('/activities', { params });
       const data = r.data.data?.items || r.data.data || [];
-      if (data.length === 0 && !search && !filterType && !filterStatus) { setItems(MOCK_ACTIVITIES); setTotal(MOCK_ACTIVITIES.length); }
-      else { setItems(data); setTotal(r.data.data?.total || data.length); }
+      setItems(data);
+      setTotal(r.data.data?.total || data.length);
     } catch {
-      if (!search && !filterType && !filterStatus) { setItems(MOCK_ACTIVITIES); setTotal(MOCK_ACTIVITIES.length); }
+      setItems([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }

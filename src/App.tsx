@@ -11,6 +11,7 @@ import { ProductsPage } from './pages/ProductsPage';
 import { InvoicesPage } from './pages/InvoicesPage';
 import { ExpensesPage } from './pages/ExpensesPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { TicketsPage } from './pages/TicketsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { useAuthStore } from './store/authStore';
 
@@ -34,6 +35,7 @@ function App() {
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="tickets" element={<TicketsPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

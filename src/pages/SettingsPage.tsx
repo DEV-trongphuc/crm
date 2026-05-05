@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
 
 const ROLES = ['admin','manager','sales','viewer'];
 const R_LABEL: Record<string,string> = { admin:'Quản trị viên', manager:'Quản lý', sales:'Sale', viewer:'Xem' };
@@ -49,11 +50,13 @@ export const SettingsPage: React.FC = () => {
 
   const fetchUsers = async () => {
     setLoading(true);
+    if (DEV_MODE) { setUsers(MOCK_USERS); setLoading(false); return; }
     try {
       const r = await api.get('/users');
       setUsers(r.data.data || []);
     } catch {
-      setUsers(MOCK_USERS);
+      setUsers([]);
+      addToast('Không thể tải danh sách người dùng', 'error');
     } finally {
       setLoading(false);
     }
@@ -351,8 +354,8 @@ export const SettingsPage: React.FC = () => {
         {showModal && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onClick={() => setShowModal(false)} />
-            <motion.div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'460px', maxWidth:'calc(100vw - 2rem)', background:'var(--color-surface)', borderRadius:'var(--radius-xl)', boxShadow:'var(--shadow-xl)', border:'1px solid var(--color-border)', zIndex:300 }}
-              initial={{ opacity:0, scale:0.96 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}>
+            <motion.div style={{ position:'fixed', top:'50%', left:'50%', width:'460px', maxWidth:'calc(100vw - 2rem)', background:'var(--color-surface)', borderRadius:'var(--radius-xl)', boxShadow:'var(--shadow-xl)', border:'1px solid var(--color-border)', zIndex:300 }}
+              initial={{ opacity:0, scale:0.96, x:'-50%', y:'-50%' }} animate={{ opacity:1, scale:1, x:'-50%', y:'-50%' }} exit={{ opacity:0, scale:0.96, x:'-50%', y:'-50%' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--color-border)' }}>
                 <h3 style={{ fontWeight:700 }}>{editUser ? 'Sửa người dùng' : 'Thêm người dùng'}</h3>
                 <button onClick={() => setShowModal(false)} style={{ color:'var(--color-text-muted)' }}><X size={18} /></button>
@@ -386,8 +389,8 @@ export const SettingsPage: React.FC = () => {
         {activeModal.type && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onClick={() => setActiveModal({type: null, item: null})} />
-            <motion.div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:'460px', maxWidth:'calc(100vw - 2rem)', background:'var(--color-surface)', borderRadius:'var(--radius-xl)', boxShadow:'var(--shadow-xl)', border:'1px solid var(--color-border)', zIndex:300 }}
-              initial={{ opacity:0, scale:0.96 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}>
+            <motion.div style={{ position:'fixed', top:'50%', left:'50%', width:'460px', maxWidth:'calc(100vw - 2rem)', background:'var(--color-surface)', borderRadius:'var(--radius-xl)', boxShadow:'var(--shadow-xl)', border:'1px solid var(--color-border)', zIndex:300 }}
+              initial={{ opacity:0, scale:0.96, x:'-50%', y:'-50%' }} animate={{ opacity:1, scale:1, x:'-50%', y:'-50%' }} exit={{ opacity:0, scale:0.96, x:'-50%', y:'-50%' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'1.25rem 1.5rem', borderBottom:'1px solid var(--color-border)' }}>
                 <h3 style={{ fontWeight:700 }}>
                   {activeModal.item ? 'Chỉnh sửa ' : 'Thêm mới '}

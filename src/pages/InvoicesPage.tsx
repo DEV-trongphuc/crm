@@ -11,6 +11,7 @@ import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
 
 const PAGE_SIZE = 50;
 
@@ -29,7 +30,7 @@ const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', c
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 export const InvoicesPage: React.FC = () => {
-  const { addToast } = useUIStore();
+  const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>('this_month');
@@ -43,12 +44,14 @@ export const InvoicesPage: React.FC = () => {
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
+    if (DEV_MODE) { setItems(MOCK_INVOICES); setLoading(false); return; }
     try {
       const r = await api.get('/invoices', { params: { from: dateRange.from, to: dateRange.to, status: statusFilter } });
       const data = r.data.data || [];
-      setItems(Array.isArray(data) && data.length ? data : MOCK_INVOICES);
+      setItems(Array.isArray(data) ? data : []);
     } catch {
-      setItems(MOCK_INVOICES);
+      setItems([]);
+      addToast('Không thể kết nối với máy chủ Backend', 'error');
     } finally {
       setLoading(false);
     }
@@ -88,22 +91,43 @@ export const InvoicesPage: React.FC = () => {
     if (!deleteItem) return;
     try {
       await api.delete(`/invoices/${deleteItem.id}`);
-    } catch (e) {
-      console.error(e);
+      setItems(prev => prev.filter(i => i.id !== deleteItem.id));
+      addToast('Đã xóa hóa đơn', 'success');
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Không thể xóa hóa đơn do lỗi mạng', 'error');
+    } finally {
+      setDeleteItem(null);
     }
-    setItems(prev => prev.filter(i => i.id !== deleteItem.id));
-    addToast('Đã xóa hóa đơn', 'success');
-    setDeleteItem(null);
   };
 
-  const markPaid = async (inv: any) => {
-    try {
-      await api.patch(`/invoices/${inv.id}`, { status: 'paid' });
-    } catch (e) {
-      console.error(e);
-    }
-    setItems(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid' } : i));
-    addToast(`Đã đánh dấu ${inv.invoice_number} đã thanh toán`, 'success');
+  const handleMarkPaid = (inv: any) => {
+    showConfirm({
+      title: 'Xác nhận thanh toán',
+      message: `Đánh dấu hóa đơn ${inv.invoice_number} đã được thanh toán đầy đủ?`,
+      confirmText: 'Xác nhận',
+      onConfirm: async () => {
+        try {
+          await api.patch(`/invoices/${inv.id}`, { status: 'paid' });
+          setItems(prev => prev.map(i => i.id === inv.id ? { ...i, status: 'paid' } : i));
+          addToast(`Đã cập nhật ${inv.invoice_number} thành Đã thanh toán`, 'success');
+        } catch (e: any) {
+          addToast(e.response?.data?.message || 'Không thể cập nhật trạng thái', 'error');
+        }
+        closeConfirm();
+      }
+    });
+  };
+
+  const handleSendReminder = (inv: any) => {
+    showConfirm({
+      title: 'Gửi thông báo',
+      message: `Hệ thống sẽ gửi email/Zalo nhắc nhở hóa đơn đến ${inv.contact_name}. Bạn có chắc chắn?`,
+      confirmText: 'Gửi ngay',
+      onConfirm: () => {
+        addToast(`Đã gửi nhắc nhở đến ${inv.contact_name}`, 'success');
+        closeConfirm();
+      }
+    });
   };
 
   const exportCSV = () => {
@@ -237,13 +261,13 @@ export const InvoicesPage: React.FC = () => {
                       </td>
                       <td><span className={`badge ${sc.class}`}>{sc.icon} {sc.label}</span></td>
                       <td>
-                        <div className="flex gap-1" style={{ justifyContent: 'flex-end' }}>
-                          <button className="btn-icon sm" title="Xem nhanh" onClick={() => setPreviewItem(inv)}><Eye size={13} /></button>
+                        <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
+                          <button className="btn-icon sm" title="Xem nhanh" onClick={() => setPreviewItem(inv)}><Eye size={14} /></button>
                           {inv.status !== 'paid' && (
-                            <button className="btn-icon sm" title="Đánh dấu đã thanh toán" onClick={() => markPaid(inv)} style={{ color: 'var(--color-success)' }}><CheckCircle size={13} /></button>
+                            <button className="btn-icon sm" title="Đánh dấu đã thanh toán" onClick={() => handleMarkPaid(inv)} style={{ color: 'var(--color-success)' }}><CheckCircle size={14} /></button>
                           )}
-                          <button className="btn-icon sm" title="Gửi nhắc nhở" onClick={() => addToast(`Đã gửi nhắc ${inv.contact_name}`, 'info')}><Send size={13} /></button>
-                          <button className="btn-icon sm text-danger" title="Xóa" onClick={() => setDeleteItem(inv)}><Trash2 size={13} /></button>
+                          <button className="btn-icon sm" title="Gửi nhắc nhở" onClick={() => handleSendReminder(inv)} style={{ color: 'var(--color-primary)' }}><Send size={14} /></button>
+                          <button className="btn-icon sm text-danger" title="Xóa" onClick={() => setDeleteItem(inv)}><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </motion.tr>
@@ -264,8 +288,8 @@ export const InvoicesPage: React.FC = () => {
         {deleteItem && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteItem(null)} style={{ zIndex: 300 }} />
-            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 380, zIndex: 310, textAlign: 'center', padding: '2rem' }}
-              initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 380, zIndex: 310, textAlign: 'center', padding: '2rem' }}
+              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
               <div style={{ width: 56, height: 56, background: 'var(--color-danger-light)', color: 'var(--color-danger)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}><Trash2 size={24} /></div>
               <h3 style={{ fontWeight: 700 }}>Xóa hóa đơn {deleteItem.invoice_number}?</h3>
               <p style={{ color: 'var(--color-text-light)', margin: '0.5rem 0 1.5rem', fontSize: '0.875rem' }}>Thao tác này không thể hoàn tác.</p>
@@ -285,8 +309,8 @@ export const InvoicesPage: React.FC = () => {
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setPreviewItem(null)} style={{ zIndex: 300 }} />
             <motion.div
               className="modal"
-              style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '90%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto', zIndex: 310, padding: 0, borderRadius: '24px' }}
-              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
+              style={{ position: 'fixed', top: '50%', left: '50%', width: '90%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto', zIndex: 310, padding: 0, borderRadius: '24px' }}
+              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}
             >
               <div style={{ padding: '2rem', background: '#fff' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>

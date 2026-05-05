@@ -6,6 +6,7 @@ import { useUIStore } from '../store/uiStore';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { motion } from 'framer-motion';
 import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
 
 const MONTHLY = [
   { month: 'T10/24', revenue: 72000000, target: 90000000 },
@@ -41,11 +42,16 @@ export const ReportsPage: React.FC = () => {
 
   const fetchSales = async () => {
     setLoading(true);
+    if (DEV_MODE) {
+      setSalesData({ monthly: MONTHLY, byOwner: BY_OWNER });
+      setLoading(false);
+      return;
+    }
     try {
       const r = await api.get('/reports/sales', { params: { from: dateRange.from, to: dateRange.to } });
       setSalesData(r.data.data);
     } catch {
-      // Fallback
+      // silent fail — show empty charts
     } finally {
       setLoading(false);
     }
@@ -56,8 +62,8 @@ export const ReportsPage: React.FC = () => {
     try {
       const r = await api.get('/reports/pipeline');
       setPipelineData(r.data.data);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // silent fail
     } finally { setLoading(false); }
   };
 
@@ -66,8 +72,8 @@ export const ReportsPage: React.FC = () => {
     try {
       const r = await api.get('/reports/activities');
       setActivityData(r.data.data);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      // silent fail
     } finally { setLoading(false); }
   };
 
@@ -164,11 +170,11 @@ export const ReportsPage: React.FC = () => {
                 </thead>
                 <tbody>
                   {(salesData?.by_owner || BY_OWNER).map((o: any) => (
-                    <tr key={o.name}>
+                    <tr key={o.name || o.user_name || Math.random()}>
                       <td>
                         <div className="flex items-center gap-2">
-                          <div className="avatar-placeholder sm" style={{ background: '#7c3aed', fontSize: '0.65rem' }}>{o.name[0]}</div>
-                          <span style={{ fontWeight: 600 }}>{o.name}</span>
+                          <div className="avatar-placeholder sm" style={{ background: '#7c3aed', fontSize: '0.65rem' }}>{(o.name || o.user_name || 'U')[0]}</div>
+                          <span style={{ fontWeight: 600 }}>{o.name || o.user_name || 'Unknown'}</span>
                         </div>
                       </td>
                       <td><span className="badge purple">{o.deals || o.total_deals} deals</span></td>

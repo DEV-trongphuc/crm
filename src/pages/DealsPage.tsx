@@ -5,6 +5,7 @@ import confetti from 'canvas-confetti';
 import { useUIStore } from '../store/uiStore';
 import { DealDrawer } from './DealDrawer';
 import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
 
 // STAGES and INIT_DEALS removed - using API state
 
@@ -70,15 +71,19 @@ export const DealsPage: React.FC = () => {
   };
 
   const fetchStages = async () => {
+    if (DEV_MODE) {
+      setStages(MOCK_STAGES);
+      setDeals(MOCK_DEALS_GROUPED);
+      setLoading(false);
+      return;
+    }
     try {
       const r = await api.get('/deals/stages');
       const data = r.data.data || [];
-      setStages(data.length ? data : MOCK_STAGES);
-      if (!data.length) setDeals(MOCK_DEALS_GROUPED);
-      else fetchDeals();
+      setStages(data);
+      if (data.length) fetchDeals();
     } catch {
-      setStages(MOCK_STAGES);
-      setDeals(MOCK_DEALS_GROUPED);
+      setStages([]);
     } finally {
       setLoading(false);
     }
@@ -89,7 +94,6 @@ export const DealsPage: React.FC = () => {
     try {
       const r = await api.get('/deals');
       const items = r.data.data?.items || [];
-      if (!items.length) { setDeals(MOCK_DEALS_GROUPED); setLoading(false); return; }
       const grouped: Record<number, any[]> = {};
       items.forEach((d: any) => {
         if (!grouped[d.stage_id]) grouped[d.stage_id] = [];
@@ -97,7 +101,7 @@ export const DealsPage: React.FC = () => {
       });
       setDeals(grouped);
     } catch {
-      setDeals(MOCK_DEALS_GROUPED);
+      setDeals({});
     } finally { setLoading(false); }
   };
 

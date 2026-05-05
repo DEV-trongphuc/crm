@@ -3,6 +3,7 @@ import { Plus, Package, Pencil, Trash2, X, Loader2, Search } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND', maximumFractionDigits:0 }).format(n);
 
@@ -34,12 +35,13 @@ export const ProductsPage: React.FC = () => {
 
   const fetchProducts = () => {
     setLoading(true);
+    if (DEV_MODE) { setProducts(MOCK); setLoading(false); return; }
     api.get('/products')
-      .then(r => {
-        const data = r.data.data || [];
-        setProducts(data.length ? data : MOCK);
+      .then(r => { setProducts(r.data.data || []); })
+      .catch(() => {
+        setProducts([]);
+        addToast('Không thể tải danh sách sản phẩm', 'error');
       })
-      .catch(() => setProducts(MOCK))
       .finally(() => setLoading(false));
   };
 

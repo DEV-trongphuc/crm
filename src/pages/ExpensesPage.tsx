@@ -10,6 +10,7 @@ import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
 
 const PAGE_SIZE = 50;
 
@@ -67,15 +68,16 @@ export const ExpensesPage: React.FC = () => {
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
+    if (DEV_MODE) { setItems(MOCK_EXPENSES); setTotal(MOCK_EXPENSES.length); setLoading(false); return; }
     try {
       const r = await api.get('/expenses', { params: { from: dateRange.from, to: dateRange.to, status: statusFilter } });
       const data = r.data.data?.items || r.data.data || [];
-      setItems(data.length ? data : MOCK_EXPENSES);
-      setTotal(data.length ? (r.data.data?.total || data.length) : MOCK_EXPENSES.length);
-    } catch (e) {
-      console.error(e);
-      setItems(MOCK_EXPENSES);
-      setTotal(MOCK_EXPENSES.length);
+      setItems(data);
+      setTotal(r.data.data?.total || data.length);
+    } catch {
+      setItems([]);
+      setTotal(0);
+      addToast('Không thể tải danh sách chi phí', 'error');
     } finally {
       setLoading(false);
     }
@@ -117,16 +119,8 @@ export const ExpensesPage: React.FC = () => {
       }
       setShowModal(false);
       fetchExpenses();
-    } catch {
-      // Use mock: just update local state
-      if (!editItem) {
-        const newItem = { ...form, id: Date.now(), amount: Number(form.amount), creator_name: 'Bạn', status: 'pending' };
-        setItems(prev => [newItem, ...prev]);
-        addToast('Đã thêm chi phí (demo mode)', 'success');
-        setShowModal(false);
-      } else {
-        addToast('Lỗi khi lưu chi phí', 'error');
-      }
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Lỗi khi lưu chi phí', 'error');
     } finally {
       setSaving(false);
     }
@@ -138,9 +132,10 @@ export const ExpensesPage: React.FC = () => {
       await api.delete(`/expenses/${deleteItem.id}`);
       setItems(prev => prev.filter(e => e.id !== deleteItem.id));
       addToast('Đã xóa chi phí', 'success');
-    } catch {
-      setItems(prev => prev.filter(e => e.id !== deleteItem.id));
-      addToast('Đã xóa (demo mode)', 'success');
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Lỗi khi xóa chi phí', 'error');
+      setDeleteItem(null);
+      return;
     }
     setDeleteItem(null);
   };
@@ -337,8 +332,8 @@ export const ExpensesPage: React.FC = () => {
         {showModal && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !saving && setShowModal(false)} />
-            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 500, maxWidth: 'calc(100vw - 2rem)', zIndex: 300 }}
-              initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 500, maxWidth: 'calc(100vw - 2rem)', zIndex: 300 }}
+              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
               <div className="modal-header">
                 <h3>{editItem ? 'Sửa chi phí' : 'Nhập chi phí mới'}</h3>
                 <button onClick={() => setShowModal(false)} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
@@ -393,8 +388,8 @@ export const ExpensesPage: React.FC = () => {
         {deleteItem && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteItem(null)} />
-            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 380, zIndex: 310, textAlign: 'center', padding: '2.5rem 2rem', borderRadius: '24px' }}
-              initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 380, zIndex: 310, textAlign: 'center', padding: '2.5rem 2rem', borderRadius: '24px' }}
+              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
               <div style={{ width: 64, height: 64, background: 'var(--color-danger-light)', color: 'var(--color-danger)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                 <Trash2 size={28} />
               </div>
@@ -414,8 +409,8 @@ export const ExpensesPage: React.FC = () => {
         {viewItem && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViewItem(null)} />
-            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 500, zIndex: 310, padding: '2rem', borderRadius: '24px' }}
-              initial={{ opacity: 0, scale: 0.96, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 20 }}>
+            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 500, zIndex: 310, padding: '2rem', borderRadius: '24px' }}
+              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-40%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-40%' }}>
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <div className="flex items-center gap-2 mb-2">

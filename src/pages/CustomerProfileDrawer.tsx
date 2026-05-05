@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2 } from 'lucide-react';
+import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -8,6 +8,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { ActivityModal } from '../components/ui/ActivityModal';
 import { useUIStore } from '../store/uiStore';
+import { useNavigate } from 'react-router-dom';
 import styles from './EntityDrawer.module.css';
 
 /* ─── Types ─────────────────────────────────────────────────── */
@@ -65,10 +66,12 @@ const TABS = [
   { id: 'notes', label: 'Ghi chú nội bộ', icon: <FileText size={16} /> },
   { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <FileText size={16} /> },
   { id: 'invoices', label: 'Invoices', icon: <DollarSign size={16} /> },
+  { id: 'tickets', label: 'Hỗ trợ/Khiếu nại', icon: <LifeBuoy size={16} /> },
 ];
 
 export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate }) => {
   const { addToast, showConfirm } = useUIStore();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('info');
   const [formData, setFormData] = useState<any>({});
   const [tags, setTags] = useState<string[]>([]);
@@ -92,6 +95,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setActiveTab('info');
     }
   }, [contact]);
+
+  const hasChanges = React.useMemo(() => {
+    if (!contact) return false;
+    const baseTags = contact.tags || ['vip', 'erp'];
+    if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
+    for (const key of Object.keys(formData)) {
+      if (formData[key] !== contact[key]) return true;
+    }
+    return false;
+  }, [formData, tags, contact]);
 
   if (!contact) return null;
 
@@ -186,10 +199,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     {formData.status === 'customer' ? 'Khách hàng' : formData.status === 'qualified' ? 'Đủ điều kiện' : 'Tiềm năng'}
                   </span>
                   <button
-                    className="btn primary sm flex items-center gap-2"
-                    onClick={() => { onClose(); useUIStore.getState().setShowPOS(formData); }}
+                    className={`btn sm flex items-center gap-2 ${hasChanges ? 'primary' : 'secondary'}`}
+                    disabled={!hasChanges}
+                    onClick={handleSave}
                   >
-                    <ShoppingCart size={14} /> Bán tiếp
+                    <CheckSquare size={14} /> Lưu thay đổi
                   </button>
                   <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
                 </div>
@@ -274,7 +288,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div className="card-panel">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="panel-title" style={{ margin: 0 }}>Thông tin liên hệ & Công việc</h4>
-                          <button className="btn outline sm" onClick={handleSave}>Lưu thay đổi</button>
                         </div>
                         <div className="grid grid-2">
                           <div className="form-group">
@@ -652,6 +665,56 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div className="empty-state" style={{ padding: '3rem 1rem', textAlign: 'center', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
                         <DollarSign size={48} color="var(--color-border)" style={{ margin: '0 auto 1rem auto' }} />
                         <p style={{ fontWeight: 600, color: 'var(--color-text)' }}>Chưa có lịch sử thanh toán</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'tickets' && (
+                    <div className="animate-fade">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Hỗ trợ / Khiếu nại (Tickets)</h3>
+                        <button className="btn outline sm" onClick={() => { onClose(); navigate('/tickets'); }}>
+                          <Plus size={14} /> Tạo Ticket
+                        </button>
+                      </div>
+                      <div className="card-panel" style={{ padding: 0, overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Mã & Tiêu đề</th>
+                              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Trạng thái</th>
+                              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Phụ trách</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                              <td style={{ padding: '0.875rem 1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                  <AlertCircle size={14} color="#f59e0b" style={{ marginTop: '2px' }} />
+                                  <div>
+                                    <p style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '2px' }}>Không đăng nhập được app điện thoại</p>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>#1003 • Mở: 5/5/2026</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: '0.875rem 1rem' }}><span className="badge warning">Đang xử lý</span></td>
+                              <td style={{ padding: '0.875rem 1rem', fontSize: '0.8125rem', fontWeight: 600 }}>Hải Support</td>
+                            </tr>
+                            <tr>
+                              <td style={{ padding: '0.875rem 1rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                                  <AlertCircle size={14} color="#10b981" style={{ marginTop: '2px' }} />
+                                  <div>
+                                    <p style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '2px' }}>Hỗ trợ xuất báo cáo doanh thu tháng</p>
+                                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>#1004 • Mở: 2/5/2026</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: '0.875rem 1rem' }}><span className="badge success">Đã giải quyết</span></td>
+                              <td style={{ padding: '0.875rem 1rem', fontSize: '0.8125rem', fontWeight: 600 }}>Admin</td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   )}

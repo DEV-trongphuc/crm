@@ -109,8 +109,8 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
       >
           {/* Left: Product Selection */}
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--color-surface)' }}>
-            <div className="p-8 border-b" style={{ borderColor: 'var(--color-border)' }}>
-              <div className="flex items-center justify-between mb-6">
+            <div style={{ padding: '2rem', borderBottom: '1px solid var(--color-border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div style={{ background: 'var(--color-primary)', color: 'white', width: 48, height: 48, borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 16px var(--color-primary-light)' }}>
                     <ShoppingCart size={24} />
@@ -120,40 +120,40 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                     <p style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Hệ thống quản lý kho & bán hàng thông minh</p>
                   </div>
                 </div>
-                <button className="btn ghost sm" onClick={onClose} style={{ borderRadius: '50%', width: 36, height: 36, padding: 0 }}><X size={20} /></button>
+                <button className="btn ghost sm" onClick={onClose} style={{ borderRadius: '50%', width: 36, height: 36, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={20} /></button>
               </div>
               
-              <div className="filter-search" style={{ borderRadius: '16px', padding: '12px 18px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                <Search size={20} style={{ color: 'var(--color-primary)' }} />
-                <input autoFocus style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '0.95rem', fontWeight: 500 }} placeholder="Quét mã vạch hoặc tìm tên sản phẩm..." value={searchProduct} onChange={e => setSearchProduct(e.target.value)} />
+              <div style={{ display: 'flex', alignItems: 'center', borderRadius: '16px', padding: '12px 18px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                <Search size={20} style={{ color: 'var(--color-primary)', marginRight: '12px' }} />
+                <input autoFocus style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: '0.95rem', fontWeight: 500, color: 'var(--color-text)' }} placeholder="Quét mã vạch hoặc tìm tên sản phẩm..." value={searchProduct} onChange={e => setSearchProduct(e.target.value)} />
               </div>
 
               <AnimatePresence>
                 {searchProduct && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="card mt-2 p-2 shadow-2xl" style={{ position: 'absolute', width: 'calc(100% - 64px)', zIndex: 100, borderRadius: '20px', left: 32 }}>
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="card mt-2 shadow-2xl" style={{ position: 'absolute', width: 'calc(100% - 64px)', zIndex: 100, borderRadius: '20px', left: 32, padding: '0.5rem' }}>
                     {filteredProducts.length > 0 ? filteredProducts.map(p => (
-                      <div key={p.id} className="p-3 hover-bg rounded-xl cursor-pointer flex justify-between items-center transition-all" onClick={() => addToCart(p)}>
-                        <div className="flex items-center gap-3">
+                      <div key={p.id} className="hover-bg cursor-pointer transition-all" style={{ padding: '0.75rem 1rem', borderRadius: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} onClick={() => addToCart(p)}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                           <div style={{ width: 40, height: 40, background: 'var(--color-bg)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={18} className="text-light" /></div>
                           <div>
-                            <p className="font-bold text-sm">{p.name}</p>
-                            <p className="text-xs text-light font-bold">Mã: {p.id}</p>
+                            <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{p.name}</p>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>Mã: {p.id}</p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="font-black text-primary text-base">{FMT_PRICE(p.price)}</p>
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ fontWeight: 900, color: 'var(--color-primary)', fontSize: '1rem' }}>{FMT_PRICE(p.price)}</p>
                         </div>
                       </div>
-                    )) : <div className="p-4 text-center text-light">Không tìm thấy sản phẩm</div>}
+                    )) : <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-light)' }}>Không tìm thấy sản phẩm</div>}
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
-            <div className="p-8 flex-1 overflow-auto" style={{ background: '#fcfcfd' }}>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xs font-black text-light uppercase tracking-widest">Sản phẩm phổ biến</h3>
-                <div className="flex gap-2">
+            <div style={{ padding: '2rem', flex: 1, overflow: 'auto', background: '#fcfcfd' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Sản phẩm phổ biến</h3>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <span className="badge primary" style={{ cursor: 'pointer' }}>Tất cả</span>
                   <span className="badge outline" style={{ cursor: 'pointer' }}>Phần mềm</span>
                   <span className="badge outline" style={{ cursor: 'pointer' }}>Dịch vụ</span>
@@ -165,19 +165,19 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                     whileHover={{ y: -4, boxShadow: 'var(--shadow-lg)' }}
                     whileTap={{ scale: 0.98 }}
                     key={p.id} 
-                    className="card p-5 cursor-pointer flex flex-col justify-between" 
-                    style={{ borderRadius: '24px', border: '1px solid var(--color-border-light)', background: 'white', transition: 'all 0.2s' }} 
+                    className="card cursor-pointer" 
+                    style={{ borderRadius: '24px', border: '1px solid var(--color-border-light)', background: 'white', transition: 'all 0.2s', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }} 
                     onClick={() => addToCart(p)}
                    >
                      <div>
-                      <div style={{ width: 32, height: 32, background: 'var(--color-bg)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                        <Package size={16} color="var(--color-text-muted)" />
+                      <div style={{ width: 36, height: 36, background: 'var(--color-bg)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
+                        <Package size={18} color="var(--color-text-muted)" />
                       </div>
-                      <p className="font-bold text-sm mb-1 line-clamp-2" style={{ color: 'var(--color-text)', minHeight: '2.8rem' }}>{p.name}</p>
+                      <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', minHeight: '2.8rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4 }}>{p.name}</p>
                     </div>
-                    <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: 'var(--color-border-light)' }}>
-                       <p className="text-primary font-black text-base">{FMT_PRICE(p.price)}</p>
-                       <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)', marginTop: '0.5rem' }}>
+                       <p style={{ color: 'var(--color-text)', fontWeight: 800, fontSize: '1.05rem' }}>{FMT_PRICE(p.price)}</p>
+                       <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                          <Plus size={16} strokeWidth={3} />
                        </div>
                     </div>
@@ -189,114 +189,114 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
 
           {/* Right: Cart & Customer */}
           <div style={{ width: 420, background: 'var(--color-bg)', display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--color-border)' }}>
-            <div className="p-8 border-b" style={{ borderColor: 'var(--color-border)', background: 'white' }}>
-              <h3 className="text-xs font-black text-light uppercase tracking-widest mb-4">Thông tin khách hàng</h3>
+            <div style={{ padding: '2rem', borderBottom: '1px solid var(--color-border)', background: 'white' }}>
+              <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Thông tin khách hàng</h3>
               {selectedContact ? (
-                <div className="card p-4 flex items-center justify-between" style={{ borderRadius: '20px', background: 'var(--color-bg)', border: '1px solid var(--color-primary)' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="avatar-placeholder md" style={{ background: 'var(--color-primary)', borderRadius: '14px' }}>{selectedContact.first_name[0]}</div>
+                <div className="card" style={{ padding: '1rem', borderRadius: '20px', background: 'var(--color-bg)', border: '1px solid var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div className="avatar-placeholder md" style={{ background: 'var(--color-primary)', borderRadius: '14px', width: 40, height: 40 }}>{selectedContact.first_name[0]}</div>
                     <div>
-                      <p className="font-bold text-sm">{selectedContact.first_name} {selectedContact.last_name}</p>
-                      <p className="text-xs text-light font-bold">{selectedContact.phone}</p>
+                      <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{selectedContact.first_name} {selectedContact.last_name}</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{selectedContact.phone}</p>
                     </div>
                   </div>
-                  <button className="btn ghost sm text-danger" onClick={() => setSelectedContact(null)}><X size={16} /></button>
+                  <button className="btn ghost sm text-danger" onClick={() => setSelectedContact(null)} style={{ padding: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
                 </div>
               ) : (
-                <div className="relative">
-                  <div className="flex gap-2 mb-2">
-                    <div className="filter-search" style={{ borderRadius: '14px', background: 'var(--color-bg)', flex: 1, border: '1px solid var(--color-border)' }}>
-                      <User size={18} className="text-light" />
-                      <input className="form-input" style={{ background: 'transparent', border: 'none', fontSize: '0.875rem' }} placeholder="Chọn khách hàng..." value={searchContact} onChange={e => setSearchContact(e.target.value)} />
+                <div style={{ position: 'relative' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <div style={{ borderRadius: '14px', background: 'var(--color-bg)', flex: 1, border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', padding: '0 12px' }}>
+                      <User size={18} className="text-light" style={{ marginRight: '8px' }} />
+                      <input style={{ background: 'transparent', border: 'none', fontSize: '0.875rem', outline: 'none', width: '100%', height: '42px', color: 'var(--color-text)' }} placeholder="Chọn khách hàng..." value={searchContact} onChange={e => setSearchContact(e.target.value)} />
                     </div>
-                    <button className="btn primary sm" onClick={() => setShowQuickAdd(true)} style={{ borderRadius: '14px', width: 42, height: 42, padding: 0 }}><Plus size={20} /></button>
+                    <button className="btn primary sm" onClick={() => setShowQuickAdd(true)} style={{ borderRadius: '14px', width: 42, height: 42, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Plus size={20} /></button>
                   </div>
 
                   <AnimatePresence>
                     {showQuickAdd && (
-                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="card p-4 mb-4 border-primary" style={{ borderRadius: '18px', boxShadow: 'var(--shadow-xl)' }}>
-                        <div className="flex justify-between items-center mb-3">
-                          <span className="text-xs font-black uppercase tracking-widest text-primary">Thêm khách hàng nhanh</span>
-                          <button onClick={() => setShowQuickAdd(false)} className="text-light"><X size={14} /></button>
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="card border-primary" style={{ padding: '1rem', marginBottom: '1rem', borderRadius: '18px', boxShadow: 'var(--shadow-xl)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--color-primary)' }}>Thêm khách hàng nhanh</span>
+                          <button onClick={() => setShowQuickAdd(false)} style={{ color: 'var(--color-text-light)', background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={14} /></button>
                         </div>
-                        <div className="flex flex-col gap-2">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           <input className="form-input sm" placeholder="Họ" value={newCust.last_name} onChange={e => setNewCust({...newCust, last_name: e.target.value})} />
                           <input className="form-input sm" placeholder="Tên *" value={newCust.first_name} onChange={e => setNewCust({...newCust, first_name: e.target.value})} />
                           <input className="form-input sm" placeholder="Số điện thoại *" value={newCust.phone} onChange={e => setNewCust({...newCust, phone: e.target.value})} />
-                          <button className="btn primary sm w-full mt-1" onClick={handleQuickAdd} disabled={loading}>Lưu & Chọn</button>
+                          <button className="btn primary sm" style={{ width: '100%', marginTop: '4px' }} onClick={handleQuickAdd} disabled={loading}>Lưu & Chọn</button>
                         </div>
                       </motion.div>
                     )}
                   </AnimatePresence>
 
                   {searchContact && (
-                    <div className="card mt-1 p-1 absolute w-full z-10 shadow-2xl" style={{ borderRadius: '16px', top: '48px' }}>
+                    <div className="card shadow-2xl" style={{ marginTop: '4px', padding: '4px', position: 'absolute', width: '100%', zIndex: 10, borderRadius: '16px', top: '48px' }}>
                       {filteredContacts.length > 0 ? filteredContacts.map(c => (
-                        <div key={c.id} className="p-3 hover-bg rounded-xl cursor-pointer" onClick={() => { setSelectedContact(c); setSearchContact(''); }}>
-                          <p className="font-bold text-sm">{c.first_name} {c.last_name}</p>
-                          <p className="text-xs text-light">{c.phone}</p>
+                        <div key={c.id} className="hover-bg cursor-pointer" style={{ padding: '0.75rem', borderRadius: '12px' }} onClick={() => { setSelectedContact(c); setSearchContact(''); }}>
+                          <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{c.first_name} {c.last_name}</p>
+                          <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{c.phone}</p>
                         </div>
-                      )) : <div className="p-3 text-center text-xs text-light">Không tìm thấy khách hàng</div>}
+                      )) : <div style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-light)' }}>Không tìm thấy khách hàng</div>}
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            <div className="p-8 flex-1 overflow-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xs font-black text-light uppercase tracking-widest">Giỏ hàng</h3>
+            <div style={{ padding: '2rem', flex: 1, overflow: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                <h3 style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Giỏ hàng</h3>
                 <span className="badge primary" style={{ borderRadius: '6px' }}>{cart.length} món</span>
               </div>
-              <div className="flex flex-col gap-3">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {cart.map((item) => (
-                  <motion.div layout key={item.id} className="flex items-center justify-between bg-white p-4 rounded-2xl shadow-sm border border-transparent hover:border-primary-light transition-all">
+                  <motion.div layout key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '1rem', borderRadius: '20px', boxShadow: 'var(--shadow-sm)', border: '1px solid transparent', transition: 'all 0.2s' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p className="text-sm font-bold truncate" style={{ color: 'var(--color-text)' }}>{item.name}</p>
-                      <p className="text-xs text-primary font-black">{FMT_PRICE(item.price)}</p>
+                      <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 900, marginTop: '2px' }}>{FMT_PRICE(item.price)}</p>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
-                        <button className="btn ghost sm" style={{ padding: 0, width: 24, height: 24, borderRadius: '6px', minWidth: 24 }} onClick={() => {
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                        <button className="btn ghost sm" style={{ padding: 0, width: 26, height: 26, borderRadius: '8px', minWidth: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
                           setCart(prev => prev.map(x => x.id === item.id ? { ...x, quantity: Math.max(1, x.quantity - 1) } : x));
                         }}>-</button>
-                        <span className="text-xs font-black w-5 text-center">{item.quantity}</span>
-                        <button className="btn ghost sm" style={{ padding: 0, width: 24, height: 24, borderRadius: '6px', minWidth: 24 }} onClick={() => {
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 900, width: '20px', textAlign: 'center' }}>{item.quantity}</span>
+                        <button className="btn ghost sm" style={{ padding: 0, width: 26, height: 26, borderRadius: '8px', minWidth: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
                           setCart(prev => prev.map(x => x.id === item.id ? { ...x, quantity: x.quantity + 1 } : x));
                         }}>+</button>
                       </div>
-                      <button className="text-danger" style={{ padding: 4, background: 'none' }} onClick={() => {
+                      <button style={{ color: 'var(--color-danger)', padding: '6px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }} className="hover-bg" onClick={() => {
                         setCart(prev => prev.filter(x => x.id !== item.id));
                       }}><Trash2 size={16} /></button>
                     </div>
                   </motion.div>
                 ))}
                 {cart.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-16 text-light opacity-30">
-                    <ShoppingCart size={48} strokeWidth={1} className="mb-3" />
-                    <p className="text-sm font-bold">Giỏ hàng trống</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 0', color: 'var(--color-text-light)', opacity: 0.4 }}>
+                    <ShoppingCart size={48} strokeWidth={1} style={{ marginBottom: '1rem' }} />
+                    <p style={{ fontSize: '0.9rem', fontWeight: 700 }}>Giỏ hàng trống</p>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="p-8 bg-white border-t" style={{ borderColor: 'var(--color-border)', borderRadius: '0 0 32px 0' }}>
-              <div className="flex justify-between items-end mb-6">
+            <div style={{ padding: '2rem', background: 'white', borderTop: '1px solid var(--color-border)', borderRadius: '0 0 32px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
                 <div>
-                  <span className="text-xs font-black text-light uppercase tracking-widest">Tổng tiền thanh toán</span>
-                  <div style={{ fontSize: '2.25rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.04em', lineHeight: 1 }}>{FMT_PRICE(totalAmount)}</div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tổng tiền thanh toán</span>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.04em', lineHeight: 1, marginTop: '4px' }}>{FMT_PRICE(totalAmount)}</div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-success flex items-center gap-1 justify-end"><CheckCircle size={12} /> Đã bao gồm VAT</span>
+                <div style={{ textAlign: 'right' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}><CheckCircle size={14} /> Đã bao gồm VAT</span>
                 </div>
               </div>
               <button 
-                className="btn primary lg w-full py-4 rounded-2xl shadow-xl flex items-center justify-center gap-3 transition-all hover:translate-y-[-2px]" 
+                className="btn primary lg" 
                 disabled={loading || cart.length === 0 || !selectedContact}
                 onClick={handleCheckout}
-                style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 100%)', fontSize: '1rem', fontWeight: 800, border: 'none', height: '60px' }}
+                style={{ width: '100%', padding: '1.25rem', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', transition: 'all 0.2s', background: 'linear-gradient(135deg, var(--color-primary) 0%, #6d28d9 100%)', fontSize: '1.05rem', fontWeight: 800, border: 'none', height: '64px', boxShadow: 'var(--shadow-lg)' }}
               >
-                {loading ? <Loader2 size={24} className="spin" /> : <CheckCircle size={20} />}
+                {loading ? <Loader2 size={24} className="spin" /> : <CheckCircle size={22} />}
                 THANH TOÁN & XUẤT HÓA ĐƠN
               </button>
             </div>

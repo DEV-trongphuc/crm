@@ -723,4 +723,41 @@ CREATE TABLE IF NOT EXISTS `expenses` (
   INDEX `idx_exp_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ============================================================
+-- 29. TICKETS (Helpdesk)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS `tickets` (
+  `id`             INT AUTO_INCREMENT PRIMARY KEY,
+  `tenant_id`      INT NOT NULL,
+  `contact_id`     INT NULL,
+  `created_by`     INT NOT NULL,
+  `assignee_id`    INT NULL,
+  `subject`        VARCHAR(255) NOT NULL,
+  `customer_name`  VARCHAR(255) NOT NULL,
+  `description`    TEXT NULL,
+  `status`         ENUM('open','in_progress','resolved','closed') NOT NULL DEFAULT 'open',
+  `priority`       ENUM('low','medium','high','urgent') NOT NULL DEFAULT 'medium',
+  `due_date`       DATETIME NULL,
+  `resolved_at`    DATETIME NULL,
+  `created_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`tenant_id`)   REFERENCES `tenants`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`contact_id`)  REFERENCES `contacts`(`id`) ON DELETE SET NULL,
+  FOREIGN KEY (`created_by`)  REFERENCES `users`(`id`) ON DELETE RESTRICT,
+  FOREIGN KEY (`assignee_id`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+  INDEX `idx_ticket_tenant` (`tenant_id`),
+  INDEX `idx_ticket_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `ticket_comments` (
+  `id`          INT AUTO_INCREMENT PRIMARY KEY,
+  `ticket_id`   INT NOT NULL,
+  `user_id`     INT NOT NULL,
+  `body`        TEXT NOT NULL,
+  `created_at`  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`ticket_id`) REFERENCES `tickets`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`user_id`)   REFERENCES `users`(`id`) ON DELETE RESTRICT,
+  INDEX `idx_tc_ticket` (`ticket_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET FOREIGN_KEY_CHECKS = 1;

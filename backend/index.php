@@ -83,6 +83,7 @@ require_once __DIR__ . '/controllers/SearchController.php';
 require_once __DIR__ . '/controllers/ImportController.php';
 require_once __DIR__ . '/controllers/FinanceController.php';
 require_once __DIR__ . '/controllers/POSController.php';
+require_once __DIR__ . '/controllers/TicketController.php';
 
 // ── Parse route ───────────────────────────────────────────────
 $requestUri = strtok($_SERVER['REQUEST_URI'], '?');
@@ -304,6 +305,18 @@ switch ($resource) {
         elseif ($resourceId  && $method === 'PUT')    $ctrl->updateExpense($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->deleteExpense($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PATCH')  $ctrl->approveExpense($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // TICKETS (Helpdesk)
+    case 'tickets':
+        $auth = requireAuth();
+        $ctrl = new TicketController($db);
+        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 

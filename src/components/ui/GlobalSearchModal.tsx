@@ -27,6 +27,7 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
       setResults(r.data.data || {});
     } catch {
       setResults({});
+      // Optional: could show toast, but global search usually fails silently to avoid spam.
     } finally {
       setLoading(false);
     }

@@ -117,23 +117,21 @@ export const DashboardPage: React.FC = () => {
         api.get('/dashboard/sales-leaderboard', { params: { from: dateRange.from, to: dateRange.to } }),
         api.get('/dashboard/recent-activities'),
       ]);
-      setStats(s.data.data || MOCK_STATS);
-      setRevenueChart(rev.data.data?.length ? rev.data.data : MOCK_REVENUE);
-      setPipelineFunnel(pipe.data.data?.length ? pipe.data.data : MOCK_PIPELINE_FUNNEL);
+      setStats(s.data.data || null);
+      setRevenueChart(rev.data.data || []);
+      setPipelineFunnel(pipe.data.data || []);
       const srcColors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6b7280'];
-      const srcData = src.data.data?.length
-        ? src.data.data.map((x: any, i: number) => ({ ...x, color: srcColors[i % srcColors.length] }))
-        : MOCK_SOURCES;
+      const srcData = (src.data.data || []).map((x: any, i: number) => ({ ...x, color: srcColors[i % srcColors.length] }));
       setLeadSources(srcData);
-      setLeaderboard(lead.data.data?.length ? lead.data.data : MOCK_LEADERBOARD);
-      setRecentActivities(acts.data.data?.length ? acts.data.data : MOCK_ACTIVITIES);
+      setLeaderboard(lead.data.data || []);
+      setRecentActivities(acts.data.data || []);
     } catch {
-      setStats(MOCK_STATS);
-      setRevenueChart(MOCK_REVENUE);
-      setPipelineFunnel(MOCK_PIPELINE_FUNNEL);
-      setLeadSources(MOCK_SOURCES);
-      setLeaderboard(MOCK_LEADERBOARD);
-      setRecentActivities(MOCK_ACTIVITIES);
+      setStats(null);
+      setRevenueChart([]);
+      setPipelineFunnel([]);
+      setLeadSources([]);
+      setLeaderboard([]);
+      setRecentActivities([]);
     } finally {
       setLoadingStats(false);
     }

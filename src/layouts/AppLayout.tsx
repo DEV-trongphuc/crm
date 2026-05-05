@@ -3,7 +3,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Building2, Briefcase, CalendarCheck,
   Package, BarChart3, Settings, LogOut, Menu, Search,
-  ChevronLeft, Moon, Sun, Command, Plus, FileSpreadsheet, Wallet
+  ChevronLeft, Moon, Sun, Command, Plus, FileSpreadsheet, Wallet, LifeBuoy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { to: '/products',  icon: Package,         label: 'Sản phẩm' },
   { to: '/invoices',  icon: FileSpreadsheet, label: 'Hóa đơn & PO' },
   { to: '/expenses',  icon: Wallet,          label: 'Chi phí' },
+  { to: '/tickets',   icon: LifeBuoy,        label: 'Hỗ trợ' },
   { to: '/reports',   icon: BarChart3,       label: 'Báo cáo' },
 ];
 
@@ -96,7 +97,6 @@ export const AppLayout: React.FC = () => {
               onClick={() => setMobileOpen(false)}>
               <Icon size={20} className={styles.navIcon} />
               {!collapsed && <span className={styles.navLabel}>{label}</span>}
-              {!collapsed && to === '/activities' && <span className={styles.navBadge}>3</span>}
             </NavLink>
           ))}
         </div>
@@ -147,9 +147,7 @@ export const AppLayout: React.FC = () => {
           </div>
 
             <div className={styles.topbarRight}>
-              <button className="btn primary sm" style={{ borderRadius: 'var(--radius-full)', padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', gap: '6px', marginRight: '0.5rem' }} onClick={() => setShowPOS(true)}>
-                <Plus size={16} /> Tạo đơn
-              </button>
+
               <button className={styles.iconBtn} onClick={toggleDark} title="Chế độ tối">
                 {dark ? <Sun size={18} /> : <Moon size={18} />}
               </button>

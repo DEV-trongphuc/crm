@@ -6,6 +6,7 @@ import { CompanyDrawer } from './CompanyDrawer';
 import { Pagination } from '../components/ui/Pagination';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
 
 const STATUSES = ['active', 'inactive', 'prospect'];
 const ST_LABEL: Record<string, string> = { active: 'Hoạt động', inactive: 'Ngừng', prospect: 'Tiềm năng' };
@@ -40,17 +41,19 @@ export const CompaniesPage: React.FC = () => {
 
   const fetchCompanies = useCallback(async () => {
     setLoading(true);
+    if (DEV_MODE) { setCompanies(MOCK_COMPANIES); setTotal(MOCK_COMPANIES.length); setLoading(false); return; }
     try {
       const params: Record<string, string> = {};
       if (search) params.search = search;
       if (statusFilter) params.status = statusFilter;
       const r = await api.get('/companies', { params });
       const data = r.data.data?.items || r.data.data || [];
-      if (data.length === 0) { setCompanies(MOCK_COMPANIES); setTotal(MOCK_COMPANIES.length); }
-      else { setCompanies(data); setTotal(r.data.data.total || data.length); }
+      setCompanies(data);
+      setTotal(r.data.data?.total || data.length);
     } catch {
-      setCompanies(MOCK_COMPANIES);
-      setTotal(MOCK_COMPANIES.length);
+      setCompanies([]);
+      setTotal(0);
+      addToast('Không thể tải danh sách công ty', 'error');
     } finally {
       setLoading(false);
     }
