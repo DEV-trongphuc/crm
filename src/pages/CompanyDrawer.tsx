@@ -517,7 +517,20 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             {/* Footer */}
             <div className={styles.footer}>
               <button className="btn ghost" onClick={onClose}>Hủy bỏ</button>
-              <button className="btn primary" onClick={() => onSave({ ...formData, tags })}>Lưu thông tin Công ty</button>
+              <button 
+                className="btn primary" 
+                onClick={async () => {
+                  try {
+                    const res = await api.put(`/companies/${entity.id}`, { ...formData, tags });
+                    addToast('Đã cập nhật thông tin công ty thành công', 'success');
+                    onSave(res.data.data);
+                  } catch (e: any) {
+                    addToast(e.response?.data?.message || 'Lỗi khi lưu thông tin công ty', 'error');
+                  }
+                }}
+              >
+                Lưu thông tin Công ty
+              </button>
             </div>
           </motion.div>
         </>

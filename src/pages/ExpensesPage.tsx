@@ -52,7 +52,8 @@ const EMPTY_FORM = {
   related_user_ids: [] as number[],
   vendor_name: '',
   has_vat_invoice: false,
-  is_vat_inclusive: false
+  is_vat_inclusive: false,
+  entities: [] as any[]
 };
 
 export const ExpensesPage: React.FC = () => {
@@ -75,6 +76,7 @@ export const ExpensesPage: React.FC = () => {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [catOpen, setCatOpen] = useState(false);
   const [users, setUsers] = useState<any[]>(DEV_MODE ? useMockStore.getState().users : []); // for approver dropdown
+  const [contacts, setContacts] = useState<any[]>([]); // for splitting bill
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -97,13 +99,15 @@ export const ExpensesPage: React.FC = () => {
     } finally { setLoading(false); }
   }, [dateRange, statusFilter]);
 
-  // Fetch users for approver dropdown
+  // Fetch users & contacts for dropdowns
   useEffect(() => {
     if (DEV_MODE) {
       setUsers(useMockStore.getState().users);
+      // Mock contacts if needed
       return;
     }
     api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => {});
+    api.get('/contacts').then(r => setContacts(r.data.data?.items || [])).catch(() => {});
   }, []);
 
   useEffect(() => { fetchExpenses(); setPage(1); }, [fetchExpenses]);
@@ -143,7 +147,8 @@ export const ExpensesPage: React.FC = () => {
       vendor_name: item.vendor_name || '',
       has_vat_invoice: Boolean(item.has_vat_invoice),
       is_vat_inclusive: Boolean(item.is_vat_inclusive),
-      notes: item.notes || ''
+      notes: item.notes || '',
+      entities: item.entities || []
     });
     setShowModal(true); 
   };
@@ -177,11 +182,17 @@ export const ExpensesPage: React.FC = () => {
         return;
       }
 
+      let payloadEntities = form.entities;
+      if (form.entities.length > 0) {
+        const splitAmt = Number(form.amount) / form.entities.length;
+        payloadEntities = form.entities.map((e: any) => ({ ...e, amount: splitAmt }));
+      }
+
       if (editItem) {
-        await api.put(`/expenses/${editItem.id}`, { ...form, amount: Number(form.amount) });
+        await api.put(`/expenses/${editItem.id}`, { ...form, amount: Number(form.amount), entities: payloadEntities });
         addToast('Đã cập nhật chi phí', 'success');
       } else {
-        await api.post('/expenses', { ...form, amount: Number(form.amount), status: 'pending' });
+        await api.post('/expenses', { ...form, amount: Number(form.amount), status: 'pending', entities: payloadEntities });
         addToast('Đã nhập chi phí mới – chờ phê duyệt', 'success');
       }
       setShowModal(false);
@@ -569,6 +580,32 @@ export const ExpensesPage: React.FC = () => {
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600 }}>Ghi chú chi tiết</label>
                   <textarea className="form-input" rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Mô tả thêm nếu cần..." style={{ resize: 'none' }} />
+                </div>
+
+                <div className="form-group" style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)' }}>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Áp dụng cho (Chia đều tiền bill)</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                    {form.entities.length === 0 ? <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Chưa áp dụng cho khách hàng nào</span> : 
+                      form.entities.map((e: any) => (
+                        <span key={e.entity_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.8125rem', fontWeight: 600 }}>
+                          <User size={12} /> {e.name || `Khách hàng #${e.entity_id}`}
+                          <X size={14} style={{ cursor: 'pointer', marginLeft: 4 }} onClick={() => setForm({ ...form, entities: form.entities.filter((x: any) => x.entity_id !== e.entity_id) })} />
+                        </span>
+                      ))
+                    }
+                  </div>
+                  <CustomSelect
+                    options={contacts.filter(c => !form.entities.find((e: any) => e.entity_id === c.id)).map(c => ({ value: String(c.id), label: `${c.first_name} ${c.last_name || ''}`.trim(), icon: <User size={12}/> }))}
+                    value=""
+                    onChange={(val) => {
+                      const found = contacts.find(c => String(c.id) === val);
+                      if (found) {
+                        setForm({ ...form, entities: [...form.entities, { entity_type: 'contact', entity_id: found.id, name: `${found.first_name} ${found.last_name || ''}`.trim() }] });
+                      }
+                    }}
+                    placeholder="+ Thêm khách hàng chia tiền bill..."
+                    searchable
+                  />
                 </div>
               </div>
 

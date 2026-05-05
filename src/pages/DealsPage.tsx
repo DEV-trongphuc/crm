@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock } from 'lucide-react';
+import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { useUIStore } from '../store/uiStore';
@@ -51,6 +51,137 @@ export const DealsPage: React.FC = () => {
   const [tempStage, setTempStage] = useState('');
   
   const [activeFilterPill, setActiveFilterPill] = useState<string>('');
+  
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [showBulkMove, setShowBulkMove] = useState(false);
+  const [targetStageId, setTargetStageId] = useState<string>('');
+  
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+
+  const filteredItems = useMemo(() => {
+    const result: Record<string, any[]> = {};
+    Object.keys(items).forEach(stageIdStr => {
+      const stageItems = items[stageIdStr as any] || [];
+      result[stageIdStr] = stageItems.filter(item => {
+        // Text Search
+        if (searchTerm) {
+          const lowerSearch = searchTerm.toLowerCase();
+          const nameMatch = pipelineView === 'contacts' 
+            ? `${item.first_name || ''} ${item.last_name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch)
+            : `${item.name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch);
+          
+          if (!nameMatch) return false;
+        }
+        // Date Filter
+        const dateToCheck = item.updated_at || item.created_at;
+        if (dateToCheck && dateFilterType) {
+          const itemDate = new Date(dateToCheck.split(' ')[0]);
+          const today = new Date();
+          today.setHours(0,0,0,0);
+          
+          if (dateFilterType === 'today') {
+            if (itemDate.getTime() !== today.getTime()) return false;
+          } else if (dateFilterType === 'yesterday') {
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (itemDate.getTime() !== yesterday.getTime()) return false;
+          } else if (dateFilterType === 'this_week') {
+            const startOfWeek = new Date(today);
+            startOfWeek.setDate(today.getDate() - today.getDay() + (today.getDay() === 0 ? -6 : 1)); // Monday
+            if (itemDate < startOfWeek) return false;
+          } else if (dateFilterType === 'this_month') {
+            if (itemDate.getMonth() !== today.getMonth() || itemDate.getFullYear() !== today.getFullYear()) return false;
+          } else if (dateFilterType === 'this_year') {
+            if (itemDate.getFullYear() !== today.getFullYear()) return false;
+          } else if (dateFilterType === 'custom') {
+            if (filterDateFrom && dateToCheck.split(' ')[0] < filterDateFrom) return false;
+            if (filterDateTo && dateToCheck.split(' ')[0] > filterDateTo) return false;
+          }
+        }
+        // Assignee Filter
+        if (filterAssignee && String(item.owner_id) !== String(filterAssignee)) return false;
+        // Stage Filter
+        if (filterStage && String(item.stage_id) !== String(filterStage)) return false;
+        
+        return true;
+      });
+    });
+    return result;
+  }, [items, searchTerm, dateFilterType, filterDateFrom, filterDateTo, filterAssignee, filterStage, pipelineView]);
+
+  const getVisibleItems = () => {
+    return Object.values(filteredItems)
+      .flat()
+      .filter(item => activeStageFilter === 'all' || String(item.stage_id) === String(activeStageFilter));
+  };
+
+  const totalVisibleCount = getVisibleItems().length;
+  const totalPages = Math.ceil(totalVisibleCount / limit);
+  const pagedItems = getVisibleItems().slice((page - 1) * limit, page * limit);
+
+  const toggleSelect = (id: number) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const togglePageAll = () => {
+    const pageIds = pagedItems.map(v => v.id);
+    const allPageSelected = pageIds.every(id => selected.has(id));
+    
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (allPageSelected) pageIds.forEach(id => next.delete(id));
+      else pageIds.forEach(id => next.add(id));
+      return next;
+    });
+  };
+
+  const selectAllEntireQuery = () => {
+    setSelected(new Set(getVisibleItems().map(v => v.id)));
+  };
+
+  const bulkExport = () => {
+    const visible = getVisibleItems().filter(item => selected.has(item.id));
+    const csv = [
+      ['Tên', 'Dự kiến', 'Giai đoạn', 'Email', 'SĐT'].join(','),
+      ...visible.map(item => [
+        `"${pipelineView === 'contacts' ? `${item.first_name} ${item.last_name}` : item.name}"`,
+        item.expected_revenue,
+        stages.find(s => s.id === item.stage_id)?.name || '',
+        item.email,
+        item.phone
+      ].join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `pipeline_export_${new Date().toISOString().slice(0,10)}.csv`;
+    link.click();
+    addToast(`Đã xuất ${selected.size} dòng ra CSV`, 'success');
+  };
+
+  const bulkMove = async () => {
+    if (!targetStageId) return;
+    try {
+      const ids = Array.from(selected);
+      // In a real app, this would be one API call
+      await Promise.all(ids.map(id => api.patch(`/${pipelineView}/${id}/stage`, { stage_id: targetStageId, note: 'Bulk move' })));
+      
+      fetchData(); // Refresh all
+      
+      addToast(`Đã chuyển ${selected.size} thẻ sang giai đoạn mới`, 'success');
+      setSelected(new Set());
+      setShowBulkMove(false);
+    } catch {
+      addToast('Lỗi khi chuyển giai đoạn', 'error');
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -147,46 +278,6 @@ export const DealsPage: React.FC = () => {
     setTransitionModal(null);
   };
 
-  const filteredItems = useMemo(() => {
-    const result: Record<string, any[]> = {};
-    Object.keys(items).forEach(stageIdStr => {
-      const stageItems = items[stageIdStr as any] || [];
-      result[stageIdStr] = stageItems.filter(item => {
-        // Text Search
-        if (searchTerm) {
-          const lowerSearch = searchTerm.toLowerCase();
-          const nameMatch = pipelineView === 'contacts' 
-            ? `${item.first_name || ''} ${item.last_name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch)
-            : `${item.name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch);
-          
-          if (!nameMatch) return false;
-        }
-        // Date Filter (using updated_at as proxy for pipeline move time)
-        const dateToCheck = item.updated_at || item.created_at;
-        if (dateToCheck) {
-          const itemDate = dateToCheck.split(' ')[0]; // YYYY-MM-DD
-          if (dateFilterType && dateFilterType !== 'custom') {
-            if (!itemDate.startsWith(dateFilterType)) return false;
-          } else if (dateFilterType === 'custom') {
-            if (filterDateFrom && itemDate < filterDateFrom) return false;
-            if (filterDateTo && itemDate > filterDateTo) return false;
-          }
-        }
-        // Assignee Filter
-        if (filterAssignee) {
-          const val = String(filterAssignee);
-          if (String(item.owner_id) !== val) return false;
-        }
-        // Stage Filter
-        if (filterStage) {
-          if (String(item.stage_id) !== String(filterStage)) return false;
-        }
-        return true;
-      });
-    });
-    return result;
-  }, [items, searchTerm, dateFilterType, filterDateFrom, filterDateTo, filterAssignee, filterStage, pipelineView]);
-
   const totalRevenue = Object.values(filteredItems).flat().reduce((sum, d) => sum + (Number(d.expected_revenue) || 0), 0);
 
   const filterPills = [
@@ -214,8 +305,8 @@ export const DealsPage: React.FC = () => {
             <Target size={24} color="var(--color-primary)" />
             Pipeline {pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp'}
           </h1>
-          <p className="page-subtitle">
-            {Object.values(items).flat().length} thẻ · Tổng dự kiến: <strong style={{ color: 'var(--color-success)', fontSize: '1.1rem' }}>{FMT(totalRevenue)}</strong>
+          <p className="page-subtitle" style={{ fontSize: '0.9375rem', marginTop: '4px' }}>
+            <strong>{Object.values(items).flat().length}</strong> thẻ đang quản lý · Tổng giá trị dự kiến: <strong style={{ color: 'var(--color-primary)', fontSize: '1.25rem', marginLeft: '4px' }}>{FMT(totalRevenue)}</strong>
           </p>
         </div>
         <div style={{ flex: 1 }} />
@@ -255,123 +346,117 @@ export const DealsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Filter Bar with CSS Alignment Fixes */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', flexShrink: 0, background: 'var(--color-surface)', padding: '1rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
-        
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* SEARCH INPUT ALIGNMENT FIX */}
-          <div className="search-wrap" style={{ flex: '1 1 300px', minWidth: 200, position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <Search size={18} className="text-light" style={{ position: 'absolute', left: '12px', pointerEvents: 'none' }} />
-            <input 
-              className="form-input" 
-              style={{ paddingLeft: '38px', width: '100%' }}
-              placeholder={pipelineView === 'contacts' ? "Tìm theo tên khách hàng, email, sđt..." : "Tìm theo tên doanh nghiệp, mã số thuế..."}
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-            />
-          </div>
-          
-          <button className={`btn ${showFilterPanel ? 'primary' : 'outline'}`} onClick={() => {
-            if (!showFilterPanel) {
-              setTempDateType(dateFilterType); setTempDateFrom(filterDateFrom); setTempDateTo(filterDateTo);
-              setTempAssignee(filterAssignee); setTempStage(filterStage);
-            }
-            setShowFilterPanel(!showFilterPanel);
-          }}>
-            <Filter size={16} /> Bộ lọc nâng cao {(dateFilterType || filterAssignee || filterStage) ? '(Đang bật)' : ''}
-          </button>
-          
-          {(dateFilterType || filterAssignee || filterStage || activeFilterPill) && (
-            <button className="btn ghost sm" onClick={() => { setSearchTerm(''); setDateFilterType(''); setFilterDateFrom(''); setFilterDateTo(''); setFilterAssignee(''); setFilterStage(''); setActiveFilterPill(''); setShowFilterPanel(false); }}>
-              Bỏ lọc
-            </button>
-          )}
-        </div>
-
-        {/* The Filter Panel */}
-        <AnimatePresence>
-          {showFilterPanel && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-              style={{ overflow: 'hidden' }}
+      {/* Filter Bar / Bulk Action Bar */}
+      <div className="card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem', position: 'relative' }}>
+        <AnimatePresence mode="wait">
+          {selected.size > 0 ? (
+            <motion.div 
+              key="bulk-actions"
+              initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%' }}
             >
-              <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', marginTop: '0.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-                 {/* Khung thời gian */}
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Thời gian chuyển Pipeline</label>
-                    <CustomSelect options={[
-                       {value: '', label: 'Tất cả thời gian'},
-                       ...Array.from({ length: 6 }).map((_, i) => {
-                         const d = new Date(); d.setMonth(d.getMonth() - i);
-                         const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                         return { value: val, label: `Tháng ${d.getMonth() + 1}/${d.getFullYear()}` };
-                       }),
-                       {value: 'custom', label: 'Tùy chỉnh (Từ ngày - Đến ngày)...'}
-                    ]} value={tempDateType} onChange={v => setTempDateType(v as string)} />
-                    {tempDateType === 'custom' && (
-                       <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                         <input type="date" className="form-input" style={{ width: '100%' }} value={tempDateFrom} onChange={e => setTempDateFrom(e.target.value)} title="Từ ngày" />
-                         <span style={{ alignSelf: 'center', fontWeight: 600, color: 'var(--color-text-light)' }}>-</span>
-                         <input type="date" className="form-input" style={{ width: '100%' }} value={tempDateTo} onChange={e => setTempDateTo(e.target.value)} title="Đến ngày" />
-                       </div>
-                    )}
-                 </div>
-
-                 {/* Phụ trách */}
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Sale phụ trách (Owner)</label>
-                    <CustomSelect options={[
-                       {value: '', label: 'Tất cả Sale'},
-                       ...allUsers.map(u => ({value: String(u.id), label: u.full_name}))
-                    ]} value={tempAssignee} onChange={v => setTempAssignee(v as string)} searchable />
-                 </div>
-
-                 {/* Giai đoạn */}
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Giai đoạn Pipeline</label>
-                    <CustomSelect options={[
-                       {value: '', label: 'Tất cả giai đoạn'},
-                       ...stages.map(s => ({value: String(s.id), label: s.name}))
-                    ]} value={tempStage} onChange={v => setTempStage(v as string)} />
-                 </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--color-primary)', color: 'white', padding: '0.5rem 1.25rem', borderRadius: 'var(--radius-lg)', boxShadow: '0 4px 12px rgba(124,58,237,0.2)' }}>
+                <span style={{ fontWeight: 700, fontSize: '0.875rem' }}>{selected.size} đã chọn</span>
+                {selected.size > 0 && selected.size < totalVisibleCount && (
+                  <button className="btn ghost sm" style={{ color: 'white', textDecoration: 'underline', padding: '0 4px' }} onClick={selectAllEntireQuery}>
+                    Chọn tất cả {totalVisibleCount} thẻ
+                  </button>
+                )}
               </div>
               
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
-                 <button className="btn outline" onClick={() => setShowFilterPanel(false)}>Hủy</button>
-                 <button className="btn primary" onClick={() => {
-                    setDateFilterType(tempDateType); setFilterDateFrom(tempDateFrom); setFilterDateTo(tempDateTo);
-                    setFilterAssignee(tempAssignee); setFilterStage(tempStage); setActiveFilterPill('');
-                    setShowFilterPanel(false);
-                 }}>Áp dụng Lọc</button>
+              <div style={{ flex: 1 }} />
+              
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button className="btn ghost sm" style={{ color: 'var(--color-text)' }} onClick={bulkExport}>
+                  <Download size={14} /> Xuất CSV
+                </button>
+                <button className="btn primary sm" onClick={() => setShowBulkMove(true)}>
+                  <RefreshCw size={14} /> Chuyển Giai đoạn
+                </button>
+                <button className="btn ghost sm" onClick={() => setSelected(new Set())}>
+                  <X size={16} /> Hủy
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="filters"
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
+              style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
+            >
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div className="filter-search" style={{ width: '400px' }}>
+                  <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
+                  <input placeholder="Tìm tên, email, điện thoại..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} />
+                </div>
+                
+                <div style={{ flex: 1 }} />
+
+                <button className={`btn sm ${showFilterPanel ? 'primary' : 'outline'}`} onClick={() => setShowFilterPanel(!showFilterPanel)} style={{ borderRadius: 'var(--radius-lg)', padding: '8px 16px' }}>
+                  <Filter size={14} /> {showFilterPanel ? 'Đóng bộ lọc' : 'Bộ lọc nâng cao'}
+                </button>
+              </div>
+
+              {/* The Filter Panel */}
+              {showFilterPanel && (
+                <div style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', marginTop: '0.25rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
+                   {/* Phụ trách */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Sale phụ trách</label>
+                      <CustomSelect options={[{value: '', label: 'Tất cả Sale'}, ...allUsers.map(u => ({value: String(u.id), label: u.full_name}))]} value={filterAssignee} onChange={v => setFilterAssignee(v as string)} />
+                   </div>
+                   {/* Giai đoạn */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Giai đoạn</label>
+                      <CustomSelect options={[{value: '', label: 'Tất cả giai đoạn'}, ...stages.map(s => ({value: String(s.id), label: s.name}))]} value={filterStage} onChange={v => setFilterStage(v as string)} />
+                   </div>
+                   {/* Khoảng ngày */}
+                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Thời gian</label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <CustomSelect 
+                          options={[
+                            { value: '', label: 'Tất cả thời gian' },
+                            { value: 'today', label: 'Hôm nay' },
+                            { value: 'yesterday', label: 'Hôm qua' },
+                            { value: 'this_week', label: 'Tuần này' },
+                            { value: 'this_month', label: 'Tháng này' },
+                            { value: 'this_year', label: 'Năm này' },
+                            { value: 'custom', label: 'Tùy chỉnh khoảng ngày' },
+                          ]} 
+                          value={dateFilterType} 
+                          onChange={v => setDateFilterType(v as string)} 
+                        />
+                        {dateFilterType === 'custom' && (
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', animation: 'fadeIn 0.2s ease-out' }}>
+                            <input type="date" className="form-input" style={{ padding: '6px 10px', fontSize: '0.8125rem', flex: 1 }} value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
+                            <span style={{ color: 'var(--color-text-muted)' }}>-</span>
+                            <input type="date" className="form-input" style={{ padding: '6px 10px', fontSize: '0.8125rem', flex: 1 }} value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
+                          </div>
+                        )}
+                      </div>
+                   </div>
+                </div>
+              )}
+
+              {/* Quick Filter Pills */}
+              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px', marginTop: '0.25rem' }}>
+                {filterPills.map(pill => (
+                  <button key={pill.id} onClick={() => handlePillClick(pill.id)}
+                    style={{ 
+                      padding: '5px 14px', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 600, 
+                      border: `1.5px solid ${activeFilterPill === pill.id ? 'var(--color-primary)' : 'var(--color-border-light)'}`, 
+                      background: activeFilterPill === pill.id ? 'var(--color-primary-light)' : 'var(--color-surface)', 
+                      color: activeFilterPill === pill.id ? 'var(--color-primary)' : 'var(--color-text-light)', 
+                      cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap'
+                    }}>
+                    {pill.label}
+                  </button>
+                ))}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-        
-        {/* Quick Filter Pills */}
-        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px', scrollbarWidth: 'none' }}>
-          {filterPills.map(pill => (
-            <button
-              key={pill.id}
-              onClick={() => handlePillClick(pill.id)}
-              style={{
-                padding: '6px 16px',
-                borderRadius: '99px',
-                fontSize: '0.8125rem',
-                fontWeight: 600,
-                border: `1px solid ${activeFilterPill === pill.id ? 'var(--color-primary)' : 'var(--color-border)'}`,
-                background: activeFilterPill === pill.id ? 'var(--color-primary-light)' : 'var(--color-surface)',
-                color: activeFilterPill === pill.id ? 'var(--color-primary)' : 'var(--color-text-light)',
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                transition: 'all 0.2s'
-              }}
-            >
-              {pill.label}
-            </button>
-          ))}
-        </div>
-
       </div>
 
       {viewMode === 'list' && (
@@ -573,6 +658,9 @@ export const DealsPage: React.FC = () => {
             <table className="table" style={{ width: '100%', minWidth: 800 }}>
               <thead>
                 <tr>
+                  <th style={{ width: 44, padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
+                    <input type="checkbox" checked={pagedItems.every(item => selected.has(item.id)) && pagedItems.length > 0} onChange={togglePageAll} style={{ cursor: 'pointer' }} />
+                  </th>
                   <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Tên {pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp'}</th>
                   <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Dự kiến</th>
                   <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Giai đoạn</th>
@@ -580,10 +668,7 @@ export const DealsPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {Object.values(filteredItems)
-                  .flat()
-                  .filter(item => activeStageFilter === 'all' || String(item.stage_id) === String(activeStageFilter))
-                  .map(item => {
+                {pagedItems.map(item => {
                   const itemName = pipelineView === 'contacts' ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : item.name;
                   const stage = stages.find(s => s.id === item.stage_id);
                   return (
@@ -594,9 +679,10 @@ export const DealsPage: React.FC = () => {
                         else { setSelectedCompany(item); setShowCompanyDrawer(true); }
                       }}
                       style={{ cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)' }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                     >
+                      <td style={{ padding: '1rem' }} onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} style={{ cursor: 'pointer' }} />
+                      </td>
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 800 }}>
@@ -627,6 +713,20 @@ export const DealsPage: React.FC = () => {
               </tbody>
             </table>
           )}
+          
+          {/* Pagination Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderTop: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)' }}>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
+              Hiển thị <strong>{Math.min(limit, totalVisibleCount)}</strong> / <strong>{totalVisibleCount}</strong> kết quả
+            </div>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button className="btn outline sm" disabled={page === 1} onClick={() => setPage(page - 1)}>&lt;</button>
+              {[...Array(totalPages)].map((_, i) => (
+                <button key={i} className={`btn sm ${page === i + 1 ? 'primary' : 'outline'}`} onClick={() => setPage(i + 1)} style={{ width: 32, height: 32, padding: 0 }}>{i + 1}</button>
+              )).slice(Math.max(0, page - 3), Math.min(totalPages, page + 2))}
+              <button className="btn outline sm" disabled={page === totalPages} onClick={() => setPage(page + 1)}>&gt;</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -679,6 +779,33 @@ export const DealsPage: React.FC = () => {
               <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
                 <button className="btn outline" onClick={() => setTransitionModal(null)}>Hủy</button>
                 <button className="btn primary" onClick={handleConfirmTransition}>Lưu cập nhật</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Move Modal */}
+      <AnimatePresence>
+        {showBulkMove && (
+          <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }} onClick={() => setShowBulkMove(false)}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+              style={{ background: 'var(--color-surface)', width: '400px', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-2xl)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Chuyển {selected.size} thẻ sang...</h3>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Chọn giai đoạn đích</label>
+                <CustomSelect 
+                  options={stages.map(s => ({ value: String(s.id), label: s.name }))} 
+                  value={targetStageId} 
+                  onChange={v => setTargetStageId(v as string)} 
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button className="btn outline" style={{ flex: 1 }} onClick={() => setShowBulkMove(false)}>Hủy</button>
+                <button className="btn primary" style={{ flex: 1 }} onClick={bulkMove} disabled={!targetStageId}>Xác nhận chuyển</button>
               </div>
             </motion.div>
           </div>

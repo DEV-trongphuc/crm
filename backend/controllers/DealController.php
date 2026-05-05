@@ -97,12 +97,13 @@ class DealController {
         }
         $this->db->prepare("
             INSERT INTO deals (tenant_id,stage_id,contact_id,company_id,owner_id,created_by,
-                title,value,probability,expected_close_date,source,tags)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+                title,description,priority,value,probability,expected_close_date,source,tags)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ")->execute([
             $auth['tenant_id'], $stageId, $b['contact_id']??null, $b['company_id']??null,
             $b['owner_id']??$auth['user_id'], $auth['user_id'],
-            $b['title'], $b['value']??0, $b['probability']??50,
+            $b['title'], $b['description']??null, $b['priority']??'medium',
+            $b['value']??0, $b['probability']??50,
             $b['expected_close_date']??null, $b['source']??null,
             json_encode($b['tags']??[]),
         ]);
@@ -157,7 +158,7 @@ class DealController {
 
     public function update(array $auth, int $id): void {
         $b = getBody();
-        $fields = ['stage_id','contact_id','company_id','owner_id','title','value',
+        $fields = ['stage_id','contact_id','company_id','owner_id','title','description','priority','value',
                    'probability','expected_close_date','source','lost_reason'];
         $sets=[]; $params=[];
         foreach ($fields as $f) { if (array_key_exists($f,$b)) { $sets[]="$f=?"; $params[]=$b[$f]; } }

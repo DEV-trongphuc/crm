@@ -197,6 +197,15 @@ switch ($resource) {
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
+    // UPLOAD
+    case 'upload':
+        $auth = requireAuth();
+        require_once __DIR__ . '/controllers/UploadController.php';
+        $ctrl = new UploadController($db);
+        if ($method === 'POST') $ctrl->handle($auth);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
     // PRODUCTS
     case 'products':
         $auth = requireAuth();
@@ -302,7 +311,11 @@ switch ($resource) {
     case 'expenses':
         $auth = requireAuth();
         $ctrl = new FinanceController($db);
-        if     (!$resourceId && $method === 'GET')    $ctrl->listExpenses($auth);
+        if ($resourceId === 'entity' && $subResource && $method === 'GET') {
+            $ctrl->listEntityExpenses($auth, $subResource, (int)($segments[3] ?? 0));
+        }
+        elseif ($resourceId === 'summary' && $method === 'GET') $ctrl->summary($auth);
+        elseif (!$resourceId && $method === 'GET')    $ctrl->listExpenses($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->createExpense($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->showExpense($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->updateExpense($auth, (int)$resourceId);

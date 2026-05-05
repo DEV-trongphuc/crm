@@ -9,11 +9,14 @@ class ActivityController {
         $limit = min(100,max(10,(int)($_GET['limit']??20)));
         $offset = ($page-1)*$limit;
         $type = $_GET['type']??''; $status = $_GET['status']??''; $uid = $_GET['user_id']??'';
-
+        $relType = $_GET['related_type']??''; $relId = $_GET['related_id']??'';
+        
         $where=['a.tenant_id=?']; $params=[$tid];
-        if ($type)   { $where[]='a.type=?';    $params[]=$type; }
-        if ($status) { $where[]='a.status=?';  $params[]=$status; }
-        if ($uid)    { $where[]='a.user_id=?'; $params[]=(int)$uid; }
+        if ($type)     { $where[]='a.type=?';    $params[]=$type; }
+        if ($status)   { $where[]='a.status=?';  $params[]=$status; }
+        if ($uid)      { $where[]='a.user_id=?'; $params[]=(int)$uid; }
+        if ($relType)  { $where[]='a.related_type=?'; $params[]=$relType; }
+        if ($relId)    { $where[]='a.related_id=?';   $params[]=(int)$relId; }
         $w=implode(' AND ',$where);
 
         $cnt=$this->db->prepare("SELECT COUNT(*) FROM activities a WHERE $w");
@@ -27,7 +30,7 @@ class ActivityController {
             LEFT JOIN users u ON a.user_id=u.id
             LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id
             LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id
-            WHERE $w ORDER BY COALESCE(a.due_date, a.created_at) DESC
+            WHERE $w ORDER BY a.created_at DESC
             LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);

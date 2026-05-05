@@ -83,12 +83,14 @@ export const ContactsPage: React.FC = () => {
     { id: 'email', label: 'Email', visible: true },
     { id: 'phone', label: 'SĐT', visible: true },
     { id: 'score', label: 'Lead Score', visible: false },
-    { id: 'company', label: 'Công ty', visible: true },
+    { id: 'company', label: 'Công ty', visible: false },
     { id: 'tags', label: 'Phân loại (Tags)', visible: true },
     { id: 'contact', label: 'Liên lạc', visible: true },
     { id: 'deal', label: 'Deal hiện tại', visible: false },
     { id: 'owner', label: 'Sale phụ trách', visible: true },
+    { id: 'updated_at', label: 'Ngày cập nhật', visible: true },
     { id: 'status', label: 'Trạng thái', visible: true },
+    { id: 'created_at', label: 'Ngày tạo', visible: false },
   ]);
   const [showColumns, setShowColumns] = useState(false);
 
@@ -392,7 +394,9 @@ export const ContactsPage: React.FC = () => {
                     {columns.find(c => c.id === 'contact')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên lạc cuối</th>}
                     {columns.find(c => c.id === 'deal')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Deal đang mở</th>}
                     {columns.find(c => c.id === 'owner')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Sale phụ trách</th>}
+                    {columns.find(c => c.id === 'updated_at')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Cập nhật</th>}
                     {columns.find(c => c.id === 'status')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>}
+                    {columns.find(c => c.id === 'created_at')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Ngày tạo</th>}
                     <th style={{ width: 120, borderBottom: '1px solid var(--color-border)' }}></th>
                   </tr>
                 </thead>
@@ -486,9 +490,19 @@ export const ContactsPage: React.FC = () => {
                             )}
                           </td>
                         )}
+                        {columns.find(col => col.id === 'updated_at')?.visible && (
+                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}</p>
+                          </td>
+                        )}
                         {columns.find(col => col.id === 'status')?.visible && (
                           <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'created_at')?.visible && (
+                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '—'}</p>
                           </td>
                         )}
                         <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }} onClick={e => e.stopPropagation()}>

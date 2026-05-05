@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 05, 2026 lúc 03:49 PM
+-- Thời gian đã tạo: Th5 05, 2026 lúc 06:30 PM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.20
 
@@ -76,11 +76,15 @@ CREATE TABLE `companies` (
   `owner_id` int(11) DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `name` varchar(255) NOT NULL,
+  `tax_id` varchar(50) DEFAULT NULL,
   `industry` varchar(150) DEFAULT NULL,
   `website` varchar(255) DEFAULT NULL,
+  `social_link` varchar(255) DEFAULT NULL,
+  `stage_id` int(11) DEFAULT NULL,
   `phone` varchar(50) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
   `address` text DEFAULT NULL,
+  `ward` varchar(100) DEFAULT NULL,
   `city` varchar(100) DEFAULT NULL,
   `country` varchar(100) DEFAULT 'Việt Nam',
   `size` enum('1-10','11-50','51-200','201-500','500+') DEFAULT NULL,
@@ -108,13 +112,23 @@ CREATE TABLE `contacts` (
   `last_name` varchar(100) NOT NULL DEFAULT '',
   `email` varchar(255) DEFAULT NULL,
   `phone` varchar(50) DEFAULT NULL,
+  `avatar_url` text DEFAULT NULL,
   `mobile` varchar(50) DEFAULT NULL,
+  `birthday` date DEFAULT NULL,
   `job_title` varchar(150) DEFAULT NULL,
   `department` varchar(150) DEFAULT NULL,
   `source` enum('website','referral','social','cold_call','event','other') DEFAULT 'other',
   `status` enum('lead','qualified','customer','churned') NOT NULL DEFAULT 'lead',
   `tags` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`tags`)),
   `notes` text DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `city` varchar(100) DEFAULT NULL,
+  `ward` varchar(100) DEFAULT NULL,
+  `expected_revenue` decimal(15,2) DEFAULT 0.00,
+  `win_probability` tinyint(3) DEFAULT 50,
+  `last_contact` date DEFAULT NULL,
+  `lead_score` tinyint(3) DEFAULT 0,
+  `stage_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` datetime DEFAULT NULL
@@ -200,6 +214,8 @@ CREATE TABLE `deals` (
   `owner_id` int(11) DEFAULT NULL,
   `created_by` int(11) NOT NULL,
   `title` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `priority` enum('low','medium','high') NOT NULL DEFAULT 'medium',
   `value` decimal(15,2) NOT NULL DEFAULT 0.00,
   `currency` char(3) NOT NULL DEFAULT 'VND',
   `probability` tinyint(3) UNSIGNED NOT NULL DEFAULT 50,
@@ -267,13 +283,19 @@ CREATE TABLE `expenses` (
   `id` int(11) NOT NULL,
   `tenant_id` int(11) NOT NULL,
   `created_by` int(11) NOT NULL,
+  `approver_id` int(11) DEFAULT NULL,
+  `approved_at` datetime DEFAULT NULL,
   `title` varchar(255) NOT NULL,
   `category` varchar(100) NOT NULL,
+  `vendor_name` varchar(255) DEFAULT NULL,
   `amount` decimal(15,2) NOT NULL DEFAULT 0.00,
   `date` date NOT NULL,
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   `notes` text DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `has_vat_invoice` tinyint(1) NOT NULL DEFAULT 0,
+  `is_vat_inclusive` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -590,7 +612,8 @@ CREATE TABLE `tags` (
   `tenant_id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
   `color` varchar(20) DEFAULT '#6366f1',
-  `entity_type` enum('contact','company','deal','all') DEFAULT 'all'
+  `entity_type` enum('contact','company','deal','all') DEFAULT 'all',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -704,7 +727,8 @@ ALTER TABLE `activities`
   ADD KEY `idx_activity_user` (`user_id`),
   ADD KEY `idx_activity_related` (`related_type`,`related_id`),
   ADD KEY `idx_activity_due` (`due_date`),
-  ADD KEY `idx_activity_status` (`status`);
+  ADD KEY `idx_activity_status` (`status`),
+  ADD KEY `idx_act_type` (`tenant_id`,`type`);
 
 --
 -- Chỉ mục cho bảng `audit_logs`
@@ -723,7 +747,8 @@ ALTER TABLE `companies`
   ADD KEY `created_by` (`created_by`),
   ADD KEY `idx_company_tenant` (`tenant_id`),
   ADD KEY `idx_company_owner` (`owner_id`),
-  ADD KEY `idx_company_status` (`status`);
+  ADD KEY `idx_company_status` (`status`),
+  ADD KEY `idx_company_stage` (`stage_id`);
 ALTER TABLE `companies` ADD FULLTEXT KEY `idx_company_search` (`name`,`email`);
 
 --
@@ -735,7 +760,8 @@ ALTER TABLE `contacts`
   ADD KEY `idx_contact_tenant` (`tenant_id`),
   ADD KEY `idx_contact_company` (`company_id`),
   ADD KEY `idx_contact_owner` (`owner_id`),
-  ADD KEY `idx_contact_status` (`status`);
+  ADD KEY `idx_contact_status` (`status`),
+  ADD KEY `idx_contact_stage` (`stage_id`);
 ALTER TABLE `contacts` ADD FULLTEXT KEY `idx_contact_search` (`first_name`,`last_name`,`email`);
 
 --
@@ -811,7 +837,9 @@ ALTER TABLE `expenses`
   ADD PRIMARY KEY (`id`),
   ADD KEY `created_by` (`created_by`),
   ADD KEY `idx_exp_tenant` (`tenant_id`),
-  ADD KEY `idx_exp_status` (`status`);
+  ADD KEY `idx_exp_status` (`status`),
+  ADD KEY `fk_exp_approver` (`approver_id`),
+  ADD KEY `idx_exp_date` (`tenant_id`,`date`);
 
 --
 -- Chỉ mục cho bảng `files`
@@ -1300,7 +1328,8 @@ ALTER TABLE `entity_tags`
 --
 ALTER TABLE `expenses`
   ADD CONSTRAINT `expenses_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `expenses_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`);
+  ADD CONSTRAINT `expenses_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `fk_exp_approver` FOREIGN KEY (`approver_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Ràng buộc cho bảng `files`

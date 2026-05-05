@@ -136,6 +136,25 @@ class FinanceController {
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
 
+        // Fetch entities for all these rows
+        if (!empty($rows)) {
+            $ids = array_column($rows, 'id');
+            $in = str_repeat('?,', count($ids) - 1) . '?';
+            $sEE = $this->db->prepare("SELECT ee.*, c.first_name, c.last_name FROM expense_entities ee LEFT JOIN contacts c ON ee.entity_type='contact' AND ee.entity_id=c.id WHERE ee.expense_id IN ($in)");
+            $sEE->execute($ids);
+            $allEntities = $sEE->fetchAll();
+
+            $entitiesByExp = [];
+            foreach ($allEntities as $ee) {
+                $ee['name'] = trim(($ee['first_name'] ?? '') . ' ' . ($ee['last_name'] ?? ''));
+                $entitiesByExp[$ee['expense_id']][] = $ee;
+            }
+
+            foreach ($rows as &$r) {
+                $r['entities'] = $entitiesByExp[$r['id']] ?? [];
+            }
+        }
+
         // Summary totals
         $sTotal = $this->db->prepare("SELECT COALESCE(SUM(amount),0) as total, COALESCE(SUM(CASE WHEN status='approved' THEN amount END),0) as approved FROM expenses WHERE tenant_id=?");
         $sTotal->execute([$tid]);
@@ -149,6 +168,12 @@ class FinanceController {
         $stmt->execute([$id, $auth['tenant_id']]);
         $row = $stmt->fetch();
         if (!$row) respond(404, null, 'Không tìm thấy chi phí', false);
+        
+        // Fetch linked entities
+        $sEE = $this->db->prepare("SELECT * FROM expense_entities WHERE expense_id=?");
+        $sEE->execute([$id]);
+        $row['entities'] = $sEE->fetchAll();
+        
         respond(200, $row);
     }
 
@@ -156,21 +181,37 @@ class FinanceController {
         $data = getBody();
         if (empty($data['title']) || empty($data['amount'])) respond(400, null, 'Thiếu tiêu đề hoặc số tiền', false);
 
-        $stmt = $this->db->prepare("
-            INSERT INTO expenses (tenant_id,created_by,title,category,amount,date,status,notes,
-                vendor_name,has_vat_invoice,is_vat_inclusive)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)
-        ");
-        $stmt->execute([
-            $auth['tenant_id'], $auth['user_id'],
-            $data['title'], $data['category']??'Khác',
-            $data['amount'], $data['date']??date('Y-m-d'),
-            $data['status']??'pending', $data['notes']??null,
-            $data['vendor_name']??null,
-            $data['has_vat_invoice']??0,
-            $data['is_vat_inclusive']??0
-        ]);
-        $this->showExpense($auth, (int)$this->db->lastInsertId());
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare("
+                INSERT INTO expenses (tenant_id,created_by,title,category,amount,date,status,notes,
+                    vendor_name,has_vat_invoice,is_vat_inclusive)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+            ");
+            $stmt->execute([
+                $auth['tenant_id'], $auth['user_id'],
+                $data['title'], $data['category']??'Khác',
+                $data['amount'], $data['date']??date('Y-m-d'),
+                $data['status']??'pending', $data['notes']??null,
+                $data['vendor_name']??null,
+                $data['has_vat_invoice']??0,
+                $data['is_vat_inclusive']??0
+            ]);
+            $expId = (int)$this->db->lastInsertId();
+
+            if (!empty($data['entities']) && is_array($data['entities'])) {
+                $sEE = $this->db->prepare("INSERT INTO expense_entities (expense_id, entity_type, entity_id, amount) VALUES (?,?,?,?)");
+                foreach ($data['entities'] as $ee) {
+                    $sEE->execute([$expId, $ee['entity_type'], $ee['entity_id'], $ee['amount'] ?? 0]);
+                }
+            }
+
+            $this->db->commit();
+            $this->showExpense($auth, $expId);
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            respond(500, null, $e->getMessage(), false);
+        }
     }
 
     public function updateExpense(array $auth, int $id): void {
@@ -179,10 +220,41 @@ class FinanceController {
                    'vendor_name','has_vat_invoice','is_vat_inclusive'];
         $sets = []; $params = [];
         foreach ($fields as $f) { if (array_key_exists($f, $data)) { $sets[] = "$f=?"; $params[] = $data[$f]; } }
-        if (!$sets) respond(422, null, 'Không có dữ liệu', false);
-        $params[] = $id; $params[] = $auth['tenant_id'];
-        $this->db->prepare("UPDATE expenses SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?")->execute($params);
-        $this->showExpense($auth, $id);
+        
+        $this->db->beginTransaction();
+        try {
+            if ($sets) {
+                $params[] = $id; $params[] = $auth['tenant_id'];
+                $this->db->prepare("UPDATE expenses SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?")->execute($params);
+            }
+
+            if (isset($data['entities']) && is_array($data['entities'])) {
+                $this->db->prepare("DELETE FROM expense_entities WHERE expense_id=?")->execute([$id]);
+                $sEE = $this->db->prepare("INSERT INTO expense_entities (expense_id, entity_type, entity_id, amount) VALUES (?,?,?,?)");
+                foreach ($data['entities'] as $ee) {
+                    $sEE->execute([$id, $ee['entity_type'], $ee['entity_id'], $ee['amount'] ?? 0]);
+                }
+            }
+
+            $this->db->commit();
+            $this->showExpense($auth, $id);
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            respond(500, null, $e->getMessage(), false);
+        }
+    }
+
+    public function listEntityExpenses(array $auth, string $type, int $id): void {
+        $stmt = $this->db->prepare("
+            SELECT e.*, ee.amount as split_amount, u.full_name as creator_name
+            FROM expenses e
+            JOIN expense_entities ee ON e.id = ee.expense_id
+            LEFT JOIN users u ON e.created_by = u.id
+            WHERE ee.entity_type=? AND ee.entity_id=? AND e.tenant_id=?
+            ORDER BY e.date DESC
+        ");
+        $stmt->execute([$type, $id, $auth['tenant_id']]);
+        respond(200, $stmt->fetchAll());
     }
 
     public function deleteExpense(array $auth, int $id): void {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
@@ -9,6 +9,7 @@ import { AddressSelect } from '../components/ui/AddressSelect';
 import { PhoneLink } from '../components/ui/PhoneLink';
 import { ActivityModal } from '../components/ui/ActivityModal';
 import { MentionInput } from '../components/ui/MentionInput';
+import { CreateExpenseModal } from '../components/ui/CreateExpenseModal';
 import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
@@ -70,6 +71,7 @@ const TABS = [
   { id: 'notes', label: 'Ghi chú nội bộ', icon: <FileText size={16} /> },
   { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <FileText size={16} /> },
   { id: 'invoices', label: 'Invoices', icon: <DollarSign size={16} /> },
+  { id: 'expenses', label: 'Chi phí', icon: <DollarSign size={16} /> },
   { id: 'tickets', label: 'Hỗ trợ/Khiếu nại', icon: <LifeBuoy size={16} /> },
 ];
 
@@ -84,6 +86,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showDealModal, setShowDealModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [newNote, setNewNote] = useState('');
   const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string }[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
@@ -99,9 +102,65 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [docs, setDocs] = useState<any[]>([]);
   const [deals, setDeals] = useState<any[]>([]);
   const [drawerInvoices, setDrawerInvoices] = useState<any[]>([]);
+  const [drawerExpenses, setDrawerExpenses] = useState<any[]>([]);
   const [drawerTickets, setDrawerTickets] = useState<any[]>([]);
   const [drawerActivities, setDrawerActivities] = useState<any[]>([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
+  const [quickUserCard, setQuickUserCard] = useState<{ id: number; name: string; role: string; visible: boolean; x: number; y: number } | null>(null);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [tempAvatar, setTempAvatar] = useState('');
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // In real app, upload to server. For now, use FileReader for preview + update state
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64 = reader.result as string;
+      try {
+        await api.put(`/contacts/${contact.id}`, { avatar_url: base64 });
+        setFormData({ ...formData, avatar_url: base64 });
+        addToast('Đã cập nhật ảnh đại diện', 'success');
+        onUpdate?.({ ...formData, avatar_url: base64 });
+      } catch (err) {
+        addToast('Lỗi khi cập nhật ảnh', 'error');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const showUserCard = (e: React.MouseEvent, name: string) => {
+    e.stopPropagation();
+    const user = users.find(u => u.full_name === name || u.full_name.replace(/\s+/g, '_') === name);
+    setQuickUserCard({
+      id: user?.id || 0,
+      name: user?.full_name || name,
+      role: user?.role || 'Nhân viên',
+      visible: true,
+      x: e.clientX,
+      y: e.clientY
+    });
+  };
+
+  const formatNote = (text: string) => {
+    const parts = text.split(/(@[a-zA-Z0-9_\u00C0-\u1EF9]+)/g);
+    return parts.map((part, i) => {
+      if (part.startsWith('@')) {
+        const name = part.substring(1);
+        return (
+          <span 
+            key={i} 
+            onClick={(e) => showUserCard(e, name)}
+            style={{ color: '#8b5cf6', fontWeight: 700, cursor: 'pointer', background: '#f5f3ff', padding: '2px 6px', borderRadius: '4px', margin: '0 2px' }}
+          >
+            {part}
+          </span>
+        );
+      }
+      return part;
+    });
+  };
 
   const fetchData = useCallback(async () => {
     if (!contact?.id) return;
@@ -144,6 +203,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const invoicesRes = await api.get(`/invoices?contact_id=${contact.id}`);
       setDrawerInvoices(invoicesRes.data.data.items || []);
 
+      // Fetch Expenses
+      const expensesRes = await api.get(`/expenses/entity/contact/${contact.id}`);
+      setDrawerExpenses(expensesRes.data.data || []);
+
       // Fetch Tickets
       const ticketsRes = await api.get(`/tickets?contact_id=${contact.id}`);
       setDrawerTickets(ticketsRes.data.data.items || []);
@@ -163,6 +226,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setTasks([]);
       setDeals([]);
       setDrawerInvoices([]);
+      setDrawerExpenses([]);
       setDrawerTickets([]);
       setActiveTab('info');
       if (isOpen) fetchData();
@@ -184,7 +248,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   }, [isOpen]);
 
-  const hasChanges = React.useMemo(() => {
+  const hasChanges = useMemo(() => {
     if (!contact) return false;
     const baseTags = contact.tags || [];
     if (JSON.stringify(tags) !== JSON.stringify(baseTags)) return true;
@@ -218,7 +282,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const mockStore = useMockStore();
 
-  const timeline = React.useMemo(() => {
+  const timeline = useMemo(() => {
+    if (!contact?.id) return [];
     const source = DEV_MODE ? mockStore.activities.filter((a: any) => a.contact_id === contact.id) : drawerActivities;
     return source.map((a: any) => ({
         id: a.id,
@@ -230,7 +295,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : <Mail size={16} />,
         note: a.body || a.note || ''
       }));
-  }, [drawerActivities, mockStore.activities, contact.id]);
+  }, [drawerActivities, mockStore.activities, contact?.id]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
 
   const handleSave = async () => {
@@ -238,7 +303,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     const allowedFields = [
       'company_id', 'company_name', 'owner_id', 'first_name', 'last_name', 'email', 'phone',
       'mobile', 'job_title', 'department', 'source', 'status', 'notes',
-      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact'
+      'birthday', 'address', 'city', 'ward', 'expected_revenue', 'win_probability', 'last_contact', 'created_at'
     ];
     const payload: Record<string, any> = {};
     allowedFields.forEach(f => { if (formData[f] !== undefined) payload[f] = formData[f]; });
@@ -288,6 +353,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     } catch (e: any) {
       addToast(e?.response?.data?.message || 'Lỗi khi lưu công việc', 'error');
     }
+  };
+
+  const deleteActivity = async (id: number) => {
+    showConfirm({
+      title: 'Xóa hoạt động',
+      message: 'Bạn có chắc chắn muốn xóa hoạt động này khỏi nhật ký?',
+      isDanger: true,
+      confirmText: 'Xóa',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/activities/${id}`);
+          fetchData();
+          addToast('Đã xóa hoạt động', 'success');
+        } catch {
+          addToast('Lỗi khi xóa hoạt động', 'error');
+        }
+      }
+    });
   };
 
   const handleCreateDeal = async () => {
@@ -346,13 +429,170 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
+              <AnimatePresence>
+              {showAvatarModal && (
+                <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                    style={{ background: 'var(--color-surface)', width: '400px', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-2xl)' }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem', textAlign: 'center' }}>Cập nhật Ảnh đại diện</h3>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                      <div style={{ width: 120, height: 120, borderRadius: '32px', background: tempAvatar ? `url(${tempAvatar}) center/cover` : 'var(--color-bg)', border: '4px solid var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
+                        {!tempAvatar && <User size={48} color="var(--color-text-muted)" />}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div>
+                        <label className="form-label">Tải ảnh lên</label>
+                        <input 
+                          type="file" 
+                          className="form-input" 
+                          accept="image/*"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onloadend = () => setTempAvatar(reader.result as string);
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">Hoặc dán URL ảnh</label>
+                        <input 
+                          className="form-input" 
+                          placeholder="https://example.com/avatar.jpg"
+                          value={tempAvatar}
+                          onChange={e => setTempAvatar(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                      <button className="btn outline" style={{ flex: 1 }} onClick={() => setShowAvatarModal(false)}>Hủy</button>
+                      <button 
+                        className="btn primary" 
+                        style={{ flex: 1 }} 
+                        onClick={async () => {
+                          try {
+                            let finalUrl = tempAvatar;
+                            
+                            // Check if tempAvatar is a base64 string (meaning it was just uploaded)
+                            if (tempAvatar.startsWith('data:image/')) {
+                              const blob = await (await fetch(tempAvatar)).blob();
+                              const formDataUpload = new FormData();
+                              formDataUpload.append('file', blob, 'avatar.jpg');
+                              formDataUpload.append('previous_url', formData.avatar_url || '');
+                              
+                              const uploadRes = await api.post('/upload', formDataUpload, {
+                                headers: { 'Content-Type': 'multipart/form-data' }
+                              });
+                              finalUrl = uploadRes.data.data.url;
+                            }
+
+                            await api.put(`/contacts/${contact.id}`, { avatar_url: finalUrl });
+                            setFormData({ ...formData, avatar_url: finalUrl });
+                            addToast('Đã cập nhật ảnh đại diện', 'success');
+                            setShowAvatarModal(false);
+                            onUpdate?.({ ...formData, avatar_url: finalUrl });
+                          } catch (err: any) {
+                            addToast(err.response?.data?.message || 'Lỗi khi lưu ảnh', 'error');
+                          }
+                        }}
+                      >
+                        Lưu thay đổi
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+            
+            {/* ── Quick User Card Popover ── */}
+            <AnimatePresence>
+              {quickUserCard && quickUserCard.visible && (
+                <>
+                  <div 
+                    style={{ position: 'fixed', inset: 0, zIndex: 3000 }} 
+                    onClick={() => setQuickUserCard(null)} 
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                    style={{
+                      position: 'fixed',
+                      top: quickUserCard.y - 120,
+                      left: quickUserCard.x - 220,
+                      zIndex: 3001,
+                      width: 220,
+                      background: 'var(--color-surface)',
+                      borderRadius: '16px',
+                      boxShadow: '0 20px 50px -12px rgba(99, 102, 241, 0.25)',
+                      border: '1px solid var(--color-primary-light)',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div style={{ height: 60, background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }} />
+                    <div style={{ padding: '0 1.25rem 1.25rem', textAlign: 'center', marginTop: -30 }}>
+                      <div style={{ width: 60, height: 60, borderRadius: '20px', background: 'white', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '4px solid white', fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6' }}>
+                        {quickUserCard.name.charAt(0).toUpperCase()}
+                      </div>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '4px' }}>{quickUserCard.name}</h4>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{quickUserCard.role}</p>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '1.25rem' }}>
+                        <button className="btn primary sm" style={{ flex: 1, borderRadius: '10px', background: '#8b5cf6', borderColor: '#8b5cf6' }} onClick={() => addToast('Đang mở chat...', 'info')}>Chat</button>
+                        <button className="btn outline sm" style={{ flex: 1, borderRadius: '10px', color: '#8b5cf6', borderColor: '#8b5cf6' }} onClick={() => addToast('Đang mở hồ sơ...', 'info')}>Profile</button>
+                      </div>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+
               {/* ── Header ── */}
               <div style={{ padding: '2rem 2.5rem', background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)', borderBottom: '1px solid var(--color-border-light)', position: 'relative' }}>
                 <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                   {/* Avatar Section */}
                   <div style={{ position: 'relative' }}>
-                    <div className="avatar-placeholder lg" style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #4338ca 100%)', fontSize: '1.5rem', width: 80, height: 80, borderRadius: '24px', boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.4)' }}>
-                      {(formData.first_name?.[0] || '?').toUpperCase()}
+                    <div 
+                      className="avatar-placeholder lg" 
+                      style={{ 
+                        background: formData.avatar_url ? `url(${formData.avatar_url}) center/cover` : 'linear-gradient(135deg, var(--color-primary) 0%, #4338ca 100%)', 
+                        fontSize: '1.5rem', width: 80, height: 80, borderRadius: '24px', 
+                        boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.4)',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        position: 'relative'
+                      }}
+                      onClick={() => {
+                        setTempAvatar(formData.avatar_url || '');
+                        setShowAvatarModal(true);
+                      }}
+                    >
+                      {!formData.avatar_url && (formData.first_name?.[0] || '?').toUpperCase()}
+                      <div 
+                        style={{ 
+                          position: 'absolute', 
+                          inset: 0, 
+                          background: 'rgba(0,0,0,0.3)', 
+                          opacity: 0, 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          transition: 'opacity 0.2s',
+                          borderRadius: '24px' 
+                        }} 
+                        onMouseEnter={e => e.currentTarget.style.opacity = '1'} 
+                        onMouseLeave={e => e.currentTarget.style.opacity = '0'}
+                      >
+                        <Pencil size={20} color="white" />
+                      </div>
                     </div>
                     <div style={{ position: 'absolute', bottom: -4, right: -4, width: 28, height: 28, borderRadius: '10px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid white' }}>
                       <UserCheck size={14} className="text-success" />
@@ -393,11 +633,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                         <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: 'white', border: '1px solid var(--color-border)', borderRadius: '12px' }}>
-                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
+                      <div 
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: 'white', border: '1px solid var(--color-border)', borderRadius: '12px', cursor: 'pointer' }}
+                        onClick={(e) => showUserCard(e, formData.owner_name)}
+                      >
+                        <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#8b5cf6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
                           {formData.owner_name ? formData.owner_name.charAt(0).toUpperCase() : '?'}
                         </div>
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{formData.owner_name || 'Sale phụ trách'}</span>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#6d28d9' }}>{formData.owner_name || 'Sale phụ trách'}</span>
                       </div>
                     </div>
                   </div>
@@ -743,8 +986,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                     <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Thực hiện bởi <strong>{ev.user}</strong></span>
                                   </div>
                                 </div>
-                                <div style={{ textAlign: 'right' }}>
-                                  <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{new Date(ev.time).toLocaleDateString('vi-VN')}</span>
+                                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{new Date(ev.time).toLocaleDateString('vi-VN')}</span>
+                                    <button 
+                                      className="btn ghost sm" 
+                                      style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-danger)', opacity: 0.5 }}
+                                      onClick={(e) => { e.stopPropagation(); deleteActivity(ev.id); }}
+                                      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                      onMouseLeave={e => e.currentTarget.style.opacity = '0.5'}
+                                    >
+                                      <Trash2 size={12} />
+                                    </button>
+                                  </div>
                                   <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{new Date(ev.time).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                               </div>
@@ -869,6 +1123,30 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Hạn hoàn thành: {t.due}</span>
                               </div>
                             </div>
+                            <button
+                              className="btn-icon sm text-danger"
+                              style={{ opacity: 0.4, transition: 'opacity 0.2s' }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                showConfirm(
+                                  'Xóa công việc?',
+                                  `Bạn có chắc chắn muốn xóa công việc "${t.title}"?`,
+                                  async () => {
+                                    try {
+                                      await api.delete(`/activities/${t.id}`);
+                                      setTasks(prev => prev.filter(x => x.id !== t.id));
+                                      addToast('Đã xóa công việc thành công', 'success');
+                                    } catch (err: any) {
+                                      addToast(err.response?.data?.message || 'Lỗi khi xóa công việc', 'error');
+                                    }
+                                  }
+                                );
+                              }}
+                              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                              onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
+                            >
+                              <Trash2 size={16} />
+                            </button>
                           </div>
                         ))}
                       </div>
@@ -897,10 +1175,38 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                         {notes.map(n => (
                           <div key={n.id} className="card-panel" style={{ padding: '1.25rem' }}>
-                            <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{n.text}</p>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
-                              Tạo bởi <strong>{n.user}</strong> lúc {new Date(n.time).toLocaleString('vi-VN')}
-                            </p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div style={{ flex: 1 }}>
+                                <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</p>
+                                <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+                                  Tạo bởi <strong>{n.user}</strong> lúc {new Date(n.time).toLocaleString('vi-VN')}
+                                </p>
+                              </div>
+                              <button 
+                                className="btn-icon sm text-danger" 
+                                style={{ opacity: 0.4, transition: 'opacity 0.2s' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  showConfirm(
+                                    'Xóa ghi chú?',
+                                    'Bạn có chắc chắn muốn xóa ghi chú này không?',
+                                    async () => {
+                                      try {
+                                        await api.delete(`/notes/${n.id}`);
+                                        setNotes(prev => prev.filter(x => x.id !== n.id));
+                                        addToast('Đã xóa ghi chú', 'success');
+                                      } catch {
+                                        addToast('Lỗi khi xóa ghi chú', 'error');
+                                      }
+                                    }
+                                  );
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1048,6 +1354,50 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               </div>
                             ))}
                           </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* EXPENSES TAB */}
+                  {activeTab === 'expenses' && (
+                    <div className="animate-fade">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                        <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Chi phí liên quan</h3>
+                        <button className="btn outline sm" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8b5cf6', borderColor: '#8b5cf6' }} onClick={() => setShowExpenseModal(true)}><Plus size={14} /> Nhập chi phí</button>
+                      </div>
+                      {drawerExpenses.length > 0 ? (
+                        <div style={{ display: 'grid', gap: '1rem' }}>
+                          {drawerExpenses.map((exp: any) => (
+                            <div key={exp.id} className="card-panel" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div>
+                                <h4 style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '4px' }}>{exp.title}</h4>
+                                <div style={{ display: 'flex', gap: '8px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                                  <span className="badge info">{exp.category}</span>
+                                  <span>{new Date(exp.date).toLocaleDateString('vi-VN')}</span>
+                                  <span>Tạo bởi: {exp.creator_name}</span>
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '1rem', fontWeight: 700, color: '#ef4444' }}>
+                                  -{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(exp.split_amount || exp.amount)}
+                                </div>
+                                {exp.split_amount && exp.split_amount !== exp.amount && (
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
+                                    (Chia từ tổng {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(exp.amount)})
+                                  </div>
+                                )}
+                                <span className={`badge ${exp.status === 'approved' ? 'success' : exp.status === 'rejected' ? 'danger' : 'warning'}`} style={{ marginTop: '4px', fontSize: '0.7rem' }}>
+                                  {exp.status === 'approved' ? 'Đã duyệt' : exp.status === 'rejected' ? 'Từ chối' : 'Chờ duyệt'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+                          <DollarSign size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1rem', opacity: 0.5 }} />
+                          <h4 style={{ fontWeight: 700 }}>Chưa có chi phí nào được ghi nhận</h4>
                         </div>
                       )}
                     </div>
@@ -1371,6 +1721,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           </div>
         )}
       </AnimatePresence>
+      <CreateExpenseModal
+        isOpen={showExpenseModal}
+        onClose={() => setShowExpenseModal(false)}
+        initialEntity={{ type: 'contact', id: contact?.id, name: `${contact?.first_name} ${contact?.last_name || ''}`.trim() }}
+        onSuccess={fetchData}
+      />
     </>
   );
 };

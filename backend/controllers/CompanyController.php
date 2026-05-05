@@ -101,7 +101,8 @@ class CompanyController {
         $stmt = $this->db->prepare("UPDATE companies SET stage_id=? WHERE id=? AND tenant_id=?");
         $stmt->execute([$b['stage_id'], $id, $auth['tenant_id']]);
         
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', "Công ty đã được chuyển trạng thái.", 'company', $id);
+        $note = $b['note'] ?? "Công ty đã được chuyển trạng thái.";
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'company', $id);
         respond(200, null, 'Đã cập nhật stage thành công');
     }
 

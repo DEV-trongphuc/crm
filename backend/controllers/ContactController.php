@@ -60,16 +60,18 @@ class ContactController {
     }
 
     private function resolveCompanyId(array $auth, array $b): ?int {
-        if (!empty($b['company_id'])) return (int)$b['company_id'];
-        if (!empty($b['company_name'])) {
-            $name = trim($b['company_name']);
+        $name = isset($b['company_name']) ? trim($b['company_name']) : '';
+        if ($name !== '') {
             $stmt = $this->db->prepare("SELECT id FROM companies WHERE tenant_id=? AND name=?");
             $stmt->execute([$auth['tenant_id'], $name]);
-            if ($id = $stmt->fetchColumn()) return (int)$id;
+            $id = $stmt->fetchColumn();
+            if ($id) return (int)$id;
             
-            $this->db->prepare("INSERT INTO companies (tenant_id, name) VALUES (?, ?)")->execute([$auth['tenant_id'], $name]);
+            $stmt = $this->db->prepare("INSERT INTO companies (tenant_id, name, created_by) VALUES (?, ?, ?)");
+            $stmt->execute([$auth['tenant_id'], $name, $auth['user_id']]);
             return (int)$this->db->lastInsertId();
         }
+        if (!empty($b['company_id'])) return (int)$b['company_id'];
         return null;
     }
 
@@ -91,8 +93,9 @@ class ContactController {
 
         $stmt = $this->db->prepare("
             INSERT INTO contacts (tenant_id,company_id,owner_id,created_by,first_name,last_name,
-                email,phone,mobile,job_title,department,source,status,tags,notes,stage_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                email,phone,mobile,job_title,department,source,status,tags,notes,stage_id,
+                birthday,address,city,ward,expected_revenue,win_probability,last_contact,lead_score)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ");
         $stmt->execute([
             $auth['tenant_id'],
@@ -101,7 +104,10 @@ class ContactController {
             $b['email'] ?? null, $b['phone'] ?? null, $b['mobile'] ?? null,
             $b['job_title'] ?? null, $b['department'] ?? null,
             $b['source'] ?? 'other', $b['status'] ?? 'lead',
-            $tags, $b['notes'] ?? null, $stageId
+            $tags, $b['notes'] ?? null, $stageId,
+            $b['birthday'] ?? null, $b['address'] ?? null, $b['city'] ?? null, $b['ward'] ?? null,
+            $b['expected_revenue'] ?? 0, $b['win_probability'] ?? 50,
+            $b['last_contact'] ?? null, $b['lead_score'] ?? 0
         ]);
         $id = (int)$this->db->lastInsertId();
         $this->show($auth, $id);
@@ -128,26 +134,41 @@ class ContactController {
         $fields = [
             'company_id','owner_id','first_name','last_name','email','phone',
             'mobile','job_title','department','source','status','notes',
-            // Extended fields (requires DB PATCH v2 columns)
             'birthday','address','city','ward',
-            'expected_revenue','win_probability','last_contact','stage_id'
+            'expected_revenue','win_probability','last_contact','stage_id', 'created_at'
         ];
         $sets = []; $params = [];
         
-        $company_id = $this->resolveCompanyId($auth, $b);
-        if ($company_id !== null) {
+        // Handle company_id specially to allow clearing and name resolution
+        if (array_key_exists('company_name', $b)) {
+            $name = trim($b['company_name']);
+            if ($name === '') {
+                $sets[] = "company_id=NULL";
+            } else {
+                $cid = $this->resolveCompanyId($auth, $b);
+                if ($cid) {
+                    $sets[] = "company_id=?";
+                    $params[] = $cid;
+                }
+            }
+        } elseif (array_key_exists('company_id', $b)) {
             $sets[] = "company_id=?";
-            $params[] = $company_id;
+            $params[] = $b['company_id'] ? (int)$b['company_id'] : null;
         }
 
         foreach ($fields as $f) {
-            if ($f === 'company_id') continue; // already handled
-            if (array_key_exists($f, $b)) { $sets[] = "$f=?"; $params[] = $b[$f]; }
+            if ($f === 'company_id') continue;
+            if (array_key_exists($f, $b)) { 
+                $sets[] = "$f=?"; 
+                $params[] = $b[$f]; 
+            }
         }
         if (isset($b['tags'])) { $sets[] = 'tags=?'; $params[] = json_encode($b['tags']); }
         if (!$sets) respond(422, null, 'Không có dữ liệu để cập nhật', false);
         $params[] = $id; $params[] = $auth['tenant_id'];
-        $this->db->prepare("UPDATE contacts SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?")->execute($params);
+        
+        $sql = "UPDATE contacts SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
+        $this->db->prepare($sql)->execute($params);
         $this->show($auth, $id);
     }
 
@@ -158,7 +179,8 @@ class ContactController {
         $stmt = $this->db->prepare("UPDATE contacts SET stage_id=? WHERE id=? AND tenant_id=?");
         $stmt->execute([$b['stage_id'], $id, $auth['tenant_id']]);
         
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', "Khách hàng đã được chuyển trạng thái.", 'contact', $id);
+        $note = $b['note'] ?? "Khách hàng đã được chuyển trạng thái.";
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'contact', $id);
         respond(200, null, 'Đã cập nhật stage thành công');
     }
 
