@@ -593,7 +593,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             if (e.target.files?.[0]) {
                               const file = e.target.files[0];
                               setDocs(prev => [{ id: Date.now(), name: file.name, date: new Date().toLocaleDateString('vi-VN'), size: (file.size / 1024 / 1024).toFixed(1) + ' MB', type: file.name.split('.').pop() || 'file' }, ...prev]);
-                              useUIStore.getState().addToast('Đã tải lên tài liệu mới.', 'success');
+                              addToast('Đã tải lên tài liệu mới.', 'success');
                             }
                           }} />
                           <Plus size={14} /> Upload file
@@ -622,16 +622,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   const newName = prompt('Nhập tên mới cho tài liệu:', doc.name);
                                   if (newName && newName.trim()) {
                                     setDocs(prev => prev.map(d => d.id === doc.id ? { ...d, name: newName.trim() } : d));
-                                    useUIStore.getState().addToast('Đã đổi tên tài liệu.', 'success');
+                                    addToast('Đã đổi tên tài liệu.', 'success');
                                   }
                                 }}><Pencil size={14} /></button>
                                 <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
-                                  useUIStore.getState().showConfirm(
+                                  showConfirm(
                                     'Xóa tài liệu?',
                                     `Bạn có chắc muốn xóa vĩnh viễn tài liệu "${doc.name}"?`,
                                     () => {
                                       setDocs(prev => prev.filter(d => d.id !== doc.id));
-                                      useUIStore.getState().addToast('Đã xóa tài liệu.', 'success');
+                                      addToast('Đã xóa tài liệu.', 'success');
                                     }
                                   );
                                 }}><Trash2 size={14} /></button>

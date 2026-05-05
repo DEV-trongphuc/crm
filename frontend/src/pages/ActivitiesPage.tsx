@@ -59,19 +59,19 @@ export const ActivitiesPage: React.FC = () => {
   const fetchActivities = useCallback(async () => {
     setLoading(true);
     try {
-      const params: Record<string, string> = {};
+      const params: Record<string, string> = { page: page.toString(), search };
       if (filterType) params.type = filterType;
       if (filterStatus) params.status = filterStatus;
       const r = await api.get('/activities', { params });
       const data = r.data.data?.items || r.data.data || [];
-      if (data.length === 0) { setItems(MOCK_ACTIVITIES); setTotal(MOCK_ACTIVITIES.length); }
+      if (data.length === 0 && !search && !filterType && !filterStatus) { setItems(MOCK_ACTIVITIES); setTotal(MOCK_ACTIVITIES.length); }
       else { setItems(data); setTotal(r.data.data?.total || data.length); }
     } catch {
-      setItems(MOCK_ACTIVITIES); setTotal(MOCK_ACTIVITIES.length);
+      if (!search && !filterType && !filterStatus) { setItems(MOCK_ACTIVITIES); setTotal(MOCK_ACTIVITIES.length); }
     } finally {
       setLoading(false);
     }
-  }, [filterType, filterStatus]);
+  }, [filterType, filterStatus, search, page]);
 
   useEffect(() => { fetchActivities(); }, [fetchActivities]);
 
