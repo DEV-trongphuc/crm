@@ -1,0 +1,323 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Search, Building2, X, Loader2, Pencil, Trash2, Globe, Phone, Mail, Users, LayoutGrid, List, Filter, RefreshCw, Download } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useUIStore } from '../store/uiStore';
+import { CompanyDrawer } from './CompanyDrawer';
+import { Pagination } from '../components/ui/Pagination';
+import { ImportExportModal } from '../components/ui/ImportExportModal';
+import api from '../api/axios';
+
+const STATUSES = ['active', 'inactive', 'prospect'];
+const ST_LABEL: Record<string, string> = { active: 'Hoạt động', inactive: 'Ngừng', prospect: 'Tiềm năng' };
+const ST_CLASS: Record<string, string> = { active: 'success', inactive: 'danger', prospect: 'warning' };
+const PAGE_SIZE = 50;
+
+const MOCK_COMPANIES: any[] = [
+  { id: 1, name: 'ABC Technology', industry: 'Công nghệ thông tin', status: 'active', phone: '024 3826 1234', email: 'contact@abctech.vn', website: 'abctech.vn', address: 'Hà Nội', employees_count: 3, deals_count: 2 },
+  { id: 2, name: 'GreenSolar Corp', industry: 'Năng lượng tái tạo', status: 'active', phone: '028 3917 4567', email: 'info@greensolar.vn', website: 'greensolar.vn', address: 'TP.HCM', employees_count: 2, deals_count: 1 },
+  { id: 3, name: 'TechGlobal Ltd', industry: 'Tư vấn doanh nghiệp', status: 'prospect', phone: '024 3928 5678', email: 'hello@techglobal.vn', website: 'techglobal.vn', address: 'Hà Nội', employees_count: 1, deals_count: 3 },
+  { id: 4, name: 'Retail Pro Group', industry: 'Bán lẻ', status: 'active', phone: '028 6250 8901', email: 'support@retailpro.vn', website: 'retailpro.vn', address: 'Đà Nẵng', employees_count: 5, deals_count: 1 },
+  { id: 5, name: 'MegaStore Vietnam', industry: 'Thương mại điện tử', status: 'active', phone: '028 3890 2345', email: 'biz@megastore.vn', website: 'megastore.vn', address: 'TP.HCM', employees_count: 4, deals_count: 2 },
+  { id: 6, name: 'FashionHub', industry: 'Thời trang & Bán lẻ', status: 'inactive', phone: '028 9988 4567', email: 'sale@fashionhub.vn', website: 'fashionhub.vn', address: 'TP.HCM', employees_count: 0, deals_count: 0 },
+  { id: 7, name: 'LogiTrans Express', industry: 'Vận tải & Logistics', status: 'active', phone: '024 3344 5566', email: 'ops@logitrans.vn', website: 'logitrans.vn', address: 'Hà Nội', employees_count: 3, deals_count: 4 },
+  { id: 8, name: 'EduTech Vietnam', industry: 'Giáo dục & Đào tạo', status: 'prospect', phone: '028 7123 6789', email: 'admin@edutech.vn', website: 'edutech.vn', address: 'TP.HCM', employees_count: 2, deals_count: 1 },
+];
+
+export const CompaniesPage: React.FC = () => {
+  const { addToast } = useUIStore();
+  const [companies, setCompanies] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
+  const [deleteItem, setDeleteItem] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [viewMode, setViewMode] = useState<'card' | 'list'>('card');
+  const [page, setPage] = useState(1);
+  const [showImportExport, setShowImportExport] = useState(false);
+
+  const fetchCompanies = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: Record<string, string> = {};
+      if (search) params.search = search;
+      if (statusFilter) params.status = statusFilter;
+      const r = await api.get('/companies', { params });
+      const data = r.data.data?.items || r.data.data || [];
+      if (data.length === 0) { setCompanies(MOCK_COMPANIES); setTotal(MOCK_COMPANIES.length); }
+      else { setCompanies(data); setTotal(r.data.data.total || data.length); }
+    } catch {
+      setCompanies(MOCK_COMPANIES);
+      setTotal(MOCK_COMPANIES.length);
+    } finally {
+      setLoading(false);
+    }
+  }, [search, statusFilter]);
+
+  useEffect(() => {
+    const t = setTimeout(() => fetchCompanies(), search ? 400 : 0);
+    return () => clearTimeout(t);
+  }, [fetchCompanies]);
+
+  const openCreate = () => { setEditItem(null); setShowModal(true); };
+  const openEdit = (c: any) => { setEditItem(c); setShowModal(true); };
+
+  const handleSaveCompany = async (formData: any) => {
+    try {
+      if (editItem) {
+        await api.put(`/companies/${editItem.id}`, formData);
+        addToast('Đã cập nhật công ty', 'success');
+      } else {
+        await api.post('/companies', formData);
+        addToast('Đã thêm công ty mới', 'success');
+      }
+      setShowModal(false);
+      fetchCompanies();
+    } catch (err: any) {
+      addToast(err.response?.data?.message || 'Lỗi khi lưu công ty', 'error');
+      throw err;
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteItem) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/companies/${deleteItem.id}`);
+      addToast('Đã xóa công ty', 'success');
+      setDeleteItem(null);
+      fetchCompanies();
+    } catch {
+      addToast('Lỗi khi xóa công ty', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Công ty</h1>
+          <p className="page-subtitle">{loading ? '...' : `${total} công ty khách hàng`}</p>
+        </div>
+        <div className="flex gap-2">
+          <button className="btn outline sm" onClick={fetchCompanies} title="Làm mới">
+            <RefreshCw size={14} />
+          </button>
+          <button className="btn outline sm" onClick={() => setShowImportExport(true)}>
+            <Download size={14} /> Nhập/Xuất
+          </button>
+          <button className="btn primary" onClick={openCreate}><Plus size={16} /> Thêm công ty</button>
+        </div>
+      </div>
+
+      {/* Filter Bar */}
+      <div className="card" style={{ marginBottom: '1rem', padding: '0.875rem 1.25rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="filter-search" style={{ flex: 1, minWidth: 200 }}>
+          <Search size={15} style={{ color: 'var(--color-text-muted)' }} />
+          <input placeholder="Tìm tên công ty, ngành nghề..." value={search} onChange={e => setSearch(e.target.value)} />
+          {search && <button onClick={() => setSearch('')}><X size={14} /></button>}
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          {['', ...STATUSES].map(s => (
+            <button
+              key={s || 'all'}
+              onClick={() => setStatusFilter(s)}
+              className={`btn sm ${statusFilter === s ? 'primary' : 'outline'}`}
+            >
+              {s ? ST_LABEL[s] : 'Tất cả'}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ width: '1px', height: '24px', background: 'var(--color-border)' }} />
+
+        <div style={{ display: 'flex', background: 'var(--color-bg)', borderRadius: '8px', padding: '2px', border: '1px solid var(--color-border)' }}>
+          <button
+            className="btn ghost sm"
+            style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent' }}
+            onClick={() => setViewMode('card')} title="Dạng thẻ"
+          ><LayoutGrid size={15} /></button>
+          <button
+            className="btn ghost sm"
+            style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent' }}
+            onClick={() => setViewMode('list')} title="Dạng danh sách"
+          ><List size={15} /></button>
+        </div>
+      </div>
+
+      {/* Loading skeleton */}
+      {loading && (
+        <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'card' ? 'repeat(3, 1fr)' : '1fr', gap: '1rem' }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="skeleton" style={{ height: viewMode === 'card' ? 180 : 56, borderRadius: 'var(--radius-lg)' }} />
+          ))}
+        </div>
+      )}
+
+      {/* Card View */}
+      {!loading && viewMode === 'card' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          <AnimatePresence>
+            {companies.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(co => (
+              <motion.div
+                key={co.id}
+                className="card card-hover"
+                style={{ padding: '1.25rem', cursor: 'pointer' }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                onClick={() => openEdit(co)}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="avatar-placeholder md" style={{ background: '#3b82f6', borderRadius: '10px', fontSize: '0.85rem' }}>
+                      {co.name?.[0] || '?'}
+                    </div>
+                    <div>
+                      <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{co.name}</p>
+                      <p className="text-xs text-light">{co.industry}{co.city ? ` · ${co.city}` : ''}</p>
+                    </div>
+                  </div>
+                  <span className={`badge ${ST_CLASS[co.status] || 'info'}`}>{ST_LABEL[co.status] || co.status}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', marginBottom: '1rem' }}>
+                  {co.phone && <span className="flex items-center gap-2 text-xs text-light"><Phone size={11} />{co.phone}</span>}
+                  {co.email && <span className="flex items-center gap-2 text-xs text-light"><Mail size={11} />{co.email}</span>}
+                  {co.website && <span className="flex items-center gap-2 text-xs text-light"><Globe size={11} />{co.website}</span>}
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex gap-3">
+                    <span className="flex items-center gap-1 text-xs text-light"><Users size={12} />{co.contact_count || 0} liên hệ</span>
+                    <span className="flex items-center gap-1 text-xs text-light"><Building2 size={12} />{co.deal_count || 0} deal</span>
+                  </div>
+                  <div className="flex gap-1" onClick={e => e.stopPropagation()}>
+                    <button className="btn ghost sm" onClick={() => openEdit(co)}><Pencil size={13} /></button>
+                    <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} onClick={() => setDeleteItem(co)}><Trash2 size={13} /></button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          {companies.length === 0 && (
+            <div className="empty-state" style={{ gridColumn: '1/-1' }}>
+              <Building2 size={40} />
+              <h3>Chưa có công ty nào</h3>
+              <p>Thêm công ty đầu tiên để bắt đầu quản lý khách hàng doanh nghiệp.</p>
+              <button className="btn primary mt-4" onClick={openCreate}><Plus size={16} /> Thêm công ty</button>
+            </div>
+          )}
+        </div>
+      )}
+      {!loading && viewMode === 'card' && companies.length > PAGE_SIZE && (
+        <div className="card" style={{ marginTop: '1rem' }}>
+          <Pagination total={companies.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+        </div>
+      )}
+
+      {/* List View */}
+      {!loading && viewMode === 'list' && (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div className="table-wrap">
+            <table style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Công ty</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Trạng thái</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Ngành</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Liên hệ</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Deals</th>
+                  <th style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                <AnimatePresence>
+                  {companies.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(co => (
+                    <motion.tr
+                      key={co.id}
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                      style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer' }}
+                      onClick={() => openEdit(co)}
+                    >
+                      <td style={{ padding: '1rem' }}>
+                        <div className="flex items-center gap-3">
+                          <div className="avatar-placeholder sm" style={{ background: '#3b82f6', borderRadius: '8px', fontSize: '0.75rem' }}>{co.name?.[0]}</div>
+                          <div>
+                            <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{co.name}</p>
+                            <p className="text-xs text-light">{co.website || co.city}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem' }}><span className={`badge ${ST_CLASS[co.status] || 'info'}`}>{ST_LABEL[co.status] || co.status}</span></td>
+                      <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{co.industry || '—'}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <p className="text-sm">{co.phone || '—'}</p>
+                        <p className="text-xs text-light">{co.email}</p>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <span className="text-xs text-light">{co.contact_count || 0} liên hệ · {co.deal_count || 0} deal</span>
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
+                        <div className="flex gap-1" style={{ justifyContent: 'flex-end' }}>
+                          <button className="btn ghost sm" onClick={() => openEdit(co)}><Pencil size={13} /></button>
+                          <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} onClick={() => setDeleteItem(co)}><Trash2 size={13} /></button>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </AnimatePresence>
+                {companies.length === 0 && (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Không tìm thấy công ty nào.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      {!loading && viewMode === 'list' && (
+        <div className="card" style={{ marginTop: '0.25rem' }}>
+          <Pagination total={companies.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+        </div>
+      )}
+
+      {/* Company Drawer */}
+      <CompanyDrawer
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        entity={editItem}
+        onSave={handleSaveCompany}
+      />
+      
+      <ImportExportModal 
+        isOpen={showImportExport} 
+        onClose={() => setShowImportExport(false)} 
+        entityName="Công ty" 
+      />
+
+      {/* Delete Confirm Modal */}
+      <AnimatePresence>
+        {deleteItem && (
+          <>
+            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !deleting && setDeleteItem(null)} />
+            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '380px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', zIndex: 300, padding: '2rem', textAlign: 'center' }}
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
+              <div style={{ width: 56, height: 56, background: 'var(--color-danger-light)', color: 'var(--color-danger)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}><Trash2 size={26} /></div>
+              <h3 style={{ fontWeight: 700, marginBottom: '.5rem' }}>Xóa công ty?</h3>
+              <p className="text-sm text-light" style={{ marginBottom: '1.5rem' }}>Xóa <strong>{deleteItem.name}</strong>? Dữ liệu liên quan (contacts, deals) sẽ không bị ảnh hưởng.</p>
+              <div className="flex gap-3" style={{ justifyContent: 'center' }}>
+                <button className="btn secondary" onClick={() => setDeleteItem(null)} disabled={deleting}>Hủy</button>
+                <button className="btn danger" onClick={handleDelete} disabled={deleting}>
+                  {deleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />} Xóa
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};

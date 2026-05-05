@@ -1,0 +1,17 @@
+<?php
+// f:\CRM\backend\config.php — Main config (root, included by index.php)
+
+// ── Define DB constants ─────────────────────────
+if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+if (!defined('DB_USER')) define('DB_USER', 'vhvxoigh_mail_auto');
+if (!defined('DB_PASS')) define('DB_PASS', 'Ideas@812');
+if (!defined('DB_NAME')) define('DB_NAME', 'vhvxoigh_crm');
+
+// ── JWT ─────────────────────────────────────────
+if (!defined('JWT_SECRET'))         define('JWT_SECRET',         'MinthCRM_S3cr3t_K3y_2025!@#$%');
+if (!defined('JWT_EXPIRE_ACCESS'))  define('JWT_EXPIRE_ACCESS',  3600);
+if (!defined('JWT_EXPIRE_REFRESH')) define('JWT_EXPIRE_REFRESH', 2592000);
+
+// ── CORS allowed origins ────────────────────────
+if (!defined('ALLOWED_ORIGINS'))
+    define('ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,http://localhost:4173,http://open.domation.net,https://open.domation.net');
