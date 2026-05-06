@@ -1,23 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Plus, Package, Pencil, Trash2, X, Loader2, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore } from '../store/mockStore';
+import { useDebounce } from '../hooks/useDebounce';
+import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND', maximumFractionDigits:0 }).format(n);
 
-const MOCK = [
-  { id:1, name:'Phần mềm CRM Pro', sku:'SW-CRM-PRO', category:'Phần mềm', price:15000000, unit:'license/năm', is_active:true, description:'Bản quyền phần mềm CRM đầy đủ tính năng', stock: 999 },
-  { id:2, name:'Dịch vụ tư vấn triển khai', sku:'SV-CONSULT', category:'Dịch vụ', price:8000000, unit:'ngày/người', is_active:true, description:'Tư vấn và hỗ trợ triển khai tại chỗ', stock: 100 },
-  { id:3, name:'Module Kho hàng nâng cao', sku:'SW-WH-ADV', category:'Phần mềm', price:5000000, unit:'module/năm', is_active:true, description:'Mô-đun quản lý kho hàng tích hợp', stock: 2 },
-  { id:4, name:'Bảo trì hệ thống hàng năm', sku:'SV-MAINTAIN', category:'Dịch vụ', price:3000000, unit:'năm', is_active:false, description:'Gói bảo trì và cập nhật hệ thống', stock: 0 },
-];
-
 const DEFAULT_CATEGORIES = ['Phần mềm', 'Dịch vụ', 'Phần cứng', 'Khác'];
 
-const EMPTY = { name:'', sku:'', category:'Phần mềm', price:'', unit:'cái', description:'', is_active:true, stock: 0 };
+const EMPTY = { name:'', sku:'', category:'Phần mềm', price:'', cost:'', unit:'cái', description:'', is_active:true, stock_quantity: 0 };
 
 export const ProductsPage: React.FC = () => {
   const { addToast, showConfirm } = useUIStore();
@@ -25,6 +21,7 @@ export const ProductsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showCatModal, setShowCatModal] = useState(false);
@@ -36,7 +33,11 @@ export const ProductsPage: React.FC = () => {
 
   const fetchProducts = () => {
     setLoading(true);
-    if (DEV_MODE) { setProducts(useMockStore.getState().products); setLoading(false); return; }
+    if (DEV_MODE) { 
+      setProducts(useMockStore.getState().products); 
+      setLoading(false); 
+      return; 
+    }
     api.get('/products')
       .then(r => { setProducts(r.data.data || []); })
       .catch(() => {
@@ -50,24 +51,44 @@ export const ProductsPage: React.FC = () => {
     fetchProducts();
   }, []);
 
-  const filtered = products.filter(p => {
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku?.toLowerCase().includes(search.toLowerCase());
-    const matchCat = !categoryFilter || p.category === categoryFilter;
-    return matchSearch && matchCat;
-  });
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && (showModal || showCatModal) && !saving) {
+        setShowModal(false);
+        setShowCatModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showModal, showCatModal, saving]);
+
+  const filtered = useMemo(() => {
+    return products.filter(p => {
+      const q = debouncedSearch.toLowerCase();
+      const matchSearch = !q || p.name.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q);
+      const matchCat = !categoryFilter || p.category === categoryFilter;
+      return matchSearch && matchCat;
+    });
+  }, [products, debouncedSearch, categoryFilter]);
 
   const handleSave = async () => {
     if (!form.name.trim()) { addToast('Tên sản phẩm là bắt buộc', 'error'); return; }
     setSaving(true);
+    const payload = { 
+      ...form, 
+      price: Number(form.price),
+      cost: Number(form.cost),
+      stock_quantity: Number(form.stock_quantity)
+    };
     try {
       if (DEV_MODE) {
         if (editItem) {
           useMockStore.setState(state => ({
-            products: state.products.map(p => p.id === editItem.id ? { ...editItem, ...form, price: Number(form.price) } : p)
+            products: state.products.map(p => p.id === editItem.id ? { ...editItem, ...payload } : p)
           }));
           addToast('Đã cập nhật sản phẩm', 'success');
         } else {
-          useMockStore.getState().addProduct({ ...form, price: Number(form.price) });
+          useMockStore.getState().addProduct(payload);
           addToast('Đã thêm sản phẩm mới', 'success');
         }
         fetchProducts();
@@ -77,10 +98,10 @@ export const ProductsPage: React.FC = () => {
       }
 
       if (editItem) {
-        await api.put(`/products/${editItem.id}`, { ...form, price: Number(form.price) });
+        await api.put(`/products/${editItem.id}`, payload);
         addToast('Đã cập nhật sản phẩm', 'success');
       } else {
-        await api.post('/products', { ...form, price: Number(form.price) });
+        await api.post('/products', payload);
         addToast('Đã thêm sản phẩm', 'success');
       }
       fetchProducts();
@@ -106,14 +127,33 @@ export const ProductsPage: React.FC = () => {
       </div>
 
       <div className="card" style={{ marginBottom:'1rem', padding:'0.875rem 1.25rem', display:'flex', gap:'0.75rem', alignItems:'center' }}>
-        <div className="filter-search" style={{ flex:1 }}>
+        <div className="filter-search" style={{ flex:1, position: 'relative' }}>
           <Search size={15} style={{ color:'var(--color-text-muted)' }} />
-          <input placeholder="Tìm sản phẩm, SKU..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input placeholder="Tìm sản phẩm, SKU..." value={search} onChange={e => setSearch(e.target.value)} style={{ paddingRight: '2rem' }} />
+          <AnimatePresence>
+            {search && (
+              <motion.button 
+                initial={{ opacity: 0, scale: 0.8 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+                className="btn-icon-bare" 
+                onClick={() => setSearch('')} 
+                style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', padding: 4 }}
+                title="Xóa tìm kiếm"
+              >
+                <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
-        <select className="form-input sm" style={{ width: '200px' }} value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}>
-          <option value="">Tất cả danh mục</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <div style={{ width: '200px' }}>
+          <CustomSelect 
+            options={[{ value: '', label: 'Tất cả danh mục' }, ...categories.map(c => ({ value: c, label: c }))]} 
+            value={categoryFilter} 
+            onChange={val => setCategoryFilter(String(val))} 
+          />
+        </div>
         {selectedIds.length > 0 && (
           <button className="btn danger sm" onClick={() => { 
             showConfirm(
@@ -141,14 +181,24 @@ export const ProductsPage: React.FC = () => {
           <table>
             <thead>
               <tr>
-                <th style={{ width: 40 }}><input type="checkbox" checked={selectedIds.length === filtered.length && filtered.length > 0} onChange={e => setSelectedIds(e.target.checked ? filtered.map(p => p.id) : [])} /></th>
+                <th style={{ width: 40 }}>
+                  <CustomCheckbox 
+                    checked={selectedIds.length === filtered.length && filtered.length > 0} 
+                    onChange={e => setSelectedIds(e.target.checked ? filtered.map(p => p.id) : [])} 
+                  />
+                </th>
                 <th>Sản phẩm</th><th>SKU</th><th>Danh mục</th><th>Đơn giá</th><th>Kho</th><th>Đơn vị</th><th>Trạng thái</th><th></th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(p => (
                 <motion.tr key={p.id} initial={{ opacity:0 }} animate={{ opacity:1 }}>
-                  <td><input type="checkbox" checked={selectedIds.includes(p.id)} onChange={e => setSelectedIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id))} /></td>
+                  <td>
+                    <CustomCheckbox 
+                      checked={selectedIds.includes(p.id)} 
+                      onChange={e => setSelectedIds(prev => e.target.checked ? [...prev, p.id] : prev.filter(id => id !== p.id))} 
+                    />
+                  </td>
                   <td>
                     <div className="flex items-center gap-3">
                       <div style={{ width:36, height:36, borderRadius:'10px', background:'rgba(124,58,237,0.1)', color:'var(--color-primary)', display:'flex', alignItems:'center', justifyContent:'center' }}><Package size={16} /></div>
@@ -162,15 +212,15 @@ export const ProductsPage: React.FC = () => {
                   <td><span className="badge" style={{ background:'var(--color-bg)', color:'var(--color-text-light)' }}>{p.category}</span></td>
                   <td><span className="font-semi" style={{ color:'var(--color-primary)' }}>{FMT(p.price)}</span></td>
                   <td>
-                    <span className={`badge ${p.stock <= 5 ? 'danger' : 'info'}`} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content' }}>
-                      {p.stock}
+                    <span className={`badge ${(p.stock_quantity || 0) <= 5 ? 'danger' : 'info'}`} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content' }}>
+                      {p.stock_quantity || 0}
                     </span>
                   </td>
                   <td><span className="text-sm text-light">{p.unit}</span></td>
                   <td><span className={`badge ${p.is_active ? 'success' : 'danger'}`}>{p.is_active ? 'Đang bán' : 'Ngừng bán'}</span></td>
                   <td>
                     <div className="flex gap-2">
-                      <button className="btn ghost sm" onClick={() => { setEditItem(p); setForm({...p, price:String(p.price)}); setShowModal(true); }}><Pencil size={14} /></button>
+                      <button className="btn ghost sm" onClick={() => { setEditItem(p); setForm({...p, price:String(p.price), cost: String(p.cost || '')}); setShowModal(true); }}><Pencil size={14} /></button>
                       <button className="btn ghost sm" style={{ color:'var(--color-danger)' }} onClick={() => { 
                         showConfirm(
                           'Xóa sản phẩm?',
@@ -211,7 +261,7 @@ export const ProductsPage: React.FC = () => {
               <div className="modal-body" style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600 }}>Tên sản phẩm *</label>
-                  <input className="form-input" value={form.name} onChange={e => setForm({...form, name:e.target.value})} placeholder="VD: Phần mềm quản lý bán hàng..." />
+                  <input className="form-input" value={form.name} onChange={e => setForm({...form, name:e.target.value})} placeholder="VD: Phần mềm quản lý bán hàng..." autoFocus />
                 </div>
                 
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.25rem' }}>
@@ -221,9 +271,11 @@ export const ProductsPage: React.FC = () => {
                   </div>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600 }}>Nhóm danh mục</label>
-                    <select className="form-input" value={form.category} onChange={e => setForm({...form, category:e.target.value})}>
-                      {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <CustomSelect 
+                      options={categories.map(c => ({ value: c, label: c }))} 
+                      value={form.category} 
+                      onChange={val => setForm({...form, category: String(val)})} 
+                    />
                   </div>
                 </div>
 
@@ -233,13 +285,18 @@ export const ProductsPage: React.FC = () => {
                     <input className="form-input" type="number" value={form.price} onChange={e => setForm({...form, price:e.target.value})} />
                   </div>
                   <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 600 }}>Giá vốn (đ)</label>
+                    <input className="form-input" type="number" value={form.cost} onChange={e => setForm({...form, cost:e.target.value})} />
+                  </div>
+                  <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600 }}>Đơn vị</label>
                     <input className="form-input" value={form.unit} onChange={e => setForm({...form, unit:e.target.value})} />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>Tồn kho</label>
-                    <input className="form-input" type="number" value={form.stock} onChange={e => setForm({...form, stock: Number(e.target.value)})} />
-                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: 600 }}>Tồn kho hiện có</label>
+                  <input className="form-input" type="number" value={form.stock_quantity} onChange={e => setForm({...form, stock_quantity: Number(e.target.value)})} />
                 </div>
 
                 <div className="form-group">
@@ -247,10 +304,13 @@ export const ProductsPage: React.FC = () => {
                   <textarea className="form-input" rows={2} value={form.description} onChange={e => setForm({...form, description:e.target.value})} placeholder="Mô tả ngắn gọn về sản phẩm..." style={{ resize: 'none' }} />
                 </div>
 
-                <label style={{ display:'flex', alignItems:'center', gap:'0.75rem', cursor:'pointer', padding: '0.5rem 0' }}>
-                  <input type="checkbox" checked={form.is_active} onChange={e => setForm({...form, is_active:e.target.checked})} />
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>Sản phẩm đang kinh doanh</span>
-                </label>
+                <div style={{ padding: '0.5rem 0' }}>
+                  <CustomCheckbox 
+                    checked={form.is_active} 
+                    onChange={e => setForm({...form, is_active:e.target.checked})} 
+                    label="Sản phẩm đang kinh doanh"
+                  />
+                </div>
               </div>
 
               <div className="modal-footer">

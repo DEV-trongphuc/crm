@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 05, 2026 lúc 06:30 PM
+-- Thời gian đã tạo: Th5 05, 2026 lúc 08:26 PM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.20
 
@@ -57,8 +57,8 @@ CREATE TABLE `audit_logs` (
   `action` varchar(100) NOT NULL,
   `resource` varchar(100) NOT NULL,
   `resource_id` int(11) DEFAULT NULL,
-  `old_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`old_data`)),
-  `new_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`new_data`)),
+  `old_data` longtext DEFAULT NULL,
+  `new_data` longtext DEFAULT NULL,
   `ip_address` varchar(45) DEFAULT NULL,
   `user_agent` varchar(500) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
@@ -301,6 +301,22 @@ CREATE TABLE `expenses` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `expense_entities`
+--
+
+CREATE TABLE `expense_entities` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `expense_id` int(11) NOT NULL,
+  `entity_type` enum('contact','company','deal') NOT NULL,
+  `entity_id` int(11) NOT NULL,
+  `amount` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `files`
 --
 
@@ -402,6 +418,8 @@ CREATE TABLE `invoices` (
   `discount` decimal(15,2) NOT NULL DEFAULT 0.00,
   `tax` decimal(15,2) NOT NULL DEFAULT 0.00,
   `total` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `shipping_customer_pay` tinyint(1) DEFAULT 1 COMMENT '1: Khách trả, 0: Shop trả',
+  `shipping_fee` decimal(15,2) DEFAULT 0.00,
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -728,7 +746,8 @@ ALTER TABLE `activities`
   ADD KEY `idx_activity_related` (`related_type`,`related_id`),
   ADD KEY `idx_activity_due` (`due_date`),
   ADD KEY `idx_activity_status` (`status`),
-  ADD KEY `idx_act_type` (`tenant_id`,`type`);
+  ADD KEY `idx_act_type` (`tenant_id`,`type`),
+  ADD KEY `idx_activity_created` (`tenant_id`,`created_at`);
 
 --
 -- Chỉ mục cho bảng `audit_logs`
@@ -842,6 +861,15 @@ ALTER TABLE `expenses`
   ADD KEY `idx_exp_date` (`tenant_id`,`date`);
 
 --
+-- Chỉ mục cho bảng `expense_entities`
+--
+ALTER TABLE `expense_entities`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ee_tenant` (`tenant_id`),
+  ADD KEY `idx_ee_expense` (`expense_id`),
+  ADD KEY `idx_ee_entity` (`entity_type`,`entity_id`);
+
+--
 -- Chỉ mục cho bảng `files`
 --
 ALTER TABLE `files`
@@ -902,7 +930,8 @@ ALTER TABLE `notes`
   ADD KEY `user_id` (`user_id`),
   ADD KEY `idx_note_entity` (`entity_type`,`entity_id`),
   ADD KEY `idx_note_parent` (`parent_id`),
-  ADD KEY `idx_note_tenant` (`tenant_id`);
+  ADD KEY `idx_note_tenant` (`tenant_id`),
+  ADD KEY `idx_note_time` (`created_at`);
 
 --
 -- Chỉ mục cho bảng `note_mentions`
@@ -1107,6 +1136,12 @@ ALTER TABLE `duplicate_log`
 -- AUTO_INCREMENT cho bảng `expenses`
 --
 ALTER TABLE `expenses`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `expense_entities`
+--
+ALTER TABLE `expense_entities`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -1366,6 +1401,13 @@ ALTER TABLE `invoices`
   ADD CONSTRAINT `invoices_ibfk_2` FOREIGN KEY (`deal_id`) REFERENCES `deals` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `invoices_ibfk_3` FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `invoices_ibfk_4` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL;
+
+--
+-- Ràng buộc cho bảng `expense_entities`
+--
+ALTER TABLE `expense_entities`
+  ADD CONSTRAINT `expense_entities_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `expense_entities_ibfk_2` FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`) ON DELETE CASCADE;
 
 --
 -- Ràng buộc cho bảng `invoice_items`

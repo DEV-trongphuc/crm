@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, User, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, History, Briefcase, Plus, HelpCircle, Settings, Download, Trash2, CheckCircle, ShoppingCart } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
+import { CustomRadio } from '../components/ui/CustomRadio';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { useUIStore } from '../store/uiStore';
@@ -332,15 +334,19 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
 
                               <div className="form-group mb-4">
                                 <label className="form-label">Hình thức thanh toán</label>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                    <input type="radio" name="terms" checked={invoiceForm.terms === 'one-time'} onChange={() => setInvoiceForm({ ...invoiceForm, terms: 'one-time' })} />
-                                    <span style={{ fontSize: '0.9rem' }}>Thanh toán 1 lần</span>
-                                  </label>
-                                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                                    <input type="radio" name="terms" checked={invoiceForm.terms === 'installment'} onChange={() => setInvoiceForm({ ...invoiceForm, terms: 'installment' })} />
-                                    <span style={{ fontSize: '0.9rem' }}>Trả góp</span>
-                                  </label>
+                                <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.75rem' }}>
+                                  <CustomRadio 
+                                    label="Thanh toán 1 lần" 
+                                    name="terms" 
+                                    checked={invoiceForm.terms === 'one-time'} 
+                                    onChange={() => setInvoiceForm({ ...invoiceForm, terms: 'one-time' })} 
+                                  />
+                                  <CustomRadio 
+                                    label="Trả góp" 
+                                    name="terms" 
+                                    checked={invoiceForm.terms === 'installment'} 
+                                    onChange={() => setInvoiceForm({ ...invoiceForm, terms: 'installment' })} 
+                                  />
                                 </div>
                               </div>
 
@@ -430,19 +436,10 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                         <h4 className="panel-title">Tùy chọn Marketing & CSKH</h4>
                         <p className="text-sm text-light mb-4">Cấu hình luồng chăm sóc tự động (Automation) cho liên hệ này.</p>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', border: '1px solid var(--color-border-light)', borderRadius: '12px', cursor: 'pointer' }}>
-                            <input type="checkbox" defaultChecked style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)' }} />
-                            <span style={{ fontWeight: 500 }}>Nhận Email Khuyến mãi / Bản tin</span>
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', border: '1px solid var(--color-border-light)', borderRadius: '12px', cursor: 'pointer' }}>
-                            <input type="checkbox" defaultChecked style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)' }} />
-                            <span style={{ fontWeight: 500 }}>Nhắn tin SMS tự động chúc mừng sinh nhật</span>
-                          </label>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', border: '1px solid var(--color-border-light)', borderRadius: '12px', cursor: 'pointer' }}>
-                            <input type="checkbox" style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)' }} />
-                            <span style={{ fontWeight: 500 }}>Cho phép Telesale gọi điện CSKH định kỳ</span>
-                          </label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <CustomCheckbox label="Nhận Email Khuyến mãi / Bản tin" checked={true} onChange={() => {}} />
+                          <CustomCheckbox label="Nhắn tin SMS tự động chúc mừng sinh nhật" checked={true} onChange={() => {}} />
+                          <CustomCheckbox label="Cho phép Telesale gọi điện CSKH định kỳ" checked={false} onChange={() => {}} />
                         </div>
                       </div>
                     </div>

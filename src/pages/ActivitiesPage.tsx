@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, CheckCircle2, Clock, Phone, Mail, Users, Calendar, AlignLeft, X, Loader2, Pencil, Trash2, RefreshCw, Link2, Search } from 'lucide-react';
+import { Plus, CheckCircle2, Clock, Phone, Mail, Users, Calendar, AlignLeft, X, Loader2, Pencil, Trash2, RefreshCw, Link2, Search, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useDebounce } from '../hooks/useDebounce';
+import { CustomSelect } from '../components/ui/CustomSelect';
 
 const PAGE_SIZE = 50;
 import { useMockStore } from '../store/mockStore';
@@ -43,6 +46,7 @@ export const ActivitiesPage: React.FC = () => {
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [form, setForm] = useState<any>(EMPTY);
@@ -59,7 +63,7 @@ export const ActivitiesPage: React.FC = () => {
       return;
     }
     try {
-      const params: Record<string, string> = { page: page.toString(), search };
+      const params: Record<string, string> = { page: page.toString(), search: debouncedSearch };
       if (filterType) params.type = filterType;
       if (filterStatus) params.status = filterStatus;
       const r = await api.get('/activities', { params });
@@ -72,9 +76,19 @@ export const ActivitiesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [filterType, filterStatus, search, page]);
+  }, [filterType, filterStatus, debouncedSearch, page]);
 
   useEffect(() => { fetchActivities(); }, [fetchActivities]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showModal && !saving) {
+        setShowModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showModal, saving]);
 
   const openCreate = () => { setEditItem(null); setForm(EMPTY); setShowModal(true); };
   const openEdit = (a: any) => { setEditItem(a); setForm({ ...a, due_date: a.due_date ? a.due_date.slice(0, 16) : '' }); setShowModal(true); };
@@ -149,19 +163,42 @@ export const ActivitiesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick filter chips */}
-      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', overflowX: 'auto', paddingBottom: '4px' }}>
-        {TYPES.map(t => (
-          <button key={t} onClick={() => setFilterType(filterType === t ? '' : t)}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: filterType === t ? T_COLOR[t] : 'var(--color-surface)', color: filterType === t ? 'white' : 'var(--color-text)', border: `1px solid ${filterType === t ? T_COLOR[t] : 'var(--color-border)'}`, borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', transition: 'all 0.2s', cursor: 'pointer' }}>
-            <span style={{ color: filterType === t ? 'white' : T_COLOR[t] }}>{T_ICON[t]}</span>
-            {T_LABEL[t]} <span style={{ opacity: 0.75 }}>({counts[t] || 0})</span>
+      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="filter-search" style={{ flex: 1, minWidth: '250px', position: 'relative' }}>
+          <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
+          <input placeholder="Tìm nội dung hoạt động..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} style={{ paddingRight: '2rem' }} />
+          <AnimatePresence>
+            {search && (
+              <motion.button 
+                initial={{ opacity: 0, scale: 0.8 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+                className="btn-icon-bare" 
+                onClick={() => setSearch('')} 
+                style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', padding: 4 }}
+                title="Xóa tìm kiếm"
+              >
+                <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
+              </motion.button>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Quick filter chips */}
+        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px' }}>
+          {TYPES.map(t => (
+            <button key={t} onClick={() => setFilterType(filterType === t ? '' : t)}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: filterType === t ? T_COLOR[t] : 'var(--color-surface)', color: filterType === t ? 'white' : 'var(--color-text)', border: `1px solid ${filterType === t ? T_COLOR[t] : 'var(--color-border)'}`, borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', transition: 'all 0.2s', cursor: 'pointer' }}>
+              <span style={{ color: filterType === t ? 'white' : T_COLOR[t] }}>{T_ICON[t]}</span>
+              {T_LABEL[t]} <span style={{ opacity: 0.75 }}>({counts[t] || 0})</span>
+            </button>
+          ))}
+          <button onClick={() => setFilterStatus(filterStatus === 'done' ? '' : 'done')}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: filterStatus === 'done' ? 'var(--color-success)' : 'var(--color-surface)', color: filterStatus === 'done' ? 'white' : 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}>
+            <CheckCircle2 size={14} /> Đã xong
           </button>
-        ))}
-        <button onClick={() => setFilterStatus(filterStatus === 'done' ? '' : 'done')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: filterStatus === 'done' ? 'var(--color-success)' : 'var(--color-surface)', color: filterStatus === 'done' ? 'white' : 'var(--color-text)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', cursor: 'pointer' }}>
-          <CheckCircle2 size={14} /> Đã xong
-        </button>
+        </div>
       </div>
 
       {/* Skeleton */}
@@ -171,61 +208,151 @@ export const ActivitiesPage: React.FC = () => {
         </div>
       )}
 
-      {/* Activities list */}
-      {!loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-          <AnimatePresence>
-            {items.filter(act => !search || act.subject.toLowerCase().includes(search.toLowerCase())).slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(act => (
-              <motion.div key={act.id} className="card"
-                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} layout
-                style={{ padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', opacity: act.status === 'done' ? 0.4 : 1 }}>
-                <div style={{ width: 36, height: 36, borderRadius: '10px', background: T_COLOR[act.type] + '18', color: T_COLOR[act.type], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {T_ICON[act.type]}
+      {/* Reminders Section */}
+      <AnimatePresence>
+        {!loading && items.some(a => a.status === 'planned' && a.due_date && new Date(a.due_date).toDateString() === new Date().toDateString()) && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
+            style={{ marginBottom: '1.25rem', overflow: 'hidden' }}
+          >
+            <div className="card" style={{ background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05))', border: '1px solid var(--color-primary-light)', padding: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '8px', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Zap size={18} fill="white" />
                 </div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-primary)' }}>Tiêu điểm hôm nay</h3>
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '4px' }}>
+                {items.filter(a => a.status === 'planned' && a.due_date && new Date(a.due_date).toDateString() === new Date().toDateString()).map(rem => (
+                  <motion.div 
+                    key={rem.id} 
+                    whileHover={{ y: -3, boxShadow: 'var(--shadow-md)' }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => openEdit(rem)}
+                    style={{ minWidth: 220, padding: '0.875rem', background: 'white', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', cursor: 'pointer', transition: 'all 0.2s' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <span style={{ color: T_COLOR[rem.type] }}>{T_ICON[rem.type]}</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{new Date(rem.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginBottom: '4px' }}>{rem.subject}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                       <Avatar name={rem.user_name} size="sm" />
+                       <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>Phụ trách: {rem.user_name?.split(' ').pop()}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 600, fontSize: '0.875rem', textDecoration: act.status === 'done' ? 'line-through' : 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {act.subject}
-                  </p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '2px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{act.user_name || 'Bạn'}</span>
-                    {act.due_date && (
-                      <span style={{ fontSize: '0.75rem', color: new Date(act.due_date) < new Date() && act.status !== 'done' ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                        <Clock size={11} />{fmtDate(act.due_date)}
-                      </span>
-                    )}
-                    <span className={`badge ${act.priority === 'high' ? 'danger' : act.priority === 'medium' ? 'warning' : 'info'}`}>
-                      {act.priority === 'high' ? 'Cao' : act.priority === 'medium' ? 'TB' : 'Thấp'}
-                    </span>
-                    {act.related_type && (
-                      <button onClick={e => navigateToRelated(act, e)}
-                        style={{ fontSize: '0.75rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '3px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                        <Link2 size={11} />{act.related_type} #{act.related_id}
-                      </button>
-                    )}
+      {/* Activities list with Grouping */}
+      {!loading && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {(() => {
+            const filtered = items.filter(act => !search || act.subject.toLowerCase().includes(search.toLowerCase()));
+            if (filtered.length === 0) return (
+              <div className="empty-state card">
+                <Calendar size={40} />
+                <h3>Không có hoạt động</h3>
+                <p>Thêm hoạt động mới để bắt đầu theo dõi công việc</p>
+                <button className="btn primary" style={{ marginTop: '1rem' }} onClick={openCreate}><Plus size={16} /> Thêm hoạt động</button>
+              </div>
+            );
+
+            const now = new Date();
+            
+            // Deduplicate logic for Overdue items if they are identical
+            const overdueItems = filtered.filter(a => a.status === 'planned' && a.due_date && new Date(a.due_date) < now);
+            const dedupedOverdue = overdueItems.reduce((acc: any[], curr) => {
+              const isDuplicate = acc.find(item => 
+                item.subject === curr.subject && 
+                item.type === curr.type && 
+                new Date(item.due_date).getTime() === new Date(curr.due_date).getTime()
+              );
+              if (!isDuplicate) acc.push(curr);
+              return acc;
+            }, []);
+
+            const groups: Record<string, any[]> = {
+              'Quá hạn': dedupedOverdue,
+              'Hôm nay': filtered.filter(a => a.status === 'planned' && a.due_date && new Date(a.due_date).toDateString() === now.toDateString()),
+              'Sắp tới': filtered.filter(a => a.status === 'planned' && (!a.due_date || (new Date(a.due_date) > now && new Date(a.due_date).toDateString() !== now.toDateString()))),
+              'Đã hoàn thành': filtered.filter(a => a.status === 'done'),
+            };
+
+            return Object.entries(groups).map(([label, groupItems]) => {
+              if (groupItems.length === 0) return null;
+              return (
+                <div key={label}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                    <h4 style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: label === 'Quá hạn' ? 'var(--color-danger)' : 'var(--color-text-muted)', letterSpacing: '0.05em' }}>{label}</h4>
+                    <div style={{ flex: 1, height: 1, background: 'var(--color-border-light)' }} />
+                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{groupItems.length}</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                    <AnimatePresence>
+                      {groupItems.map(act => (
+                        <motion.div key={act.id} className="card hover-lift"
+                          initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} layout
+                          style={{ padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: `4px solid ${act.status === 'done' ? 'var(--color-success)' : T_COLOR[act.type]}` }}>
+                          
+                          <div style={{ width: 32, height: 32, borderRadius: '8px', background: T_COLOR[act.type] + '12', color: T_COLOR[act.type], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {T_ICON[act.type]}
+                          </div>
+
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <p style={{ fontWeight: 600, fontSize: '0.875rem', textDecoration: act.status === 'done' ? 'line-through' : 'none', color: act.status === 'done' ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
+                                {act.subject}
+                              </p>
+                              {act.status !== 'done' && new Date(act.due_date) < now && (
+                                <span style={{ fontSize: '0.65rem', background: 'var(--color-danger)', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>QUÁ HẠN</span>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '2px', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Avatar name={act.user_name || 'Bạn'} size="sm" />
+                                {act.user_name || 'Bạn'}
+                              </span>
+                              {act.due_date && (
+                                <span style={{ fontSize: '0.75rem', color: new Date(act.due_date) < now && act.status !== 'done' ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                  <Clock size={11} />{fmtDate(act.due_date)}
+                                </span>
+                              )}
+                              <span className={`badge ${act.priority === 'high' ? 'danger' : act.priority === 'medium' ? 'warning' : 'info'}`} style={{ fontSize: '0.65rem' }}>
+                                {act.priority === 'high' ? 'Quan trọng' : act.priority === 'medium' ? 'Bình thường' : 'Thấp'}
+                              </span>
+                              {act.related_type && (
+                                <button onClick={e => navigateToRelated(act, e)}
+                                  style={{ fontSize: '0.75rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '3px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                  <Link2 size={11} />
+                                  {act.related_type === 'contact' ? act.contact_name : 
+                                   act.related_type === 'company' ? act.company_name : 
+                                   act.related_type === 'deal' ? act.deal_name : act.related_id}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                            <button onClick={() => toggleDone(act)}
+                              style={{ width: 28, height: 28, borderRadius: '8px', border: `2px solid ${act.status === 'done' ? 'var(--color-success)' : 'var(--color-border)'}`, background: act.status === 'done' ? 'var(--color-success)' : 'transparent', color: act.status === 'done' ? 'white' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', marginRight: '0.25rem' }}>
+                              <CheckCircle2 size={14} />
+                            </button>
+                            <button className="btn-icon sm hover-bg" onClick={() => openEdit(act)}><Pencil size={13} /></button>
+                            <button className="btn-icon sm hover-bg" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(act)}><Trash2 size={13} /></button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
                   </div>
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                  <button onClick={() => toggleDone(act)}
-                    style={{ width: 28, height: 28, borderRadius: '50%', border: `2px solid ${act.status === 'done' ? 'var(--color-success)' : 'var(--color-border)'}`, background: act.status === 'done' ? 'var(--color-success)' : 'transparent', color: act.status === 'done' ? 'white' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}>
-                    <CheckCircle2 size={14} />
-                  </button>
-                  <button className="btn ghost sm" onClick={() => openEdit(act)}><Pencil size={13} /></button>
-                  <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(act)}><Trash2 size={13} /></button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-
-          {items.length === 0 && (
-            <div className="empty-state card">
-              <Calendar size={40} />
-              <h3>Không có hoạt động</h3>
-              <p>Thêm hoạt động mới để bắt đầu theo dõi công việc</p>
-              <button className="btn primary" style={{ marginTop: '1rem' }} onClick={openCreate}><Plus size={16} /> Thêm hoạt động</button>
-            </div>
-          )}
+              );
+            });
+          })()}
         </div>
       )}
 
@@ -265,7 +392,7 @@ export const ActivitiesPage: React.FC = () => {
 
                 <div className="form-group">
                   <label className="form-label">Tiêu đề *</label>
-                  <input className="form-input" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Nội dung hoạt động..." />
+                  <input className="form-input" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="Nội dung hoạt động..." autoFocus />
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -275,23 +402,31 @@ export const ActivitiesPage: React.FC = () => {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Ưu tiên</label>
-                    <select className="form-input" value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}>
-                      <option value="low">Thấp</option>
-                      <option value="medium">Trung bình</option>
-                      <option value="high">Cao</option>
-                    </select>
+                    <CustomSelect 
+                      options={[
+                        { value: 'low', label: 'Thấp' },
+                        { value: 'medium', label: 'Trung bình' },
+                        { value: 'high', label: 'Cao' }
+                      ]} 
+                      value={form.priority} 
+                      onChange={val => setForm({ ...form, priority: val.toString() })} 
+                    />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Liên kết đến</label>
-                    <select className="form-input" value={form.related_type} onChange={e => setForm({ ...form, related_type: e.target.value, related_id: '' })}>
-                      <option value="">Không có</option>
-                      <option value="contact">Khách hàng</option>
-                      <option value="deal">Deal</option>
-                      <option value="company">Công ty</option>
-                    </select>
+                    <CustomSelect 
+                      options={[
+                        { value: '', label: 'Không có' },
+                        { value: 'contact', label: 'Khách hàng' },
+                        { value: 'deal', label: 'Deal' },
+                        { value: 'company', label: 'Công ty' }
+                      ]} 
+                      value={form.related_type} 
+                      onChange={val => setForm({ ...form, related_type: val.toString(), related_id: '' })} 
+                    />
                   </div>
                   {form.related_type && (
                     <div className="form-group">

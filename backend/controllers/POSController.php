@@ -5,6 +5,7 @@ class POSController {
     private PDO $db;
     public function __construct(PDO $db) { $this->db = $db; }
 
+
     public function createOrder(array $auth): void {
         $tid = $auth['tenant_id'];
         $uid = $auth['user_id'];
@@ -33,7 +34,8 @@ class POSController {
             $dealId = $this->db->lastInsertId();
 
             // 2. Create an Invoice
-            $invNum = 'INV-' . time();
+            $today = date('Ymd');
+            $invNum = 'POS-' . $today . '-' . strtoupper(bin2hex(random_bytes(3)));
             $sInv = $this->db->prepare("
                 INSERT INTO invoices (tenant_id, deal_id, contact_id, created_by, invoice_number, title, status, issue_date, due_date, paid_at, total)
                 VALUES (?, ?, ?, ?, ?, ?, 'paid', CURDATE(), CURDATE(), NOW(), ?)
@@ -55,7 +57,7 @@ class POSController {
                 
                 // Deduct stock if product_id is present
                 if (!empty($item['id'])) {
-                    $sStock = $this->db->prepare("UPDATE products SET stock = stock - ? WHERE id = ? AND tenant_id = ?"); 
+                    $sStock = $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND tenant_id = ?"); 
                     $sStock->execute([$item['quantity'], $item['id'], $tid]);
                 }
             }
@@ -71,17 +73,13 @@ class POSController {
             ");
             $sCust->execute([$data['total_amount'], $data['customer_id'], $tid]);
 
-            // 5. Audit Trail Activity
-            $sAct = $this->db->prepare("
-                INSERT INTO activities (tenant_id, user_id, type, subject, body, status, related_type, related_id)
-                VALUES (?, ?, 'task', ?, ?, 'done', 'contact', ?)
-            ");
-            $sAct->execute([
-                $tid, $uid, 
+            // 5. Audit Trail Activity (Redirected to logActivity to keep main feed clean)
+            logActivity(
+                $this->db, $tid, $uid, 'task', 
                 "Tạo đơn hàng POS #$invNum", 
                 "Đơn hàng trị giá " . number_format($data['total_amount'], 0, ',', '.') . " đ cho khách hàng.",
-                $data['customer_id']
-            ]);
+                'contact', $data['customer_id']
+            );
 
             $this->db->commit();
             respond(201, ["invoice_id" => $invId, "message" => "Order completed successfully"]);

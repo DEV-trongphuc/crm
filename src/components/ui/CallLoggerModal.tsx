@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Phone, X, Check, Clock, Mic, User, PhoneOutgoing, PhoneIncoming, CheckCircle, PhoneOff, Voicemail, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../../store/uiStore';
+import { CustomSelect } from './CustomSelect';
 
 interface CallLoggerModalProps {
   isOpen: boolean;
@@ -156,10 +157,12 @@ export const CallLoggerModal: React.FC<CallLoggerModalProps> = ({ isOpen, onClos
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Hành động tiếp theo</label>
-                  <select className="form-input" value={nextAction} onChange={e => setNextAction(e.target.value)}>
-                    <option value="">-- Chọn --</option>
-                    {NEXT_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-                  </select>
+                  <CustomSelect
+                    options={NEXT_ACTIONS.map(a => ({ value: a, label: a }))}
+                    value={nextAction}
+                    onChange={v => setNextAction(String(v))}
+                    placeholder="-- Chọn --"
+                  />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Ngày nhắc nhở</label>

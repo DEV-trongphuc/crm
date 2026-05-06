@@ -19,6 +19,12 @@ class ContactController {
         $where  = ['c.tenant_id = ?', 'c.deleted_at IS NULL'];
         $params = [$tid];
 
+        // Role-based visibility: Sale can only see their own contacts
+        if ($auth['role'] === 'sale') {
+            $where[] = 'c.owner_id = ?';
+            $params[] = $auth['user_id'];
+        }
+
         if ($search) {
             $where[]  = 'MATCH(c.first_name, c.last_name, c.email) AGAINST(? IN BOOLEAN MODE)';
             $params[] = "$search*";
@@ -114,15 +120,21 @@ class ContactController {
     }
 
     public function show(array $auth, int $id): void {
-        $stmt = $this->db->prepare("
-            SELECT c.*, comp.name as company_name, u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color
+        $sql = "SELECT c.*, comp.name as company_name, u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color
             FROM contacts c
             LEFT JOIN companies comp ON c.company_id = comp.id
             LEFT JOIN users u ON c.owner_id = u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id = ps.id
-            WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL
-        ");
-        $stmt->execute([$id, $auth['tenant_id']]);
+            WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
+        
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND c.owner_id=?";
+            $p[] = $auth['user_id'];
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
         $row = $stmt->fetch();
         if (!$row) respond(404, null, 'Không tìm thấy liên hệ', false);
         $row['tags'] = json_decode($row['tags'] ?? '[]');
@@ -165,10 +177,17 @@ class ContactController {
         }
         if (isset($b['tags'])) { $sets[] = 'tags=?'; $params[] = json_encode($b['tags']); }
         if (!$sets) respond(422, null, 'Không có dữ liệu để cập nhật', false);
+        // Check permission first
+        $check = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
+        $cp = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
+        $check->execute($cp);
+        if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+
         $params[] = $id; $params[] = $auth['tenant_id'];
-        
         $sql = "UPDATE contacts SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
-        $this->db->prepare($sql)->execute($params);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         $this->show($auth, $id);
     }
 
@@ -176,8 +195,15 @@ class ContactController {
         $b = getBody();
         if (empty($b['stage_id'])) respond(422, null, 'stage_id là bắt buộc', false);
         
-        $stmt = $this->db->prepare("UPDATE contacts SET stage_id=? WHERE id=? AND tenant_id=?");
-        $stmt->execute([$b['stage_id'], $id, $auth['tenant_id']]);
+        $sql = "UPDATE contacts SET stage_id=? WHERE id=? AND tenant_id=?";
+        $p = [$b['stage_id'], $id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND owner_id=?";
+            $p[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
+        if (!$stmt->rowCount()) respond(403, null, 'Bạn không có quyền di chuyển liên hệ này', false);
         
         $note = $b['note'] ?? "Khách hàng đã được chuyển trạng thái.";
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'contact', $id);
@@ -185,8 +211,14 @@ class ContactController {
     }
 
     public function destroy(array $auth, int $id): void {
-        $stmt = $this->db->prepare("UPDATE contacts SET deleted_at=NOW() WHERE id=? AND tenant_id=?");
-        $stmt->execute([$id, $auth['tenant_id']]);
+        $sql = "UPDATE contacts SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND owner_id=?";
+            $p[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy liên hệ', false);
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Liên hệ', "Một liên hệ đã bị đưa vào thùng rác.", 'contact', $id);
         respond(200, null, 'Đã xóa liên hệ (vào thùng rác)');
@@ -198,8 +230,16 @@ class ContactController {
         if (empty($ids)) respond(400, null, 'Danh sách ID không hợp lệ', false);
         
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
-        $stmt = $this->db->prepare("UPDATE contacts SET deleted_at=NOW() WHERE tenant_id=? AND id IN ($placeholders)");
-        $stmt->execute(array_merge([$auth['tenant_id']], $ids));
+        $sql = "UPDATE contacts SET deleted_at=NOW() WHERE tenant_id=? AND id IN ($placeholders)";
+        $params = array_merge([$auth['tenant_id']], $ids);
+        
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND owner_id=?";
+            $params[] = $auth['user_id'];
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
         
         respond(200, null, "Đã xóa " . $stmt->rowCount() . " liên hệ");
     }

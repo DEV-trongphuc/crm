@@ -5,11 +5,13 @@ import {
   CheckCircle2, Clock, TrendingDown, X, ArrowUpRight, ArrowDownRight, ChevronDown, Building2, Wallet, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore } from '../store/mockStore';
@@ -313,11 +315,17 @@ export const ExpensesPage: React.FC = () => {
           {search && <button onClick={() => setSearch('')}><X size={13} /></button>}
         </div>
 
-        <select className="form-input form-select" style={{ width: 180 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="">Tất cả trạng thái</option>
-          <option value="approved">Đã duyệt</option>
-          <option value="pending">Chờ duyệt</option>
-        </select>
+        <div style={{ width: 180 }}>
+          <CustomSelect 
+            options={[
+              { value: '', label: 'Tất cả trạng thái' },
+              { value: 'approved', label: 'Đã duyệt' },
+              { value: 'pending', label: 'Chờ duyệt' }
+            ]} 
+            value={statusFilter} 
+            onChange={val => setStatusFilter(val.toString())} 
+          />
+        </div>
 
         {selected.size > 0 && (
           <button className="btn danger sm" onClick={() => { setItems(prev => prev.filter(e => !selected.has(e.id))); setSelected(new Set()); addToast(`Đã xóa ${selected.size} khoản`, 'success'); }}>
@@ -333,7 +341,7 @@ export const ExpensesPage: React.FC = () => {
             <thead>
               <tr>
                 <th style={{ width: 44, padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border)' }}>
-                  <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--color-primary)' }} />
+                  <CustomCheckbox checked={allSelected} onChange={toggleAll} />
                 </th>
                 <th>Nội dung chi</th>
                 <th>Danh mục</th>
@@ -367,7 +375,7 @@ export const ExpensesPage: React.FC = () => {
                       className="hover-bg transition-colors"
                     >
                       <td className="col-check" onClick={e => e.stopPropagation()}>
-                        <input type="checkbox" checked={selected.has(exp.id)} onChange={() => toggleSelect(exp.id)} />
+                        <CustomCheckbox checked={selected.has(exp.id)} onChange={() => toggleSelect(exp.id)} />
                       </td>
                       <td>
                         <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{exp.title}</div>
@@ -384,9 +392,7 @@ export const ExpensesPage: React.FC = () => {
                       <td>
                         {approver ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
-                              {approver.full_name.charAt(0)}
-                            </div>
+                            <Avatar name={approver.full_name} size={22} />
                             <span style={{ fontSize: '0.8125rem', fontWeight: 500 }}>{approver.full_name}</span>
                           </div>
                         ) : (
@@ -466,25 +472,21 @@ export const ExpensesPage: React.FC = () => {
                 {/* VAT Settings Panel */}
                 <div style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div 
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}
-                      onClick={() => setForm({ ...form, has_vat_invoice: !form.has_vat_invoice })}
-                    >
-                      <div className={`custom-toggle ${form.has_vat_invoice ? 'active' : ''}`} />
-                      <div>
-                        <p style={{ fontSize: '0.8rem', fontWeight: 700 }}>Có hóa đơn VAT</p>
-                        <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Chứng từ thuế</p>
-                      </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <CustomCheckbox 
+                        checked={form.has_vat_invoice} 
+                        onChange={() => setForm({ ...form, has_vat_invoice: !form.has_vat_invoice })} 
+                        label="Có hóa đơn VAT"
+                      />
+                      <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginLeft: '2rem' }}>Chứng từ thuế</p>
                     </div>
-                    <div 
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}
-                      onClick={() => setForm({ ...form, is_vat_inclusive: !form.is_vat_inclusive })}
-                    >
-                      <div className={`custom-toggle ${form.is_vat_inclusive ? 'active' : ''}`} />
-                      <div>
-                        <p style={{ fontSize: '0.8rem', fontWeight: 700 }}>Bao gồm VAT</p>
-                        <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>Giá sau thuế</p>
-                      </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <CustomCheckbox 
+                        checked={form.is_vat_inclusive} 
+                        onChange={() => setForm({ ...form, is_vat_inclusive: !form.is_vat_inclusive })} 
+                        label="Bao gồm VAT"
+                      />
+                      <p style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', marginLeft: '2rem' }}>Giá sau thuế</p>
                     </div>
                   </div>
 
@@ -492,20 +494,20 @@ export const ExpensesPage: React.FC = () => {
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '1rem', display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-primary)' }}>Thuế %</label>
-                        <select 
-                          className="form-input" 
-                          value={form.amount ? Math.round((Number(form.vat_amount) / Number(form.amount)) * 100) : 10}
-                          onChange={e => {
-                            const pct = Number(e.target.value);
+                        <CustomSelect 
+                          options={[
+                            { value: '0', label: '0%' },
+                            { value: '5', label: '5%' },
+                            { value: '8', label: '8%' },
+                            { value: '10', label: '10%' }
+                          ]} 
+                          value={form.amount ? Math.round((Number(form.vat_amount) / Number(form.amount)) * 100).toString() : '10'}
+                          onChange={val => {
+                            const pct = Number(val);
                             const amt = Math.round(Number(form.amount) * (pct / 100));
                             setForm({ ...form, vat_amount: amt.toString() });
-                          }}
-                        >
-                          <option value="0">0%</option>
-                          <option value="5">5%</option>
-                          <option value="8">8%</option>
-                          <option value="10">10%</option>
-                        </select>
+                          }} 
+                        />
                       </div>
                       <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'var(--color-primary)' }}>Tiền thuế VAT (VND)</label>
@@ -540,11 +542,17 @@ export const ExpensesPage: React.FC = () => {
                   <div className="form-group">
                     <label className="form-label" style={{ color: 'var(--color-danger)', fontWeight: 700 }}>Người duyệt *</label>
                     <CustomSelect 
-                      options={users.map((u: any) => ({ value: u.id, label: u.full_name, icon: <User size={12}/> }))}
+                      options={users.map((u: any) => ({ 
+                        value: u.id, 
+                        label: u.full_name, 
+                        avatar: u.avatar_url,
+                        sublabel: u.role
+                      }))}
                       value={form.approver_id}
                       onChange={val => setForm({ ...form, approver_id: Number(val) })}
                       placeholder="Chọn người duyệt..."
                       searchable
+                      showAvatars
                     />
                   </div>
                   <div className="form-group">
@@ -555,24 +563,33 @@ export const ExpensesPage: React.FC = () => {
                           form.related_user_ids.map((uid: number) => {
                             const u = users.find((x:any) => x.id === uid);
                             return (
-                              <span key={uid} style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                {u?.full_name} <X size={10} style={{cursor:'pointer'}} onClick={() => setForm({...form, related_user_ids: form.related_user_ids.filter((x: number) => x !== uid)})} />
+                              <span key={uid} style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.7rem', display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(124, 58, 237, 0.2)' }}>
+                                <Avatar name={u?.full_name} size={16} />
+                                {u?.full_name} 
+                                <X size={10} style={{cursor:'pointer'}} onClick={() => setForm({...form, related_user_ids: form.related_user_ids.filter((x: number) => x !== uid)})} />
                               </span>
                             );
                           })
                         }
                       </div>
-                      <select className="form-input" style={{ fontSize: '0.75rem', padding: '4px' }}
-                        onChange={e => {
-                          const val = Number(e.target.value);
-                          if (val && !form.related_user_ids.includes(val)) {
-                            setForm({ ...form, related_user_ids: [...form.related_user_ids, val] });
+                      <CustomSelect
+                        options={users.filter((u:any) => !form.related_user_ids.includes(u.id)).map((u: any) => ({
+                          value: String(u.id),
+                          label: u.full_name,
+                          sublabel: u.role,
+                          avatar: u.avatar_url
+                        }))}
+                        value=""
+                        onChange={(val) => {
+                          const numVal = Number(val);
+                          if (numVal && !form.related_user_ids.includes(numVal)) {
+                            setForm({ ...form, related_user_ids: [...form.related_user_ids, numVal] });
                           }
-                          e.target.value = "";
-                        }}>
-                        <option value="">+ Thêm người liên quan</option>
-                        {users.filter((u:any) => !form.related_user_ids.includes(u.id)).map((u: any) => <option key={u.id} value={u.id}>{u.full_name}</option>)}
-                      </select>
+                        }}
+                        placeholder="+ Thêm người liên quan..."
+                        showAvatars
+                        searchable
+                      />
                     </div>
                   </div>
                 </div>
@@ -587,24 +604,31 @@ export const ExpensesPage: React.FC = () => {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
                     {form.entities.length === 0 ? <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>Chưa áp dụng cho khách hàng nào</span> : 
                       form.entities.map((e: any) => (
-                        <span key={e.entity_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.8125rem', fontWeight: 600 }}>
-                          <User size={12} /> {e.name || `Khách hàng #${e.entity_id}`}
+                        <span key={e.entity_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '6px 12px', borderRadius: 'var(--radius-lg)', fontSize: '0.8125rem', fontWeight: 600, border: '1px solid rgba(124, 58, 237, 0.2)' }}>
+                          <Avatar name={e.name} src={e.avatar_url} size={20} />
+                          {e.name || `Khách hàng #${e.entity_id}`}
                           <X size={14} style={{ cursor: 'pointer', marginLeft: 4 }} onClick={() => setForm({ ...form, entities: form.entities.filter((x: any) => x.entity_id !== e.entity_id) })} />
                         </span>
                       ))
                     }
                   </div>
                   <CustomSelect
-                    options={contacts.filter(c => !form.entities.find((e: any) => e.entity_id === c.id)).map(c => ({ value: String(c.id), label: `${c.first_name} ${c.last_name || ''}`.trim(), icon: <User size={12}/> }))}
+                    options={contacts.filter(c => !form.entities.find((e: any) => e.entity_id === c.id)).map(c => ({ 
+                      value: String(c.id), 
+                      label: `${c.first_name} ${c.last_name || ''}`.trim(),
+                      avatar: c.avatar_url,
+                      sublabel: c.company_name 
+                    }))}
                     value=""
                     onChange={(val) => {
                       const found = contacts.find(c => String(c.id) === val);
                       if (found) {
-                        setForm({ ...form, entities: [...form.entities, { entity_type: 'contact', entity_id: found.id, name: `${found.first_name} ${found.last_name || ''}`.trim() }] });
+                        setForm({ ...form, entities: [...form.entities, { entity_type: 'contact', entity_id: found.id, name: `${found.first_name} ${found.last_name || ''}`.trim(), avatar_url: found.avatar_url }] });
                       }
                     }}
                     placeholder="+ Thêm khách hàng chia tiền bill..."
                     searchable
+                    showAvatars
                   />
                 </div>
               </div>

@@ -31,6 +31,17 @@ export const AlertToast: React.FC = () => {
             >
               <Icon size={18} className={styles.icon} />
               <span className={styles.message}>{toast.message}</span>
+              {toast.action && (
+                <button 
+                  className={styles.actionBtn} 
+                  onClick={() => {
+                    toast.action?.onClick();
+                    removeToast(toast.id);
+                  }}
+                >
+                  {toast.action.label}
+                </button>
+              )}
               <button className={styles.close} onClick={() => removeToast(toast.id)}>
                 <X size={14} />
               </button>

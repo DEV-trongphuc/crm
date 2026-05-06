@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FileText, Plus, Search, Download, CheckCircle2, Clock, AlertCircle,
   Eye, Trash2, Printer, X, Loader2, ArrowUpRight, TrendingUp, DollarSign,
@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import { useAuthStore } from '../store/authStore';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
@@ -55,11 +56,24 @@ export const InvoicesPage: React.FC = () => {
 
   useEffect(() => { fetchInvoices(); setPage(1); }, [fetchInvoices]);
 
-  const filtered = items.filter(inv => {
-    const txt = `${inv.invoice_number} ${inv.contact_name || ''} ${inv.company_name || ''}`.toLowerCase();
-    return (!search || txt.includes(search.toLowerCase()))
-      && (!statusFilter || inv.status === statusFilter);
-  });
+  // ESC key to close modals
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (previewItem) setPreviewItem(null);
+      else if (deleteItem) setDeleteItem(null);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [previewItem, deleteItem]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return items.filter(inv => {
+      const txt = `${inv.invoice_number} ${inv.contact_name || ''} ${inv.company_name || ''}`.toLowerCase();
+      return (!q || txt.includes(q)) && (!statusFilter || inv.status === statusFilter);
+    });
+  }, [items, search, statusFilter]);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // KPIs
@@ -216,7 +230,7 @@ export const InvoicesPage: React.FC = () => {
           <table>
             <thead>
               <tr>
-                <th className="col-check"><input type="checkbox" checked={allSelected} onChange={toggleAll} /></th>
+                <th className="col-check"><CustomCheckbox checked={allSelected} onChange={toggleAll} /></th>
                 <th>MÃ HÓA ĐƠN</th>
                 <th>KHÁCH HÀNG</th>
                 <th>NỘI DUNG</th>
@@ -238,7 +252,7 @@ export const InvoicesPage: React.FC = () => {
                   return (
                     <motion.tr key={inv.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ background: isOverdue ? 'rgba(239,68,68,0.02)' : undefined }}>
                       <td className="col-check" onClick={e => e.stopPropagation()}>
-                        <input type="checkbox" checked={selected.has(inv.id)} onChange={() => toggleSelect(inv.id)} />
+                        <CustomCheckbox checked={selected.has(inv.id)} onChange={() => toggleSelect(inv.id)} />
                       </td>
                       <td>
                         <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.8125rem', fontFamily: 'monospace' }}>{inv.invoice_number}</span>
@@ -359,7 +373,7 @@ export const InvoicesPage: React.FC = () => {
 
                 <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
                   <button className="btn ghost" onClick={() => setPreviewItem(null)}>Đóng</button>
-                  <button className="btn outline" onClick={() => addToast('Tính năng in đang được chuẩn bị...', 'info')}><Printer size={16} /> In Hóa Đơn</button>
+                  <button className="btn outline" onClick={() => window.print()}><Printer size={16} /> In Hóa Đơn</button>
                   <button className="btn primary" onClick={() => addToast(`Đã gửi hóa đơn tới ${previewItem.contact_name}`, 'success')}><Send size={16} /> Gửi Khách Hàng</button>
                 </div>
               </div>

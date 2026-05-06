@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Building2, X, Loader2, Pencil, Trash2, Globe, Phone, Mail, Users, LayoutGrid, List, Filter, RefreshCw, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
 import { CompanyDrawer } from './CompanyDrawer';
 import { Pagination } from '../components/ui/Pagination';
@@ -9,6 +10,7 @@ import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore } from '../store/mockStore';
 import { PhoneLink } from '../components/ui/PhoneLink';
+import { useDebounce } from '../hooks/useDebounce';
 
 const STATUSES = ['active', 'inactive', 'prospect'];
 const ST_LABEL: Record<string, string> = { active: 'Hoạt động', inactive: 'Ngừng', prospect: 'Tiềm năng' };
@@ -18,11 +20,12 @@ const PAGE_SIZE = 50;
 const MOCK_COMPANIES: any[] = [];
 
 export const CompaniesPage: React.FC = () => {
-  const { addToast } = useUIStore();
+  const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [companies, setCompanies] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
@@ -56,11 +59,10 @@ export const CompaniesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [search, statusFilter]);
+  }, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
-    const t = setTimeout(() => fetchCompanies(), search ? 400 : 0);
-    return () => clearTimeout(t);
+    fetchCompanies();
   }, [fetchCompanies]);
 
   const openCreate = () => { setEditItem(null); setShowModal(true); };
@@ -83,19 +85,27 @@ export const CompaniesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteItem) return;
-    setDeleting(true);
-    try {
-      await api.delete(`/companies/${deleteItem.id}`);
-      addToast('Đã xóa công ty', 'success');
-      setDeleteItem(null);
-      fetchCompanies();
-    } catch {
-      addToast('Lỗi khi xóa công ty', 'error');
-    } finally {
-      setDeleting(false);
-    }
+  const confirmDelete = (co: any) => {
+    showConfirm({
+      title: 'Xóa công ty?',
+      message: `Bạn có chắc chắn muốn xóa vĩnh viễn công ty "${co.name}"? Thao tác này không thể hoàn tác.`,
+      isDanger: true,
+      impactInfo: `Cảnh báo: Xóa công ty sẽ gỡ bỏ liên kết với ${co.contact_count || 0} liên hệ và ${co.deal_count || 0} cơ hội liên quan.`,
+      confirmText: 'Xác nhận xóa',
+      onConfirm: async () => {
+        try {
+          setDeleting(true);
+          await api.delete(`/companies/${co.id}`);
+          addToast('Đã xóa công ty thành công', 'success');
+          fetchCompanies();
+        } catch {
+          addToast('Lỗi khi xóa công ty', 'error');
+        } finally {
+          setDeleting(false);
+          closeConfirm();
+        }
+      }
+    });
   };
 
   return (
@@ -177,9 +187,7 @@ export const CompaniesPage: React.FC = () => {
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="avatar-placeholder md" style={{ background: '#3b82f6', borderRadius: '10px', fontSize: '0.85rem' }}>
-                      {co.name?.[0] || '?'}
-                    </div>
+                    <Avatar name={co.name} src={co.logo_url} size={40} style={{ borderRadius: '10px' }} />
                     <div>
                       <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{co.name}</p>
                       <p className="text-xs text-light">{co.industry}{co.city ? ` · ${co.city}` : ''}</p>
@@ -199,7 +207,7 @@ export const CompaniesPage: React.FC = () => {
                   </div>
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                     <button className="btn ghost sm" onClick={() => openEdit(co)}><Pencil size={13} /></button>
-                    <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} onClick={() => setDeleteItem(co)}><Trash2 size={13} /></button>
+                    <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} onClick={() => confirmDelete(co)}><Trash2 size={13} /></button>
                   </div>
                 </div>
               </motion.div>
@@ -247,7 +255,7 @@ export const CompaniesPage: React.FC = () => {
                     >
                       <td style={{ padding: '1rem' }}>
                         <div className="flex items-center gap-3">
-                          <div className="avatar-placeholder sm" style={{ background: '#3b82f6', borderRadius: '8px', fontSize: '0.75rem' }}>{co.name?.[0]}</div>
+                          <Avatar name={co.name} src={co.logo_url} size={32} style={{ borderRadius: '8px' }} />
                           <div>
                             <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{co.name}</p>
                             <p className="text-xs text-light">{co.website || co.city}</p>
@@ -268,7 +276,7 @@ export const CompaniesPage: React.FC = () => {
                       <td style={{ padding: '1rem', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div className="flex gap-1" style={{ justifyContent: 'flex-end' }}>
                           <button className="btn ghost sm" onClick={() => openEdit(co)}><Pencil size={13} /></button>
-                          <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} onClick={() => setDeleteItem(co)}><Trash2 size={13} /></button>
+                          <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} onClick={() => confirmDelete(co)}><Trash2 size={13} /></button>
                         </div>
                       </td>
                     </motion.tr>
@@ -296,32 +304,12 @@ export const CompaniesPage: React.FC = () => {
         onSave={handleSaveCompany}
       />
       
+      {/* Import Export Modal */}
       <ImportExportModal 
         isOpen={showImportExport} 
         onClose={() => setShowImportExport(false)} 
         entityName="Công ty" 
       />
-
-      {/* Delete Confirm Modal */}
-      <AnimatePresence>
-        {deleteItem && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !deleting && setDeleteItem(null)} />
-            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '380px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', zIndex: 300, padding: '2rem', textAlign: 'center' }}
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}>
-              <div style={{ width: 56, height: 56, background: 'var(--color-danger-light)', color: 'var(--color-danger)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}><Trash2 size={26} /></div>
-              <h3 style={{ fontWeight: 700, marginBottom: '.5rem' }}>Xóa công ty?</h3>
-              <p className="text-sm text-light" style={{ marginBottom: '1.5rem' }}>Xóa <strong>{deleteItem.name}</strong>? Dữ liệu liên quan (contacts, deals) sẽ không bị ảnh hưởng.</p>
-              <div className="flex gap-3" style={{ justifyContent: 'center' }}>
-                <button className="btn secondary" onClick={() => setDeleteItem(null)} disabled={deleting}>Hủy</button>
-                <button className="btn danger" onClick={handleDelete} disabled={deleting}>
-                  {deleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />} Xóa
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

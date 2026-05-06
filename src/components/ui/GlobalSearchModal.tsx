@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Search, X, Users, Building2, Briefcase, ArrowRight, Loader2 } from 'lucide-react';
+import { Search, X, Users, Building2, Briefcase, ArrowRight, Loader2, Phone, Mail, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
@@ -91,21 +91,44 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
           {results.contacts && results.contacts.length > 0 && (
             <ResultGroup icon={<Users size={14} />} label="Khách hàng" color="#3b82f6">
               {results.contacts.slice(0, 4).map((c: any) => (
-                <ResultItem key={c.id} title={`${c.first_name} ${c.last_name}`} subtitle={c.email || c.phone || ''} onClick={() => goTo('/contacts')} />
+                <ResultItem 
+                  key={c.id} 
+                  title={`${c.first_name} ${c.last_name}`} 
+                  subtitle={c.email || c.phone || ''} 
+                  onClick={() => goTo('/contacts')} 
+                  actions={[
+                    { icon: <Phone size={12} />, label: 'Gọi điện', onClick: () => window.location.href = `tel:${c.phone}` },
+                    { icon: <Mail size={12} />, label: 'Gửi Email', onClick: () => window.location.href = `mailto:${c.email}` },
+                    { icon: <Plus size={12} />, label: 'Tạo Deal', onClick: () => goTo('/deals') }
+                  ]}
+                />
               ))}
             </ResultGroup>
           )}
           {results.companies && results.companies.length > 0 && (
             <ResultGroup icon={<Building2 size={14} />} label="Công ty" color="#8b5cf6">
               {results.companies.slice(0, 3).map((c: any) => (
-                <ResultItem key={c.id} title={c.name} subtitle={c.industry || c.city || ''} onClick={() => goTo('/companies')} />
+                <ResultItem 
+                  key={c.id} 
+                  title={c.name} 
+                  subtitle={c.industry || c.city || ''} 
+                  onClick={() => goTo('/companies')} 
+                  actions={[
+                    { icon: <Plus size={12} />, label: 'Tạo Deal', onClick: () => goTo('/deals') }
+                  ]}
+                />
               ))}
             </ResultGroup>
           )}
           {results.deals && results.deals.length > 0 && (
             <ResultGroup icon={<Briefcase size={14} />} label="Deals" color="#10b981">
               {results.deals.slice(0, 3).map((d: any) => (
-                <ResultItem key={d.id} title={d.title} subtitle={`${Number(d.value || 0).toLocaleString('vi-VN')} đ`} onClick={() => goTo('/deals')} />
+                <ResultItem 
+                  key={d.id} 
+                  title={d.title} 
+                  subtitle={`${Number(d.value || 0).toLocaleString('vi-VN')} đ`} 
+                  onClick={() => goTo('/deals')} 
+                />
               ))}
             </ResultGroup>
           )}
@@ -129,16 +152,53 @@ const ResultGroup: React.FC<{ icon: React.ReactNode; label: string; color: strin
   </div>
 );
 
-const ResultItem: React.FC<{ title: string; subtitle: string; onClick: () => void }> = ({ title, subtitle, onClick }) => (
-  <button onClick={onClick}
-    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '0.5rem 1.25rem', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
-    onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-bg)')}
-    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-  >
-    <div>
-      <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--color-text)' }}>{title}</p>
-      {subtitle && <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{subtitle}</p>}
-    </div>
-    <ArrowRight size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
-  </button>
-);
+const ResultItem: React.FC<{ 
+  title: string; 
+  subtitle: string; 
+  onClick: () => void;
+  actions?: { icon: React.ReactNode; label: string; onClick: (e: React.MouseEvent) => void }[]
+}> = ({ title, subtitle, onClick, actions }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <button 
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        width: '100%', 
+        padding: '0.625rem 1.25rem', 
+        background: isHovered ? 'var(--color-bg)' : 'none', 
+        border: 'none', 
+        cursor: 'pointer', 
+        textAlign: 'left',
+        transition: 'background 0.15s ease'
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '1px' }}>{title}</p>
+        {subtitle && <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{subtitle}</p>}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        {isHovered && actions && actions.map((action, idx) => (
+          <motion.div
+            key={idx}
+            initial={{ opacity: 0, x: 5 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="btn-icon sm"
+            style={{ borderRadius: '8px', width: '28px', height: '28px' }}
+            onClick={(e) => { e.stopPropagation(); action.onClick(e); }}
+            title={action.label}
+          >
+            {action.icon}
+          </motion.div>
+        ))}
+        <ArrowRight size={14} style={{ color: 'var(--color-text-muted)', flexShrink: 0, opacity: isHovered ? 1 : 0.4, transition: 'opacity 0.2s' }} />
+      </div>
+    </button>
+  );
+};

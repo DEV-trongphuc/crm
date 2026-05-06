@@ -1,44 +1,40 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   TrendingUp, Users, DollarSign, Download, Trophy,
-  AlertTriangle, Tag as TagIcon, ShoppingCart
+  AlertTriangle, Tag as TagIcon, ShoppingCart, RefreshCw,
+  Zap, CheckCircle2, Clock, ArrowUpRight, ArrowDownRight
 } from 'lucide-react';
 import {
   Bar, BarChart, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell, PieChart, Pie, ComposedChart, Area
+  Tooltip, ResponsiveContainer, Cell, PieChart, Pie, ComposedChart, Area, AreaChart
 } from 'recharts';
 import api from '../api/axios';
 import styles from './DashboardPage.module.css';
 import { motion } from 'framer-motion';
+import { Avatar } from '../components/ui/Avatar';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { DEV_MODE } from '../config/env';
 import { useMockStore } from '../store/mockStore';
 import { Skeleton } from '../components/ui/Skeleton';
 
-/* ── Mock fallback data (cleared for production) ──────────────── */
-const MOCK_REVENUE: any[] = [];
-const MOCK_PIPELINE_FUNNEL: any[] = [];
-const MOCK_SOURCES: any[] = [];
-const MOCK_LEADERBOARD: any[] = [];
+const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n || 0);
+const FMT_VND = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n || 0);
+
 const MOCK_STATS = {
-  total_value: 0, won_value: 0, expenses: 0,
-  profit: 0, new_contacts: 0, tasks_due_today: 0,
+  won_value: 0,
+  profit: 0,
+  new_contacts: 0,
+  expenses: 0,
+  tasks_due_today: 0
 };
-
-/* ── Formatters ─────────────────────────────────────────────── */
-const FMT = (n: number) => {
-  if (n >= 1e9) return (n / 1e9).toFixed(1) + 'T';
-  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-  if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K';
-  return n.toString();
-};
-const FMT_VND = (n: number) =>
-  new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
-
 
 /* ── Component ──────────────────────────────────────────────── */
 export const DashboardPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [stats, setStats] = useState<any>(null);
   const [revenueChart, setRevenueChart] = useState<any[]>([]);
   const [pipelineFunnel, setPipelineFunnel] = useState<any[]>([]);
@@ -52,35 +48,50 @@ export const DashboardPage: React.FC = () => {
   const fetchAll = useCallback(async () => {
     setLoadingStats(true);
 
-    // ── DEV MODE: skip API, load MOCK from Store ────────────────
     if (DEV_MODE) {
       const { expenses, contacts, deals, invoices } = useMockStore.getState();
       const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
       const totalWon = invoices.filter((i: any) => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
-      
+
       setStats({
         ...MOCK_STATS,
         expenses: totalExpenses,
         won_value: totalWon,
         profit: totalWon - totalExpenses,
         new_contacts: contacts.length,
-        tasks_due_today: 0,
+        tasks_due_today: 0
       });
       setRevenueChart([
         { month: 'T10', revenue: 450000000, cost: 30000000 },
         { month: 'T11', revenue: 520000000, cost: 35000000 },
         { month: 'T12', revenue: 480000000, cost: 32000000 },
-        { month: 'T1',  revenue: 610000000, cost: 38000000 },
-        { month: 'T2',  revenue: 550000000, cost: 40000000 },
-        { month: 'T3',  revenue: 670000000, cost: 42000000 },
-        { month: 'T4',  revenue: 1250000000, cost: 80000000 },
-        { month: 'T5',  revenue: totalWon, cost: totalExpenses },
+        { month: 'T1', revenue: 610000000, cost: 38000000 },
+        { month: 'T2', revenue: 550000000, cost: 40000000 },
+        { month: 'T3', revenue: 670000000, cost: 42000000 },
+        { month: 'T4', revenue: 1250000000, cost: 80000000 },
+        { month: 'T5', revenue: totalWon, cost: totalExpenses },
       ]);
-      setPipelineFunnel([
-        { name: 'Mới', deal_count: deals.filter((d:any)=>d.stage==='lead').length, total_value: deals.filter((d:any)=>d.stage==='lead').reduce((s,d)=>s+d.value,0), color: '#3b82f6' },
-        { name: 'Đàm phán/Báo giá', deal_count: deals.filter((d:any)=>d.stage==='negotiation'||d.stage==='proposal').length, total_value: deals.filter((d:any)=>d.stage==='negotiation'||d.stage==='proposal').reduce((s,d)=>s+d.value,0), color: '#f59e0b' },
-        { name: 'Thành công', deal_count: deals.filter((d:any)=>d.stage==='won').length, total_value: deals.filter((d:any)=>d.stage==='won').reduce((s,d)=>s+d.value,0), color: '#10b981' },
-      ]);
+      const funnelStages = [
+        { id: 'lead', name: 'Khách hàng tiềm năng', color: '#3b82f6' },
+        { id: 'contacted', name: 'Đã liên hệ', color: '#6366f1' },
+        { id: 'negotiation', name: 'Đang thương lượng', color: '#f59e0b' },
+        { id: 'proposal', name: 'Gửi báo giá', color: '#8b5cf6' },
+        { id: 'won', name: 'Đã chốt — Thành công', color: '#10b981' },
+        { id: 'lost', name: 'Đã chốt — Thất bại', color: '#ef4444' },
+      ];
+      setPipelineFunnel(funnelStages.map(s => {
+        let count = deals.filter((d: any) => d.stage === s.id).length;
+        if (s.id === 'lead') {
+          const contactsWithDeals = new Set(deals.map((d: any) => d.contact_id));
+          const orphanContacts = contacts.filter((c: any) => !contactsWithDeals.has(c.id)).length;
+          count += orphanContacts;
+        }
+        return {
+          ...s,
+          deal_count: count,
+          total_value: deals.filter((d: any) => d.stage === s.id).reduce((sum, d) => sum + d.value, 0)
+        };
+      }));
       setLeadSources([
         { source: 'Website', count: 12, color: '#3b82f6' },
         { source: 'Facebook', count: 8, color: '#8b5cf6' },
@@ -93,18 +104,17 @@ export const DashboardPage: React.FC = () => {
       setLoadingStats(false);
       return;
     }
-    // ─────────────────────────────────────────────────────────────
 
     try {
       const [s, rev, pipe, src, lead, tags] = await Promise.all([
-        api.get('/dashboard/stats',             { params: { from: dateRange.from, to: dateRange.to } }),
-        api.get('/dashboard/chart-revenue',     { params: { months: 8 } }),
+        api.get('/dashboard/stats', { params: { from: dateRange.from, to: dateRange.to } }),
+        api.get('/dashboard/chart-revenue', { params: { months: 8 } }),
         api.get('/dashboard/pipeline-funnel'),
-        api.get('/dashboard/lead-sources',      { params: { from: dateRange.from, to: dateRange.to } }),
+        api.get('/dashboard/lead-sources', { params: { from: dateRange.from, to: dateRange.to } }),
         api.get('/dashboard/sales-leaderboard', { params: { from: dateRange.from, to: dateRange.to } }),
-        api.get('/tags/stats',                  { params: { from: dateRange.from, to: dateRange.to } }),
+        api.get('/tags/stats', { params: { from: dateRange.from, to: dateRange.to } }),
       ]);
-      setStats(s.data.data || null);
+      setStats(s.data.data || MOCK_STATS);
       setRevenueChart(rev.data.data || []);
       setPipelineFunnel(pipe.data.data || []);
       const srcColors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#6b7280'];
@@ -127,44 +137,37 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const kpiCards = [
-    { 
-      label: 'Doanh thu', 
-      value: FMT_VND(stats?.won_value ?? 0), 
-      icon: DollarSign, 
-      color: '#7c3aed', 
-      sub: <><TrendingUp size={12} color="var(--color-success)"/> <span style={{color:'var(--color-success)', fontWeight:600}}>Tăng trưởng ổn định</span></>
+    {
+      label: 'Doanh thu',
+      value: FMT_VND(stats?.won_value ?? 0),
+      icon: DollarSign,
+      color: '#7c3aed',
+      change: '+18.2%',
+      up: true
     },
-    { 
-      label: 'Lợi nhuận gộp', 
-      value: FMT_VND(stats?.profit ?? 0), 
-      icon: TrendingUp, 
-      color: '#10b981', 
-      sub: <div style={{width:'100%'}}>
-        <div style={{display:'flex', justifyContent:'space-between', fontSize:'0.7rem', marginBottom:4}}>
-          <span>Biên lợi nhuận</span>
-          <span style={{fontWeight:700, color:'var(--color-success)'}}>{stats?.won_value ? ((stats.profit / stats.won_value) * 100).toFixed(1) : 0}%</span>
-        </div>
-        <div className="stat-kpi__bar-wrap">
-          <div className="stat-kpi__bar" style={{width: `${stats?.won_value ? (stats.profit / stats.won_value * 100) : 0}%`, background:'var(--color-success)'}} />
-        </div>
-      </div>
+    {
+      label: 'Lợi nhuận ròng',
+      value: FMT_VND(stats?.profit ?? 0),
+      icon: TrendingUp,
+      color: '#10b981',
+      change: '+5.4%',
+      up: true
     },
-    { 
-      label: 'Lead mới', 
-      value: `${stats?.new_contacts ?? 0} lead`, 
-      icon: ShoppingCart, 
-      color: '#3b82f6', 
-      sub: <span>Khách hàng tiềm năng mới trong kỳ</span>
+    {
+      label: 'Lead mới',
+      value: `${stats?.new_contacts ?? 0} lead`,
+      icon: ShoppingCart,
+      color: '#3b82f6',
+      change: '+12%',
+      up: true
     },
-    { 
-      label: 'Chi phí & Hao hụt', 
-      value: `- ${FMT_VND(stats?.expenses ?? 0)}`, 
-      icon: AlertTriangle, 
-      color: '#ef4444', 
-      sub: <div style={{width:'100%'}}>
-        <p style={{fontSize:'0.65rem', color:'var(--color-text-muted)', marginBottom:4}}>Bao gồm: Hao hụt kho & Phí vận hành</p>
-        <p><strong>LN Ròng:</strong> <span style={{color:'var(--color-success)'}}>{FMT_VND((stats?.profit ?? 0) - (stats?.expenses ?? 0))}</span></p>
-      </div>
+    {
+      label: 'Chi phí & Hao hụt',
+      value: FMT_VND(stats?.expenses ?? 0),
+      icon: AlertTriangle,
+      color: '#ef4444',
+      change: '-2.1%',
+      up: false
     },
   ];
 
@@ -181,42 +184,125 @@ export const DashboardPage: React.FC = () => {
             value={period}
             onChange={(p, r) => { setPeriod(p); setDateRange(r); }}
           />
+          <button
+            className="btn outline"
+            onClick={fetchAll}
+            disabled={loadingStats}
+            title="Làm mới dữ liệu"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.625rem 1.25rem', fontSize: '0.9375rem', borderRadius: 'var(--radius-xl)' }}
+          >
+            <RefreshCw size={16} style={{ animation: loadingStats ? 'spin 1s linear infinite' : 'none' }} />
+            Làm mới
+          </button>
           <button className="btn outline" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.625rem 1.25rem', fontSize: '0.9375rem', borderRadius: 'var(--radius-xl)' }}><Download size={18} /> Xuất PDF</button>
         </div>
       </div>
 
-      {/* Alert */}
-      {(stats?.tasks_due_today ?? 0) > 0 && (
-        <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', padding: '0.875rem 1.25rem', borderRadius: 'var(--radius-xl)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
-          <div style={{ width: 36, height: 36, background: 'rgba(245,158,11,0.15)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <AlertTriangle size={18} color="var(--color-warning)" />
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-warning)' }}>Cần xử lý hôm nay</p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', marginTop: '1px' }}>
-              <strong>{stats.tasks_due_today}</strong> task đến hạn hôm nay · <strong>{stats.new_contacts}</strong> khách hàng mới trong kỳ
-            </p>
-          </div>
-          <a href="/activities" style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-warning)', textDecoration: 'none' }}>Xem ngay →</a>
-        </div>
-      )}
+      {/* Alert / Today's Focus */}
+      {(() => {
+        const tasksToday = DEV_MODE
+          ? useMockStore.getState().activities.filter((a: any) => a.status === 'planned' && a.due_date && new Date(a.due_date).toDateString() === new Date().toDateString())
+          : (stats?.today_tasks || []);
 
-      {/* KPI Cards — unified stat-kpi, NO borders */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        {kpiCards.map((card, i) => (
-          <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.07 }}>
-            <div className="stat-kpi__header">
-              <div className="stat-kpi__icon" style={{ background: `${card.color}12`, color: card.color }}>
-                <card.icon size={16} />
+        if (tasksToday.length === 0 && (stats?.tasks_due_today ?? 0) === 0) return null;
+
+        return (
+          <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(139, 92, 246, 0.08))', border: '1px solid rgba(124, 58, 237, 0.15)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+              <div style={{ width: 36, height: 36, background: 'var(--color-primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Zap size={18} color="white" fill="white" />
               </div>
-              <div className="stat-kpi__label">{card.label}</div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontWeight: 800, fontSize: '0.9375rem', color: 'var(--color-primary)' }}>Tiêu điểm công việc hôm nay</p>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
+                  Có <strong>{tasksToday.length || stats?.tasks_due_today}</strong> hoạt động cần bạn xử lý trong ngày {new Date().toLocaleDateString('vi-VN')}
+                  {stats?.overdue_tasks > 0 && <span style={{ color: 'var(--color-danger)', fontWeight: 700, marginLeft: '8px' }}>• {stats.overdue_tasks} việc quá hạn cần xử lý gấp!</span>}
+                </p>
+              </div>
+              <button className="btn ghost sm" onClick={() => navigate('/activities')} style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Tất cả hoạt động →</button>
             </div>
-            {loadingStats
-              ? <Skeleton height="2.5rem" width="80%" style={{ margin: '0.5rem 0' }} />
-              : <div className="stat-kpi__value">{card.value}</div>}
-            {loadingStats ? <Skeleton height="0.75rem" width="60%" /> : <div className="stat-kpi__sub">{card.sub}</div>}
-          </motion.div>
-        ))}
+
+            {tasksToday.length > 0 && (
+              <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
+                {tasksToday.map((task: any) => (
+                  <motion.div
+                    key={task.id}
+                    whileHover={{ y: -4, boxShadow: 'var(--shadow-lg)' }}
+                    onClick={() => navigate('/activities')}
+                    style={{
+                      minWidth: 280,
+                      padding: '1.25rem',
+                      background: 'var(--color-surface)',
+                      borderRadius: 'var(--radius-xl)',
+                      border: '1px solid var(--color-border)',
+                      boxShadow: 'var(--shadow-sm)',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      overflow: 'hidden'
+                    }}
+                  >
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '4px', height: '100%', background: task.priority === 'high' ? '#ef4444' : '#7c3aed' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '8px', background: 'var(--color-bg)', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Clock size={16} />
+                      </div>
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                        {task.due_date ? new Date(task.due_date).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : 'Cả ngày'}
+                      </span>
+                      <span className="badge" style={{ fontSize: '0.65rem', marginLeft: 'auto', background: 'var(--color-bg)', color: '#7c3aed', border: 'none' }}>{task.type}</span>
+                    </div>
+                    <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{task.subject}</p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Zap size={12} /> {task.priority === 'high' ? 'Ưu tiên cao' : 'Bình thường'}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)' }}>Mở →</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* KPI Cards — Simple & Standard */}
+      <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
+        {kpiCards.map((card, i) => {
+          const Icon = card.icon;
+          return (
+            <motion.div
+              key={i}
+              className="stat-card"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+              onClick={() => {
+                if (card.label.includes('Lead')) navigate('/contacts');
+                if (card.label.includes('Doanh thu')) navigate('/reports');
+              }}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="stat-label">{card.label}</span>
+                <div style={{ color: card.color, opacity: 0.8 }}><Icon size={20} /></div>
+              </div>
+              
+              {loadingStats ? (
+                <Skeleton height="2rem" width="80%" />
+              ) : (
+                <>
+                  <div className="stat-value" style={{ fontSize: '1.5rem' }}>{card.value}</div>
+                  <div className={`stat-change ${card.up !== false ? 'up' : 'down'}`}>
+                    {card.up !== false ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+                    {card.change || '+0%'}
+                    <span style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 400 }}>so với kỳ trước</span>
+                  </div>
+                </>
+              )}
+            </motion.div>
+          );
+        })}
       </div>
 
       {/* Revenue chart + Pipeline */}
@@ -234,30 +320,30 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           {loadingStats ? (
-            <div style={{ height: 240, display: 'flex', alignItems: 'flex-end', gap: '8px', padding: '1rem' }}>
-              {Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} height={`${Math.random() * 60 + 20}%`} width="100%" />)}
+            <div style={{ height: 240, display: 'flex', alignItems: 'flex-end', gap: '10px', padding: '1rem' }}>
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} height={`${Math.random() * 60 + 20}%`} width="100%" />)}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
-            <ComposedChart data={revenueChart} margin={{ left: -10, right: 5 }}>
-              <defs>
-                <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.18} />
-                  <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
-              <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={38} />
-              <Tooltip formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Chi phí']} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-              <Area type="monotone" dataKey="revenue" stroke="#7c3aed" strokeWidth={3} fill="url(#revGrad)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-              {revenueChart[0]?.cost !== undefined && (
-                <Bar dataKey="cost" fill="#ef4444" fillOpacity={0.5} radius={[3, 3, 0, 0]} barSize={12} />
-              )}
-            </ComposedChart>
-          </ResponsiveContainer>
-        )}
-      </div>
+              <ComposedChart data={revenueChart} margin={{ left: -10, right: 5 }}>
+                <defs>
+                  <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={38} />
+                <Tooltip formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Chi phí']} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                <Area type="monotone" dataKey="revenue" stroke="#7c3aed" strokeWidth={3} fill="url(#revGrad)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                {revenueChart[0]?.cost !== undefined && (
+                  <Bar dataKey="cost" fill="#ef4444" fillOpacity={0.5} radius={[3, 3, 0, 0]} barSize={12} />
+                )}
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
 
         {/* Pipeline stages */}
         <div className="card" style={{ padding: '1.25rem' }}>
@@ -284,31 +370,36 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* 3-column row: Leaderboard + Lead Sources + Activities */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: user?.role === 'sale' ? '1fr' : 'repeat(3, 1fr)', gap: '1.25rem' }}>
 
         {/* Sales Leaderboard */}
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '0.25rem' }}>
-            <Trophy size={16} color="var(--color-warning)" /> Top Sales
-          </h3>
-          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginBottom: '1rem' }}>Doanh thu kỳ được chọn</p>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {leaderboard.map((sale: any, i: number) => (
-              <div key={sale.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0', borderBottom: i < leaderboard.length - 1 ? '1px solid var(--color-border-light)' : 'none' }}>
-                <div style={{ width: 34, height: 34, borderRadius: '10px', background: i === 0 ? 'var(--color-primary)' : i === 1 ? '#8b5cf6' : 'var(--color-border)', color: i < 2 ? 'white' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.875rem', flexShrink: 0 }}>
-                  {i < 3 ? ['🥇','🥈','🥉'][i] : i + 1}
+        {user?.role !== 'sale' && (
+          <div className="card" style={{ padding: '1.25rem' }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '0.25rem' }}>
+              <Trophy size={16} color="var(--color-warning)" /> Top Sales
+            </h3>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginBottom: '1rem' }}>Doanh thu kỳ được chọn</p>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {leaderboard.map((sale: any, i: number) => (
+                <div key={sale.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0', borderBottom: i < leaderboard.length - 1 ? '1px solid var(--color-border-light)' : 'none' }}>
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <Avatar name={sale.full_name} src={sale.avatar_url} size={38} style={{ borderRadius: '10px' }} />
+                    <div style={{ position: 'absolute', top: -5, right: -5, width: 20, height: 20, background: i === 0 ? 'var(--color-primary)' : i === 1 ? '#8b5cf6' : 'var(--color-border)', color: i < 2 ? 'white' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.65rem', borderRadius: '50%', border: '2px solid white', boxShadow: 'var(--shadow-sm)', zIndex: 1 }}>
+                      {i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
+                    </div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontWeight: 700, fontSize: '0.875rem', lineHeight: 1.3 }}>{sale.full_name}</p>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{sale.won_count || 0} deals chốt</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <p style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.875rem' }}>{FMT(Number(sale.won_value || 0))}</p>
+                  </div>
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontWeight: 700, fontSize: '0.875rem', lineHeight: 1.3 }}>{sale.full_name}</p>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{sale.won_count || 0} deals chốt</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ fontWeight: 800, color: 'var(--color-primary)', fontSize: '0.875rem' }}>{FMT(Number(sale.won_value || 0))}</p>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Lead Sources donut */}
         <div className="card" style={{ padding: '1.25rem' }}>
@@ -336,46 +427,48 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Tag Stats chart */}
-        <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-            <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px' }}>
-                <TagIcon size={16} color="var(--color-primary)" /> Thống kê Tags
-              </h3>
-              <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>Leads có tag theo kỳ được chọn</p>
+        {user?.role !== 'sale' && (
+          <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '7px' }}>
+                  <TagIcon size={16} color="var(--color-primary)" /> Thống kê Tags
+                </h3>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>Leads có tag theo kỳ được chọn</p>
+              </div>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-light)', padding: '3px 10px', borderRadius: 'var(--radius-full)' }}>
+                {tagStats.reduce((s, t) => s + t.count, 0)} tag-lead
+              </span>
             </div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-light)', padding: '3px 10px', borderRadius: 'var(--radius-full)' }}>
-              {tagStats.reduce((s, t) => s + t.count, 0)} tag-lead
-            </span>
-          </div>
 
-          {loadingStats ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-              {[80,60,45,35,25].map((w, i) => <Skeleton key={i} height="28px" width={`${w}%`} />)}
-            </div>
-          ) : tagStats.length === 0 ? (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem', gap: '0.5rem' }}>
-              <TagIcon size={32} style={{ opacity: 0.3 }} />
-              <span>Chưa có tag nào trong kỳ này</span>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={Math.max(180, tagStats.length * 34)}>
-              <BarChart data={tagStats} layout="vertical" margin={{ left: 4, right: 30, top: 2, bottom: 2 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <YAxis type="category" dataKey="tag" tick={{ fontSize: 11, fill: 'var(--color-text)', fontWeight: 600 }} width={90} axisLine={false} tickLine={false} />
-                <Tooltip
-                  cursor={{ fill: 'var(--color-primary-light)' }}
-                  formatter={(v: any) => [v + ' lead', 'Số lead']}
-                  contentStyle={{ borderRadius: 8, border: 'none', boxShadow: 'var(--shadow-md)', fontSize: '0.8125rem' }}
-                />
-                <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={22}>
-                  {tagStats.map((entry, i) => <Cell key={i} fill={entry.color || 'var(--color-primary)'} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+            {loadingStats ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
+                {[80, 60, 45, 35, 25].map((w, i) => <Skeleton key={i} height="28px" width={`${w}%`} />)}
+              </div>
+            ) : tagStats.length === 0 ? (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem', gap: '0.5rem' }}>
+                <TagIcon size={32} style={{ opacity: 0.3 }} />
+                <span>Chưa có tag nào trong kỳ này</span>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(180, tagStats.length * 34)}>
+                <BarChart data={tagStats} layout="vertical" margin={{ left: 4, right: 30, top: 2, bottom: 2 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <YAxis type="category" dataKey="tag" tick={{ fontSize: 11, fill: 'var(--color-text)', fontWeight: 600 }} width={90} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={{ fill: 'var(--color-primary-light)' }}
+                    formatter={(v: any) => [v + ' lead', 'Số lead']}
+                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: 'var(--shadow-md)', fontSize: '0.8125rem' }}
+                  />
+                  <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={22}>
+                    {tagStats.map((entry, i) => <Cell key={i} fill={entry.color || 'var(--color-primary)'} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

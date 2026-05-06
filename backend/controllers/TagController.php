@@ -55,9 +55,6 @@ class TagController {
     }
 
     public function destroy($auth, $id) {
-        // Delete associations first
-        $this->db->prepare("DELETE FROM entity_tags WHERE tag_id = ?")->execute([$id]);
-        
         $stmt = $this->db->prepare("DELETE FROM tags WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $auth['tenant_id']]);
         respond(200, null, 'Đã xóa tag');
@@ -74,8 +71,12 @@ class TagController {
 
         $params = [$auth['tenant_id']];
         $where  = 'tenant_id = ? AND deleted_at IS NULL';
-        if ($from) { $where .= " AND DATE($dateField) >= ?"; $params[] = $from; }
-        if ($to)   { $where .= " AND DATE($dateField) <= ?"; $params[] = $to;   }
+        if ($auth['role'] === 'sale') {
+            $where .= ' AND owner_id = ?';
+            $params[] = $auth['user_id'];
+        }
+        if ($from) { $where .= " AND $dateField >= ?"; $params[] = $from . ' 00:00:00'; }
+        if ($to)   { $where .= " AND $dateField <= ?"; $params[] = $to . ' 23:59:59';   }
 
         $stmt = $this->db->prepare("SELECT tags FROM contacts WHERE $where");
         $stmt->execute($params);

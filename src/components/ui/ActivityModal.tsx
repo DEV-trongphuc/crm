@@ -30,6 +30,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
     body: '',
     due_date: '',
     priority: 'medium',
+    status: 'planned',
     auto_trigger: false // The automation trigger integration
   });
   const [loading, setLoading] = useState(false);
@@ -115,7 +116,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 180px', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
               <div className="form-group">
                 <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <Calendar size={14} /> Thời gian thực hiện
@@ -138,6 +139,13 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
                   value={formData.priority}
                   onChange={val => setFormData({ ...formData, priority: val as string })}
                 />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Trạng thái</label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button type="button" className={`btn sm ${formData.status === 'planned' ? 'primary' : 'outline'}`} style={{ flex: 1 }} onClick={() => setFormData({...formData, status: 'planned'})}>Kế hoạch</button>
+                  <button type="button" className={`btn sm ${formData.status === 'done' ? 'success' : 'outline'}`} style={{ flex: 1, borderColor: formData.status === 'done' ? 'var(--color-success)' : '' }} onClick={() => setFormData({...formData, status: 'done'})}>Đã xong</button>
+                </div>
               </div>
             </div>
 

@@ -38,10 +38,11 @@ const DEALS = [
 ];
 
 const ACTIVITIES = [
-  { id: 1, subject: 'Gặp mặt chốt hợp đồng dự án CRM', type: 'meeting', status: 'pending', user_name: 'Admin Sales', created_at: '2026-05-07T10:00:00Z', contact_id: 1 },
-  { id: 2, subject: 'Gọi điện báo giá module Kho', type: 'call', status: 'done', user_name: 'Sale A', created_at: '2026-05-05T09:30:00Z', contact_id: 2 },
-  { id: 3, subject: 'Email follow-up sau buổi demo', type: 'email', status: 'done', user_name: 'Quản trị viên', created_at: '2026-05-04T15:00:00Z', contact_id: 3 },
-  { id: 4, subject: 'Gửi thiệp chúc mừng khai trương', type: 'note', status: 'done', user_name: 'Sale A', created_at: '2026-05-03T08:00:00Z', contact_id: 4 },
+  { id: 1, subject: 'Gặp mặt chốt hợp đồng dự án CRM', type: 'meeting', status: 'planned', user_name: 'Admin Sales', due_date: new Date().toISOString(), contact_id: 1 },
+  { id: 2, subject: 'Gọi điện báo giá module Kho', type: 'call', status: 'done', user_name: 'Sale A', due_date: '2026-05-05T09:30:00Z', contact_id: 2 },
+  { id: 3, subject: 'Email follow-up sau buổi demo', type: 'email', status: 'planned', user_name: 'Quản trị viên', due_date: new Date(new Date().getTime() + 2*3600000).toISOString(), contact_id: 3 },
+  { id: 4, subject: 'Gửi thiệp chúc mừng khai trương', type: 'note', status: 'done', user_name: 'Sale A', due_date: '2026-05-03T08:00:00Z', contact_id: 4 },
+  { id: 5, subject: 'Kiểm tra tiến độ thanh toán INV-0001', type: 'task', status: 'planned', user_name: 'Quản trị viên', due_date: new Date().toISOString(), contact_id: 1 },
 ];
 
 const EXPENSES = [
@@ -61,6 +62,13 @@ const TICKETS = [
   { id: 3, subject: 'Tư vấn gói ERP mở rộng', customer_name: 'Phạm Hồng Đào', priority: 'low', status: 'closed', created_at: '2026-05-01T09:00:00Z' },
 ];
 
+const PRODUCTS = [
+  { id:1, name:'Phần mềm CRM Pro', sku:'SW-CRM-PRO', category:'Phần mềm', price:15000000, unit:'license/năm', is_active:true, description:'Bản quyền phần mềm CRM đầy đủ tính năng', stock: 999 },
+  { id:2, name:'Dịch vụ tư vấn triển khai', sku:'SV-CONSULT', category:'Dịch vụ', price:8000000, unit:'ngày/người', is_active:true, description:'Tư vấn và hỗ trợ triển khai tại chỗ', stock: 100 },
+  { id:3, name:'Module Kho hàng nâng cao', sku:'SW-WH-ADV', category:'Phần mềm', price:5000000, unit:'module/năm', is_active:true, description:'Mô-đun quản lý kho hàng tích hợp', stock: 2 },
+  { id:4, name:'Bảo trì hệ thống hàng năm', sku:'SV-MAINTAIN', category:'Dịch vụ', price:3000000, unit:'năm', is_active:false, description:'Gói bảo trì và cập nhật hệ thống', stock: 0 },
+];
+
 interface MockStore {
   users: any[];
   companies: any[];
@@ -70,9 +78,11 @@ interface MockStore {
   expenses: any[];
   invoices: any[];
   tickets: any[];
+  products: any[];
   addContact: (c: any) => void;
   addExpense: (e: any) => void;
   addDeal: (d: any) => void;
+  addProduct: (p: any) => void;
   updateDeal: (d: any) => void;
   updateTicket: (t: any) => void;
   addActivity: (a: any) => void;
@@ -88,9 +98,11 @@ export const useMockStore = create<MockStore>((set) => ({
   expenses: EXPENSES,
   invoices: INVOICES,
   tickets: TICKETS,
+  products: PRODUCTS,
   addContact: (c) => set((s) => ({ contacts: [c, ...s.contacts] })),
   addExpense: (e) => set((s) => ({ expenses: [e, ...s.expenses] })),
   addDeal: (d) => set((s) => ({ deals: [d, ...s.deals] })),
+  addProduct: (p) => set((s) => ({ products: [{ ...p, id: s.products.length + 1 }, ...s.products] })),
   updateDeal: (updated) => set((s) => ({ deals: s.deals.map(d => d.id === updated.id ? updated : d) })),
   updateTicket: (updated) => set((s) => ({ tickets: s.tickets.map(t => t.id === updated.id ? updated : t) })),
   addActivity: (a) => set((s) => ({ activities: [a, ...s.activities] })),

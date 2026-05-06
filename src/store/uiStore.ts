@@ -6,6 +6,10 @@ export interface Toast {
   id: string;
   type: ToastType;
   message: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
 }
 
 export interface ConfirmModalState {
@@ -15,18 +19,20 @@ export interface ConfirmModalState {
   confirmText?: string;
   cancelText?: string;
   isDanger?: boolean;
+  impactInfo?: string; // e.g. "Ảnh hưởng đến 45 khách hàng"
+  requireWordMatch?: string; // e.g. "DELETE"
   onConfirm: () => void;
   onCancel?: () => void;
 }
 
 interface UIStore {
   toasts: Toast[];
-  addToast: (message: string, type?: ToastType) => void;
+  addToast: (message: string, type?: ToastType, action?: Toast['action']) => void;
   removeToast: (id: string) => void;
-  showPOS: any; // Can be boolean or contact object
-  setShowPOS: (show: any) => void;
+  showPOS: boolean | { id: number; [key: string]: any }; // POS can be open for a specific contact
+  setShowPOS: (show: boolean | { id: number; [key: string]: any }) => void;
   confirmModal: ConfirmModalState;
-  showConfirm: (titleOrOptions: any, message?: string, onConfirm?: () => void) => void;
+  showConfirm: (titleOrOptions: string | Partial<ConfirmModalState>, message?: string, onConfirm?: () => void) => void;
   closeConfirm: () => void;
   callModal: { isOpen: boolean; phone: string };
   showCall: (phone: string) => void;
@@ -61,9 +67,9 @@ export const useUIStore = create<UIStore>((set) => ({
   callModal: { isOpen: false, phone: '' },
   showCall: (phone: string) => set({ callModal: { isOpen: true, phone } }),
   closeCall: () => set((state) => ({ callModal: { ...state.callModal, isOpen: false } })),
-  addToast: (message, type = 'info') => {
+  addToast: (message, type = 'info', action) => {
     const id = Math.random().toString(36).substring(2, 9);
-    set((state) => ({ toasts: [...state.toasts, { id, type, message }] }));
+    set((state) => ({ toasts: [...state.toasts, { id, type, message, action }] }));
     
     // Auto remove after 3s
     setTimeout(() => {

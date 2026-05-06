@@ -1,12 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Filter, LifeBuoy, AlertCircle, Clock, X, Save } from 'lucide-react';
 import { useUIStore } from '../store/uiStore';
 import { TicketDrawer } from './TicketDrawer';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar } from '../components/ui/Avatar';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore } from '../store/mockStore';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
+import { useDebounce } from '../hooks/useDebounce';
+import { CustomSelect } from '../components/ui/CustomSelect';
 
 const MOCK_TICKETS: any[] = [];
 
@@ -29,10 +32,12 @@ export const TicketsPage: React.FC = () => {
   const { addToast } = useUIStore();
   const [tickets, setTickets] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [filterStatus, setFilterStatus] = useState('all');
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [createForm, setCreateForm] = useState({ subject: '', priority: 'medium', customer_name: '', description: '' });
   const [loading, setLoading] = useState(true);
 
@@ -66,13 +71,24 @@ export const TicketsPage: React.FC = () => {
     fetchTickets();
   }, []);
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showCreateModal && !saving) {
+        setShowCreateModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showCreateModal, saving]);
+
   const filteredTickets = useMemo(() => {
+    const q = debouncedSearch.toLowerCase();
     return tickets.filter(t => {
       if (filterStatus !== 'all' && t.status !== filterStatus) return false;
-      if (search && !t.subject.toLowerCase().includes(search.toLowerCase()) && !t.customer_name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (q && !t.subject?.toLowerCase().includes(q) && !(t.customer_name || '').toLowerCase().includes(q)) return false;
       return true;
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [tickets, search, filterStatus]);
+  }, [tickets, debouncedSearch, filterStatus]);
 
   const handleUpdate = async (updated: any) => {
     try {
@@ -95,6 +111,7 @@ export const TicketsPage: React.FC = () => {
       customer_name: createForm.customer_name,
       description: createForm.description
     };
+    setSaving(true);
     try {
       const r = await api.post('/tickets', payload);
       const newTicket = r.data.data || { ...payload, id: Date.now(), assignee_name: 'Admin', created_at: new Date().toISOString(), due_date: new Date(Date.now() + 86400000).toISOString() };
@@ -104,6 +121,8 @@ export const TicketsPage: React.FC = () => {
       addToast('Đã tạo Ticket thành công', 'success');
     } catch (e: any) {
       addToast(e.response?.data?.message || 'Không thể tạo Ticket do lỗi mạng', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -130,10 +149,13 @@ export const TicketsPage: React.FC = () => {
             <Search size={18} className="text-light" />
             <input className="form-input" placeholder="Tìm theo ID, tiêu đề, tên khách hàng..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <select className="form-input" style={{ width: '180px' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-            <option value="all">Tất cả trạng thái</option>
-            {TICKET_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </select>
+          <div style={{ width: '180px' }}>
+            <CustomSelect 
+              options={[{ value: 'all', label: 'Tất cả trạng thái' }, ...TICKET_STATUSES.map(s => ({ value: s.id, label: s.label }))]} 
+              value={filterStatus} 
+              onChange={val => setFilterStatus(val.toString())} 
+            />
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '8px' }}>
           <button className={`btn ghost sm ${viewMode === 'list' ? 'bg-white shadow-sm' : ''}`} onClick={() => setViewMode('list')}>List</button>
@@ -143,7 +165,7 @@ export const TicketsPage: React.FC = () => {
 
       {loading ? (
         <div className="card">
-          <TableSkeleton rows={8} cols={6} />
+          <TableSkeleton rows={5} cols={6} />
         </div>
       ) : viewMode === 'list' ? (
         <div className="card" style={{ overflow: 'hidden' }}>
@@ -178,8 +200,8 @@ export const TicketsPage: React.FC = () => {
                   <td style={{ padding: '1rem', fontWeight: 600, fontSize: '0.875rem' }}>{t.customer_name}</td>
                   <td style={{ padding: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div className="avatar-placeholder sm" style={{ width: 24, height: 24, fontSize: '0.6rem', background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>{t.assignee_name[0]}</div>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t.assignee_name}</span>
+                      <Avatar name={t.assignee_name} size={24} />
+                      <span style={{ fontSize: '0.875rem', fontWeight: 600 }}>{t.assignee_name || 'Chưa phân công'}</span>
                     </div>
                   </td>
                   <td style={{ padding: '1rem' }}>
@@ -224,7 +246,7 @@ export const TicketsPage: React.FC = () => {
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                         <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>#{t.id}</span>
-                        <div className="avatar-placeholder sm" title={t.assignee_name} style={{ width: 20, height: 20, fontSize: '0.6rem', background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>{t.assignee_name[0]}</div>
+                        <Avatar name={t.assignee_name} size={20} title={t.assignee_name || 'Chưa phân công'} />
                       </div>
                       <p style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.5rem', lineHeight: 1.4 }}>{t.subject}</p>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -271,12 +293,14 @@ export const TicketsPage: React.FC = () => {
                   <label className="form-label">Tiêu đề vấn đề (Subject) *</label>
                   <input className="form-input" placeholder="Tóm tắt ngắn gọn vấn đề khách gặp phải" value={createForm.subject} onChange={e => setCreateForm({...createForm, subject: e.target.value})} />
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Độ ưu tiên</label>
-                  <select className="form-input" value={createForm.priority} onChange={e => setCreateForm({...createForm, priority: e.target.value})}>
-                    {PRIORITIES.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-                  </select>
-                </div>
+                  <div className="form-group">
+                    <label className="form-label">Độ ưu tiên</label>
+                    <CustomSelect 
+                      options={PRIORITIES.map(p => ({ value: p.id, label: p.label }))} 
+                      value={createForm.priority} 
+                      onChange={val => setCreateForm({...createForm, priority: val.toString()})} 
+                    />
+                  </div>
                 <div className="form-group">
                   <label className="form-label">Mô tả chi tiết</label>
                   <textarea className="form-input" placeholder="Nhập chi tiết về lỗi hoặc yêu cầu hỗ trợ..." rows={4} value={createForm.description} onChange={e => setCreateForm({...createForm, description: e.target.value})} style={{ resize: 'none' }} />

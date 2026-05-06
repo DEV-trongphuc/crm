@@ -1,9 +1,14 @@
 <?php
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-// f:\CRM\backend\index.php — Main API entry point
-
 require_once __DIR__ . '/config.php';          // DB constants + CORS origins
+
+if (defined('APP_ENV') && APP_ENV === 'development') {
+    ini_set('display_errors', 1);
+    error_reporting(E_ALL);
+} else {
+    ini_set('display_errors', 0);
+    error_reporting(0);
+}
+
 // require_once __DIR__ . '/config/Config.php';   // Removed to prevent 'already defined' warnings
 require_once __DIR__ . '/config/Database.php';
 require_once __DIR__ . '/config/JWT.php';
@@ -59,11 +64,22 @@ function requireRole(array $payload, array $roles): void {
 }
 
 function logActivity(PDO $db, int $tid, int $uid, string $type, string $subject, string $body = null, string $relType = null, int $relId = null): void {
+    // Redirecting automatic system activities to audit_logs instead of the activities table
+    // to prevent cluttering the "Hoạt động & Lịch" UI as per user request.
     $stmt = $db->prepare("
-        INSERT INTO activities (tenant_id, user_id, type, subject, body, status, related_type, related_id)
-        VALUES (?, ?, ?, ?, ?, 'done', ?, ?)
+        INSERT INTO audit_logs (tenant_id, user_id, action, resource, resource_id, new_data, ip_address, user_agent)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
-    $stmt->execute([$tid, $uid, $type, $subject, $body, $relType, $relId]);
+    $stmt->execute([
+        $tid, 
+        $uid, 
+        $subject, 
+        $relType ?? 'system', 
+        $relId, 
+        $body, 
+        $_SERVER['REMOTE_ADDR'] ?? null, 
+        $_SERVER['HTTP_USER_AGENT'] ?? null
+    ]);
 }
 
 // ── Load controllers ──────────────────────────────────────────
@@ -258,9 +274,12 @@ switch ($resource) {
     case 'reports':
         $auth = requireAuth();
         $ctrl = new ReportController($db);
-        if     ($resourceId === 'sales')     $ctrl->sales($auth);
-        elseif ($resourceId === 'pipeline')  $ctrl->pipeline($auth);
-        elseif ($resourceId === 'activities')$ctrl->activities($auth);
+        if     ($resourceId === 'sales')      $ctrl->sales($auth);
+        elseif ($resourceId === 'pipeline')   $ctrl->pipeline($auth);
+        elseif ($resourceId === 'activities') $ctrl->activities($auth);
+        elseif ($resourceId === 'customers')  $ctrl->customers($auth);
+        elseif ($resourceId === 'companies')  $ctrl->companies($auth);
+        elseif ($resourceId === 'expenses')   $ctrl->expenses($auth);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 

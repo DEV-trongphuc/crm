@@ -12,6 +12,10 @@ class FinanceController {
         $status = $_GET['status'] ?? '';
         $search = $_GET['search'] ?? '';
         $where  = ['i.tenant_id=?']; $params = [$tid];
+        if ($auth['role'] === 'sale') {
+            $where[] = 'i.created_by = ?';
+            $params[] = $auth['user_id'];
+        }
         if ($status) { $where[] = 'i.status=?'; $params[] = $status; }
         if ($search) { $where[] = '(i.invoice_number LIKE ? OR ct.first_name LIKE ? OR ct.last_name LIKE ?)'; $params[] = "%$search%"; $params[] = "%$search%"; $params[] = "%$search%"; }
         $w = implode(' AND ', $where);
@@ -31,14 +35,20 @@ class FinanceController {
     }
 
     public function showInvoice(array $auth, int $id): void {
-        $stmt = $this->db->prepare("
+        $sql = "
             SELECT i.*, CONCAT(ct.first_name,' ',ct.last_name) as contact_name, c.name as company_name
             FROM invoices i
             LEFT JOIN contacts ct ON i.contact_id = ct.id
             LEFT JOIN companies c ON i.company_id = c.id
             WHERE i.id=? AND i.tenant_id=?
-        ");
-        $stmt->execute([$id, $auth['tenant_id']]);
+        ";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND i.created_by=?";
+            $p[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
         $row = $stmt->fetch();
         if (!$row) respond(404, null, 'Không tìm thấy hóa đơn', false);
 
@@ -56,24 +66,23 @@ class FinanceController {
 
         if (empty($data['title'])) respond(400, null, 'Tiêu đề hóa đơn là bắt buộc', false);
 
-        // Auto-generate invoice number
+        // Auto-generate invoice number (Race condition safe)
         if (empty($data['invoice_number'])) {
-            $cnt = $this->db->prepare("SELECT COUNT(*)+1 FROM invoices WHERE tenant_id=? AND YEAR(created_at)=YEAR(NOW())");
-            $cnt->execute([$tid]);
-            $data['invoice_number'] = 'INV-' . date('Y') . '-' . str_pad((int)$cnt->fetchColumn(), 3, '0', STR_PAD_LEFT);
+            $data['invoice_number'] = 'INV-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
         }
 
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO invoices (tenant_id,deal_id,company_id,contact_id,created_by,invoice_number,title,status,issue_date,due_date,subtotal,discount,tax,total,notes)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                INSERT INTO invoices (tenant_id,deal_id,company_id,contact_id,created_by,invoice_number,title,status,issue_date,due_date,subtotal,discount,tax,total,notes,shipping_customer_pay,shipping_fee)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ");
             $stmt->execute([
                 $tid, $data['deal_id']??null, $data['company_id']??null, $data['contact_id']??null, $uid,
                 $data['invoice_number'], $data['title'], $data['status']??'pending',
                 $data['issue_date']??date('Y-m-d'), $data['due_date']??date('Y-m-d', strtotime('+30 days')),
-                $data['subtotal']??0, $data['discount']??0, $data['tax']??0, $data['total']??0, $data['notes']??null
+                $data['subtotal']??0, $data['discount']??0, $data['tax']??0, $data['total']??0, $data['notes']??null,
+                $data['shipping_customer_pay']??1, $data['shipping_fee']??0
             ]);
             $invId = $this->db->lastInsertId();
 
@@ -93,25 +102,46 @@ class FinanceController {
 
     public function updateInvoice(array $auth, int $id): void {
         $data = getBody();
-        $fields = ['title','status','issue_date','due_date','subtotal','discount','tax','total','notes','contact_id','company_id','deal_id'];
+        $fields = ['title','status','issue_date','due_date','subtotal','discount','tax','total','notes','contact_id','company_id','deal_id','shipping_customer_pay','shipping_fee'];
         $sets = []; $params = [];
         foreach ($fields as $f) { if (array_key_exists($f, $data)) { $sets[] = "$f=?"; $params[] = $data[$f]; } }
         if (!$sets) respond(422, null, 'Không có dữ liệu', false);
+        // Check permission first
+        $check = $this->db->prepare("SELECT id FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND created_by=?" : ""));
+        $cp = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
+        $check->execute($cp);
+        if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+
         $params[] = $id; $params[] = $auth['tenant_id'];
-        $this->db->prepare("UPDATE invoices SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?")->execute($params);
+        $stmt = $this->db->prepare("UPDATE invoices SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
+        $stmt->execute($params);
         $this->showInvoice($auth, $id);
     }
 
     public function deleteInvoice(array $auth, int $id): void {
-        $stmt = $this->db->prepare("DELETE FROM invoices WHERE id=? AND tenant_id=?");
-        $stmt->execute([$id, $auth['tenant_id']]);
-        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy hóa đơn', false);
+        $sql = "DELETE FROM invoices WHERE id=? AND tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND created_by=?";
+            $p[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
+        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy hóa đơn hoặc không có quyền', false);
         respond(200, null, 'Đã xóa hóa đơn');
     }
 
     public function markPaid(array $auth, int $id): void {
-        $this->db->prepare("UPDATE invoices SET status='paid', paid_at=NOW() WHERE id=? AND tenant_id=?")
-            ->execute([$id, $auth['tenant_id']]);
+        $sql = "UPDATE invoices SET status='paid', paid_at=NOW() WHERE id=? AND tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND created_by=?";
+            $p[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
+        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
         respond(200, null, 'Đã đánh dấu đã thanh toán');
     }
 
@@ -123,6 +153,10 @@ class FinanceController {
         $from   = $_GET['from'] ?? '';
         $to     = $_GET['to'] ?? '';
         $where  = ['e.tenant_id=?']; $params = [$tid];
+        if ($auth['role'] === 'sale') {
+            $where[] = 'e.created_by = ?';
+            $params[] = $auth['user_id'];
+        }
         if ($status) { $where[] = 'e.status=?'; $params[] = $status; }
         if ($from)   { $where[] = 'e.date >= ?'; $params[] = $from; }
         if ($to)     { $where[] = 'e.date <= ?'; $params[] = $to; }
@@ -164,8 +198,14 @@ class FinanceController {
     }
 
     public function showExpense(array $auth, int $id): void {
-        $stmt = $this->db->prepare("SELECT e.*, u.full_name as creator_name FROM expenses e LEFT JOIN users u ON e.created_by=u.id WHERE e.id=? AND e.tenant_id=?");
-        $stmt->execute([$id, $auth['tenant_id']]);
+        $sql = "SELECT e.*, u.full_name as creator_name FROM expenses e LEFT JOIN users u ON e.created_by=u.id WHERE e.id=? AND e.tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND e.created_by=?";
+            $p[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
         $row = $stmt->fetch();
         if (!$row) respond(404, null, 'Không tìm thấy chi phí', false);
         
@@ -181,6 +221,17 @@ class FinanceController {
         $data = getBody();
         if (empty($data['title']) || empty($data['amount'])) respond(400, null, 'Thiếu tiêu đề hoặc số tiền', false);
 
+        $totalAmount = (float)$data['amount'];
+        $entities = $data['entities'] ?? [];
+        
+        // Validate split amounts
+        if (!empty($entities)) {
+            $splitSum = array_reduce($entities, fn($s, $e) => $s + (float)($e['amount'] ?? 0), 0);
+            if ($splitSum > $totalAmount) {
+                respond(422, null, 'Tổng số tiền phân bổ không được lớn hơn tổng số tiền chi phí', false);
+            }
+        }
+
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare("
@@ -191,7 +242,7 @@ class FinanceController {
             $stmt->execute([
                 $auth['tenant_id'], $auth['user_id'],
                 $data['title'], $data['category']??'Khác',
-                $data['amount'], $data['date']??date('Y-m-d'),
+                $totalAmount, $data['date']??date('Y-m-d'),
                 $data['status']??'pending', $data['notes']??null,
                 $data['vendor_name']??null,
                 $data['has_vat_invoice']??0,
@@ -199,10 +250,16 @@ class FinanceController {
             ]);
             $expId = (int)$this->db->lastInsertId();
 
-            if (!empty($data['entities']) && is_array($data['entities'])) {
-                $sEE = $this->db->prepare("INSERT INTO expense_entities (expense_id, entity_type, entity_id, amount) VALUES (?,?,?,?)");
-                foreach ($data['entities'] as $ee) {
-                    $sEE->execute([$expId, $ee['entity_type'], $ee['entity_id'], $ee['amount'] ?? 0]);
+            if (!empty($entities)) {
+                $sEE = $this->db->prepare("INSERT INTO expense_entities (tenant_id, expense_id, entity_type, entity_id, amount) VALUES (?,?,?,?,?)");
+                foreach ($entities as $ee) {
+                    // Verify entity exists in this tenant
+                    $table = $ee['entity_type'] === 'contact' ? 'contacts' : ($ee['entity_type'] === 'company' ? 'companies' : 'deals');
+                    $check = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
+                    $check->execute([(int)$ee['entity_id'], $auth['tenant_id']]);
+                    if (!$check->fetch()) continue; // Skip unauthorized/missing entities
+
+                    $sEE->execute([$auth['tenant_id'], $expId, $ee['entity_type'], (int)$ee['entity_id'], (float)($ee['amount'] ?? 0)]);
                 }
             }
 
@@ -223,48 +280,84 @@ class FinanceController {
         
         $this->db->beginTransaction();
         try {
+            // Check permission and get current amount if not provided
+            $check = $this->db->prepare("SELECT id, amount FROM expenses WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND created_by=?" : ""));
+            $cp = [$id, $auth['tenant_id']];
+            if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
+            $check->execute($cp);
+            $row = $check->fetch();
+            if (!$row) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+
+            $currentTotal = (float)($data['amount'] ?? $row['amount']);
+
             if ($sets) {
                 $params[] = $id; $params[] = $auth['tenant_id'];
-                $this->db->prepare("UPDATE expenses SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?")->execute($params);
+                $stmt = $this->db->prepare("UPDATE expenses SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
+                $stmt->execute($params);
             }
 
             if (isset($data['entities']) && is_array($data['entities'])) {
+                $entities = $data['entities'];
+                $splitSum = array_reduce($entities, fn($s, $e) => $s + (float)($e['amount'] ?? 0), 0);
+                if ($splitSum > $currentTotal) {
+                    throw new Exception('Tổng số tiền phân bổ không được lớn hơn tổng số tiền chi phí');
+                }
+
                 $this->db->prepare("DELETE FROM expense_entities WHERE expense_id=?")->execute([$id]);
-                $sEE = $this->db->prepare("INSERT INTO expense_entities (expense_id, entity_type, entity_id, amount) VALUES (?,?,?,?)");
-                foreach ($data['entities'] as $ee) {
-                    $sEE->execute([$id, $ee['entity_type'], $ee['entity_id'], $ee['amount'] ?? 0]);
+                $sEE = $this->db->prepare("INSERT INTO expense_entities (tenant_id, expense_id, entity_type, entity_id, amount) VALUES (?,?,?,?,?)");
+                foreach ($entities as $ee) {
+                    // Verify entity exists in this tenant
+                    $table = $ee['entity_type'] === 'contact' ? 'contacts' : ($ee['entity_type'] === 'company' ? 'companies' : 'deals');
+                    $eCheck = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
+                    $eCheck->execute([(int)$ee['entity_id'], $auth['tenant_id']]);
+                    if (!$eCheck->fetch()) continue;
+
+                    $sEE->execute([$auth['tenant_id'], $id, $ee['entity_type'], (int)$ee['entity_id'], (float)($ee['amount'] ?? 0)]);
                 }
             }
 
             $this->db->commit();
             $this->showExpense($auth, $id);
         } catch (Exception $e) {
-            $this->db->rollBack();
-            respond(500, null, $e->getMessage(), false);
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            respond(422, null, $e->getMessage(), false);
         }
     }
 
     public function listEntityExpenses(array $auth, string $type, int $id): void {
+        $where = "ee.entity_type=? AND ee.entity_id=? AND e.tenant_id=?";
+        $p = [$type, $id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $where .= " AND e.created_by=?";
+            $p[] = $auth['user_id'];
+        }
         $stmt = $this->db->prepare("
             SELECT e.*, ee.amount as split_amount, u.full_name as creator_name
             FROM expenses e
             JOIN expense_entities ee ON e.id = ee.expense_id
             LEFT JOIN users u ON e.created_by = u.id
-            WHERE ee.entity_type=? AND ee.entity_id=? AND e.tenant_id=?
+            WHERE $where
             ORDER BY e.date DESC
         ");
-        $stmt->execute([$type, $id, $auth['tenant_id']]);
+        $stmt->execute($p);
         respond(200, $stmt->fetchAll());
     }
 
     public function deleteExpense(array $auth, int $id): void {
-        $stmt = $this->db->prepare("DELETE FROM expenses WHERE id=? AND tenant_id=?");
-        $stmt->execute([$id, $auth['tenant_id']]);
-        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy chi phí', false);
+        $sql = "DELETE FROM expenses WHERE id=? AND tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND created_by=?";
+            $p[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
+        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy chi phí hoặc không có quyền', false);
         respond(200, null, 'Đã xóa chi phí');
     }
 
     public function approveExpense(array $auth, int $id): void {
+        requireRole($auth, ['admin', 'manager']);
         $data = getBody();
         $status = $data['status'] ?? 'approved';
         if ($status === 'approved') {

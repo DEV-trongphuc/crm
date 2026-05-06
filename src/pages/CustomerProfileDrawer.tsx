@@ -10,6 +10,8 @@ import { PhoneLink } from '../components/ui/PhoneLink';
 import { ActivityModal } from '../components/ui/ActivityModal';
 import { MentionInput } from '../components/ui/MentionInput';
 import { CreateExpenseModal } from '../components/ui/CreateExpenseModal';
+import { Avatar } from '../components/ui/Avatar';
+import { EmptyCard } from '../components/ui/EmptyCard';
 import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
@@ -205,7 +207,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       // Fetch Expenses
       const expensesRes = await api.get(`/expenses/entity/contact/${contact.id}`);
-      setDrawerExpenses(expensesRes.data.data || []);
+      setDrawerExpenses(invoicesRes.data.data || []);
 
       // Fetch Tickets
       const ticketsRes = await api.get(`/tickets?contact_id=${contact.id}`);
@@ -248,6 +250,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   const hasChanges = useMemo(() => {
     if (!contact) return false;
     const baseTags = contact.tags || [];
@@ -258,10 +270,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     return false;
   }, [formData, tags, contact]);
 
-
-  const { score, rules } = (() => {
+  const { score, rules } = useMemo(() => {
     let s = 0;
-    const r = [];
+    const r: any[] = [];
     const title = (formData.job_title || '').toLowerCase();
     if (title.includes('giám đốc') || title.includes('ceo')) {
       s += 30; r.push({ rule: 'Chức danh C-Level (Giám đốc/CEO)', pts: 30, type: 'Demographic' });
@@ -278,7 +289,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (r.length === 0) r.push({ rule: 'Điểm khởi tạo (Mặc định)', pts: 15, type: 'System' });
 
     return { score: Math.min(100, s || 15), rules: r };
-  })();
+  }, [formData.job_title, formData.phone, formData.email, formData.source, formData.expected_revenue, formData.status]);
 
   const mockStore = useMockStore();
 
@@ -869,7 +880,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <div className="form-group">
                             <label className="form-label">Người đang chăm sóc (Sale)</label>
                             <CustomSelect
-                              options={users.map(u => ({ value: u.id, label: u.full_name, icon: <UserCheck size={14} /> }))}
+                              options={users.map(u => ({ 
+                                value: u.id, 
+                                label: u.full_name, 
+                                avatar: u.avatar_url,
+                                sublabel: u.role
+                              }))}
                               value={formData.owner_id || ''}
                               onChange={val => {
                                 const u = users.find(x => x.id === Number(val));
@@ -877,6 +893,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               }}
                               placeholder="Chọn sale phụ trách..."
                               searchable
+                              showAvatars
                             />
                           </div>
                         </div>
@@ -983,7 +1000,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.25rem' }}>{ev.title}</h4>
                                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: ev.color, background: `${ev.color}15`, padding: '2px 8px', borderRadius: 'var(--radius-full)' }}>{ev.type.toUpperCase()}</span>
-                                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Thực hiện bởi <strong>{ev.user}</strong></span>
+                                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      Thực hiện bởi <Avatar name={ev.user} size="sm" /> <strong>{ev.user}</strong>
+                                    </span>
                                   </div>
                                 </div>
                                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
@@ -1610,11 +1629,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className="grid grid-2">
                   <div className="form-group">
                     <label className="form-label">Giai đoạn</label>
-                    <select className="form-input" value={dealForm.stage} onChange={e => setDealForm({ ...dealForm, stage: e.target.value })}>
-                      <option value="lead">Mới (Lead)</option>
-                      <option value="negotiation">Đàm phán</option>
-                      <option value="proposal">Đã báo giá</option>
-                    </select>
+                    <CustomSelect 
+                      options={[
+                        { value: 'lead', label: 'Mới (Lead)' },
+                        { value: 'negotiation', label: 'Đàm phán' },
+                        { value: 'proposal', label: 'Đã báo giá' }
+                      ]} 
+                      value={dealForm.stage} 
+                      onChange={val => setDealForm({ ...dealForm, stage: val.toString() })} 
+                    />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Xác suất (%)</label>
@@ -1653,11 +1676,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className="grid grid-2">
                   <div className="form-group">
                     <label className="form-label">Mức độ ưu tiên</label>
-                    <select className="form-input" value={taskForm.priority} onChange={e => setTaskForm({ ...taskForm, priority: e.target.value })}>
-                      <option value="low">Thấp</option>
-                      <option value="medium">Trung bình</option>
-                      <option value="high">Cao</option>
-                    </select>
+                    <CustomSelect 
+                      options={[
+                        { value: 'low', label: 'Thấp' },
+                        { value: 'medium', label: 'Trung bình' },
+                        { value: 'high', label: 'Cao' }
+                      ]} 
+                      value={taskForm.priority} 
+                      onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })} 
+                    />
                   </div>
                   <div className="form-group">
                     <label className="form-label">Hạn hoàn thành</label>
@@ -1700,12 +1727,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   </div>
                   <div className="form-group">
                     <label className="form-label">Độ ưu tiên</label>
-                    <select className="form-input" value={ticketForm.priority} onChange={e => setTicketForm({ ...ticketForm, priority: e.target.value })}>
-                      <option value="low">Thấp</option>
-                      <option value="medium">Trung bình</option>
-                      <option value="high">Cao</option>
-                      <option value="urgent">Khẩn cấp</option>
-                    </select>
+                    <CustomSelect 
+                      options={[
+                        { value: 'low', label: 'Thấp' },
+                        { value: 'medium', label: 'Trung bình' },
+                        { value: 'high', label: 'Cao' },
+                        { value: 'urgent', label: 'Khẩn cấp' }
+                      ]} 
+                      value={ticketForm.priority} 
+                      onChange={val => setTicketForm({ ...ticketForm, priority: val.toString() })} 
+                    />
                   </div>
                 </div>
                 <div className="form-group">

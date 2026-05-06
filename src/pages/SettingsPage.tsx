@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Shield, Sliders, Plus, Pencil, Trash2, X, Tag as TagIcon, LayoutList, GripVertical, Check, Loader2, Mail, ChevronUp, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar } from '../components/ui/Avatar';
+import { CustomSelect } from '../components/ui/CustomSelect';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 
 const ROLES = ['admin', 'manager', 'sales', 'viewer'];
 const R_LABEL: Record<string, string> = { admin: 'Quản trị viên', manager: 'Quản lý', sales: 'Sale', viewer: 'Xem' };
@@ -167,6 +170,21 @@ export const SettingsPage: React.FC = () => {
       return;
     }
 
+    if (form.role === 'admin' && editUser?.role !== 'admin') {
+      showConfirm({
+        title: 'Xác nhận cấp quyền Admin?',
+        message: 'Bạn đang cấp quyền Quản trị viên (Admin) cho người dùng này. Họ sẽ có toàn quyền thay đổi hệ thống, bao gồm cả việc xóa bạn hoặc các dữ liệu quan trọng.',
+        isDanger: true,
+        confirmText: 'Tôi đã hiểu, tiếp tục',
+        onConfirm: () => performSave()
+      });
+      return;
+    }
+
+    performSave();
+  };
+
+  const performSave = async () => {
     setSaving(true);
     try {
       if (editUser) {
@@ -241,7 +259,7 @@ export const SettingsPage: React.FC = () => {
                   <tr key={u.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                     <td style={{ padding: '0.875rem 1rem', verticalAlign: 'middle' }}>
                       <div className="flex items-center gap-3">
-                        <div className="avatar-placeholder sm" style={{ background: u.role === 'admin' ? '#ef4444' : '#7c3aed', fontSize: '0.65rem' }}>{u.full_name[0]}</div>
+                        <Avatar name={u.full_name} src={u.avatar_url} size={36} />
                         <div>
                           <p className="text-sm font-semi">{u.full_name}</p>
                           <p className="text-xs text-light">{u.email}</p>
@@ -389,7 +407,10 @@ export const SettingsPage: React.FC = () => {
                     <td style={{ padding: '0.875rem 1rem' }}><span className="badge info">{f.entity}</span></td>
                     <td style={{ padding: '0.875rem 1rem', fontSize: '0.875rem' }}>{f.type}</td>
                     <td style={{ padding: '0.875rem 1rem' }}>
-                      <div className={`custom-toggle ${f.required ? 'active' : ''}`} style={{ zoom: 0.8 }} onClick={() => { setCustomFields(prev => prev.map(x => x.id === f.id ? { ...x, required: !x.required } : x)) }} />
+                      <CustomCheckbox 
+                        checked={f.required} 
+                        onChange={() => setCustomFields(prev => prev.map(x => x.id === f.id ? { ...x, required: !x.required } : x))} 
+                      />
                     </td>
                     <td style={{ padding: '0.875rem 1rem', textAlign: 'right' }}>
                       <button className="btn-icon-bare text-light" onClick={() => openGenericModal('field', f)}><Pencil size={14} /></button>
@@ -469,9 +490,15 @@ export const SettingsPage: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600 }}>Vai trò (Role)</label>
-                    <select className="form-input" value={form.role} onChange={e => setForm({ ...form, role: e.target.value })}>
-                      {ROLES.map(r => <option key={r} value={r}>{R_LABEL[r]}</option>)}
-                    </select>
+                    <CustomSelect 
+                      options={ROLES.map(r => ({ 
+                        value: r, 
+                        label: R_LABEL[r],
+                        sublabel: r === 'admin' ? 'Quyền cao nhất' : r === 'manager' ? 'Quản lý phòng ban' : r === 'sales' ? 'Nhân viên kinh doanh' : 'Chỉ xem dữ liệu'
+                      }))}
+                      value={form.role}
+                      onChange={val => setForm({ ...form, role: val.toString() })}
+                    />
                   </div>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600 }}>{editUser ? 'Mật khẩu mới' : 'Mật khẩu truy cập *'}</label>
@@ -490,13 +517,12 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 <div style={{ padding: '1rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                    <div className={`custom-toggle ${form.is_active ? 'active' : ''}`} onClick={() => setForm({ ...form, is_active: !form.is_active })} />
-                    <div>
-                      <p style={{ fontSize: '0.875rem', fontWeight: 600 }}>Kích hoạt tài khoản</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Cho phép người dùng này đăng nhập ngay.</p>
-                    </div>
-                  </label>
+                  <CustomCheckbox 
+                    checked={form.is_active} 
+                    onChange={() => setForm({ ...form, is_active: !form.is_active })} 
+                    label="Kích hoạt tài khoản"
+                  />
+                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: '2rem', marginTop: '-0.25rem' }}>Cho phép người dùng này đăng nhập ngay.</p>
                 </div>
               </div>
 
@@ -550,20 +576,28 @@ export const SettingsPage: React.FC = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                     <div className="form-group">
                       <label className="form-label">Module áp dụng</label>
-                      <select className="form-input" value={genericForm.entity || 'Liên hệ'} onChange={e => setGenericForm({ ...genericForm, entity: e.target.value })}>
-                        <option value="Liên hệ">Liên hệ</option>
-                        <option value="Công ty">Công ty</option>
-                        <option value="Cơ hội">Cơ hội (Deal)</option>
-                      </select>
+                      <CustomSelect 
+                        options={[
+                          { value: 'Liên hệ', label: 'Liên hệ' },
+                          { value: 'Công ty', label: 'Công ty' },
+                          { value: 'Cơ hội', label: 'Cơ hội (Deal)' }
+                        ]} 
+                        value={genericForm.entity || 'Liên hệ'} 
+                        onChange={val => setGenericForm({ ...genericForm, entity: val.toString() })} 
+                      />
                     </div>
                     <div className="form-group">
                       <label className="form-label">Loại dữ liệu</label>
-                      <select className="form-input" value={genericForm.type || 'Text'} onChange={e => setGenericForm({ ...genericForm, type: e.target.value })}>
-                        <option value="Text">Văn bản (Text)</option>
-                        <option value="Number">Số (Number)</option>
-                        <option value="Date">Ngày tháng (Date)</option>
-                        <option value="Select">Lựa chọn (Select)</option>
-                      </select>
+                      <CustomSelect 
+                        options={[
+                          { value: 'Text', label: 'Văn bản (Text)' },
+                          { value: 'Number', label: 'Số (Number)' },
+                          { value: 'Date', label: 'Ngày tháng (Date)' },
+                          { value: 'Select', label: 'Lựa chọn (Select)' }
+                        ]} 
+                        value={genericForm.type || 'Text'} 
+                        onChange={val => setGenericForm({ ...genericForm, type: val.toString() })} 
+                      />
                     </div>
                   </div>
                 )}
@@ -576,15 +610,69 @@ export const SettingsPage: React.FC = () => {
                       'Bạn có chắc chắn muốn xóa mục này? Thao tác này không thể hoàn tác.',
                       async () => {
                         try {
-                      if (activeModal.type === 'pipeline') {
-                            await api.delete(`/pipeline-stages/${activeModal.item.id}`);
-                            fetchPipelines();
+                          if (activeModal.type === 'pipeline') {
+                            const dealCount = activeModal.item.deals || 0;
+                            if (dealCount > 0) {
+                              showConfirm({
+                                title: 'Không thể xóa giai đoạn!',
+                                message: `Giai đoạn này đang chứa ${dealCount} deal. Bạn phải di chuyển tất cả deal sang giai đoạn khác trước khi xóa.`,
+                                confirmText: 'Đã hiểu',
+                                onConfirm: () => {}
+                              });
+                              return;
+                            }
+                            
+                            showConfirm({
+                              title: 'Xóa giai đoạn Pipeline?',
+                              message: `Bạn có chắc chắn muốn xóa giai đoạn "${activeModal.item.name}"? Thao tác này không thể hoàn tác.`,
+                              isDanger: true,
+                              confirmText: 'Xóa vĩnh viễn',
+                              onConfirm: async () => {
+                                try {
+                                  await api.delete(`/pipeline-stages/${activeModal.item.id}`);
+                                  addToast('Đã xóa giai đoạn', 'success');
+                                  fetchPipelines();
+                                  setActiveModal({ type: null, item: null });
+                                } catch (e: any) {
+                                  addToast(e.response?.data?.message || 'Lỗi khi xóa', 'error');
+                                }
+                              }
+                            });
                           }
                           if (activeModal.type === 'tag') {
-                            await api.delete(`/tags/${activeModal.item.id}`);
-                            fetchTags();
+                            const usageCount = activeModal.item.count || 0;
+                            showConfirm({
+                              title: 'Xác nhận xóa Tag?',
+                              message: `Bạn có chắc chắn muốn xóa Tag "${activeModal.item.name}"?`,
+                              impactInfo: usageCount > 0 ? `Cảnh báo: Tag này đang được sử dụng bởi ${usageCount} mục.` : undefined,
+                              isDanger: true,
+                              requireWordMatch: usageCount > 10 ? 'DELETE' : undefined,
+                              confirmText: 'Xác nhận xóa',
+                              onConfirm: async () => {
+                                try {
+                                  await api.delete(`/tags/${activeModal.item.id}`);
+                                  addToast('Đã xóa Tag', 'success');
+                                  fetchTags();
+                                  setActiveModal({ type: null, item: null });
+                                } catch (e: any) {
+                                  addToast(e.response?.data?.message || 'Lỗi khi xóa', 'error');
+                                }
+                              }
+                            });
                           }
-                          if (activeModal.type === 'field') setCustomFields(f => f.filter(x => x.id !== activeModal.item.id));
+                          if (activeModal.type === 'field') {
+                            showConfirm({
+                              title: 'Xóa trường tùy chỉnh?',
+                              message: `Dữ liệu trong trường "${activeModal.item.name}" sẽ bị xóa vĩnh viễn trên toàn bộ hệ thống.`,
+                              isDanger: true,
+                              confirmText: 'Xác nhận xóa',
+                              onConfirm: () => {
+                                setCustomFields(f => f.filter(x => x.id !== activeModal.item.id));
+                                setActiveModal({ type: null, item: null });
+                                addToast('Đã xóa trường tùy chỉnh', 'success');
+                              }
+                            });
+                          }
                           setActiveModal({ type: null, item: null });
                           addToast('Đã xóa', 'success');
                         } catch (e: any) {

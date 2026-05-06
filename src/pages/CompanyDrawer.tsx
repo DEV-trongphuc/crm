@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2 } from 'lucide-react';
+import { X, Building2, FileText, FileBadge, Tag as TagIcon, Phone, Mail, MapPin, Search, Calendar, Users, Briefcase, Plus, HelpCircle, Globe, Settings, Download, Trash2, Edit, Pencil, Loader2, History } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { TagInput } from '../components/ui/TagInput';
@@ -9,6 +10,7 @@ import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore } from '../store/mockStore';
+import { ActivityModal } from '../components/ui/ActivityModal';
 import styles from './EntityDrawer.module.css'; // Reusing the same drawer CSS
 
 interface CompanyDrawerProps {
@@ -20,11 +22,11 @@ interface CompanyDrawerProps {
 
 const TABS = [
   { id: 'info', label: 'Thông tin công ty', icon: <Building2 size={16} /> },
+  { id: 'activities', label: 'Hoạt động & Lịch', icon: <History size={16} /> },
   { id: 'contacts', label: 'Người liên hệ', icon: <Users size={16} /> },
   { id: 'deals', label: 'Cơ hội bán hàng', icon: <Briefcase size={16} /> },
   { id: 'docs', label: 'Hợp đồng & Tài liệu', icon: <FileBadge size={16} /> },
   { id: 'settings', label: 'Thiết lập & Cài đặt', icon: <Settings size={16} /> },
-  { id: 'tags', label: 'Tags & Custom', icon: <TagIcon size={16} /> },
 ];
 
 export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, entity, onSave }) => {
@@ -44,6 +46,28 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   
   // Docs — local only (no backend endpoint)
   const [docs, setDocs] = useState<any[]>([]);
+  
+  // Activities State
+  const [activities, setActivities] = useState<any[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+
+  const fetchActivities = async () => {
+    if (!entity?.id) return;
+    setActivitiesLoading(true);
+    try {
+      const r = await api.get('/activities', { params: { related_type: 'company', related_id: entity.id } });
+      setActivities(r.data.data?.items || r.data.data || []);
+    } catch {
+      setActivities([]);
+    } finally {
+      setActivitiesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'activities') fetchActivities();
+  }, [activeTab]);
   
   useEffect(() => {
     if (entity) {
@@ -85,6 +109,16 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       }
     }
   }, [entity]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -256,6 +290,43 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                         </div>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {activeTab === 'activities' && (
+                  <div className="animate-fade">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                      <h4 className="panel-title" style={{ margin: 0 }}>Lịch sử hoạt động</h4>
+                      <button className="btn primary sm" onClick={() => setShowActivityModal(true)}><Plus size={14}/> Thêm hoạt động</button>
+                    </div>
+
+                    {activitiesLoading ? (
+                      <div className="flex justify-center p-8"><Loader2 className="spin" /></div>
+                    ) : activities.length === 0 ? (
+                      <EmptyCard 
+                        title="Chưa có hoạt động" 
+                        description="Ghi lại các cuộc gọi, họp hoặc email với công ty này."
+                        icon={<Calendar size={32} />}
+                      />
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {activities.map(act => (
+                          <div key={act.id} className="card-panel" style={{ padding: '1rem', borderLeft: `3px solid var(--color-primary)` }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <h5 style={{ fontWeight: 600 }}>{act.subject}</h5>
+                              <span className="text-xs text-light">{new Date(act.created_at).toLocaleDateString('vi-VN')}</span>
+                            </div>
+                            <p className="text-sm text-light mt-1">{act.body || 'Không có mô tả chi tiết'}</p>
+                            <div className="mt-2 flex gap-2">
+                              <span className="badge info sm">{act.type}</span>
+                              <span className={`badge sm ${act.status === 'done' ? 'success' : 'warning'}`}>
+                                {act.status === 'done' ? 'Đã xong' : 'Chờ xử lý'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -470,21 +541,17 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                         />
                       </div>
                       
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.5rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', border: '1px solid var(--color-border-light)', borderRadius: '12px', cursor: 'pointer' }}>
-                          <input type="checkbox" defaultChecked style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)' }} />
-                          <div>
-                            <span style={{ fontWeight: 600, display: 'block' }}>Áp dụng Bảng giá Đại lý (Wholesale)</span>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Công ty này sẽ tự động nhận báo giá đã chiết khấu.</span>
-                          </div>
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '1rem', border: '1px solid var(--color-border-light)', borderRadius: '12px', cursor: 'pointer' }}>
-                          <input type="checkbox" style={{ width: '18px', height: '18px', accentColor: 'var(--color-primary)' }} />
-                          <div>
-                            <span style={{ fontWeight: 600, display: 'block' }}>Miễn trừ thuế GTGT (VAT Exempt)</span>
-                            <span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Áp dụng cho doanh nghiệp chế xuất, khu phi thuế quan.</span>
-                          </div>
-                        </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                        <CustomCheckbox 
+                          label={<div><span style={{ fontWeight: 600, display: 'block' }}>Áp dụng Bảng giá Đại lý (Wholesale)</span><span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Công ty này sẽ tự động nhận báo giá đã chiết khấu.</span></div>}
+                          checked={true}
+                          onChange={() => {}}
+                        />
+                        <CustomCheckbox 
+                          label={<div><span style={{ fontWeight: 600, display: 'block' }}>Miễn trừ thuế GTGT (VAT Exempt)</span><span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)' }}>Áp dụng cho doanh nghiệp chế xuất, khu phi thuế quan.</span></div>}
+                          checked={false}
+                          onChange={() => {}}
+                        />
                       </div>
                     </div>
                   </div>
@@ -569,6 +636,14 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
           </>
         )}
       </AnimatePresence>
+      {/* Activity Modal */}
+      <ActivityModal 
+        isOpen={showActivityModal} 
+        onClose={() => setShowActivityModal(false)}
+        entityType="company"
+        entityId={entity?.id}
+        onSuccess={fetchActivities}
+      />
     </AnimatePresence>
   );
 };

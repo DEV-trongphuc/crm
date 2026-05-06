@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Filter, Plus, Trash2, HelpCircle } from 'lucide-react';
+import { X, Filter, Plus, Trash2, HelpCircle, DollarSign, MapPin, Target, Zap, Clock, User, Globe, Hash } from 'lucide-react';
 import { CustomSelect } from './CustomSelect';
 
 export interface FilterRule {
@@ -19,12 +19,12 @@ interface AdvancedFilterModalProps {
 }
 
 const FIELDS = [
-  { value: 'status', label: 'Trạng thái' },
-  { value: 'source', label: 'Nguồn' },
-  { value: 'city', label: 'Thành phố' },
-  { value: 'expected_revenue', label: 'Dự kiến doanh thu' },
-  { value: 'win_probability', label: 'Xác suất chốt (%)' },
-  { value: 'has_called', label: 'Đã liên hệ' }
+  { value: 'status', label: 'Trạng thái', icon: <Zap size={14} /> },
+  { value: 'source', label: 'Nguồn', icon: <Globe size={14} /> },
+  { value: 'city', label: 'Thành phố', icon: <MapPin size={14} /> },
+  { value: 'expected_revenue', label: 'Dự kiến doanh thu', icon: <DollarSign size={14} /> },
+  { value: 'win_probability', label: 'Xác suất chốt (%)', icon: <Target size={14} /> },
+  { value: 'has_called', label: 'Đã liên hệ', icon: <Clock size={14} /> }
 ];
 
 const OPERATORS: Record<string, {value: string, label: string}[]> = {

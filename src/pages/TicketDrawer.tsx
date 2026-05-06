@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MessageSquare, Clock, AlertCircle, User, Paperclip, Send, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { Avatar } from '../components/ui/Avatar';
+import { CustomSelect } from '../components/ui/CustomSelect';
 import { useUIStore } from '../store/uiStore';
 import styles from './EntityDrawer.module.css'; // Reuse existing styles
 
@@ -59,9 +61,17 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
   };
 
   const handleStatusChange = (newStatus: string) => {
+    const oldStatus = formData.status;
     setFormData({ ...formData, status: newStatus });
     onUpdate?.({ ...formData, status: newStatus });
-    addToast('Đã cập nhật trạng thái', 'success');
+    
+    addToast('Đã cập nhật trạng thái', 'success', {
+      label: 'Undo',
+      onClick: () => {
+        setFormData({ ...formData, status: oldStatus });
+        onUpdate?.({ ...formData, status: oldStatus });
+      }
+    });
   };
 
   return (
@@ -99,14 +109,13 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                 </div>
               </div>
               <div className={styles.headerActions}>
-                <select 
-                  value={formData.status} 
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  className="form-input sm" 
-                  style={{ fontWeight: 600, color: TICKET_STATUSES.find(s => s.id === formData.status)?.color, borderColor: TICKET_STATUSES.find(s => s.id === formData.status)?.color }}
-                >
-                  {TICKET_STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </select>
+                <div style={{ width: 140 }}>
+                  <CustomSelect 
+                    options={TICKET_STATUSES.map(s => ({ value: s.id, label: s.label }))} 
+                    value={formData.status} 
+                    onChange={val => handleStatusChange(val.toString())} 
+                  />
+                </div>
                 <button className={styles.closeBtn} onClick={onClose}><X size={20} /></button>
               </div>
             </div>
@@ -119,9 +128,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                 <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   {comments.map((msg, i) => (
                     <div key={i} style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
-                      <div className="avatar-placeholder sm" style={{ background: msg.user === 'Hệ thống' ? '#f59e0b' : 'var(--color-primary)' }}>
-                        {msg.user[0]}
-                      </div>
+                      <Avatar name={msg.user} size={32} />
                       <div style={{ maxWidth: '85%' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                           <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{msg.user}</span>
@@ -175,7 +182,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                   <div>
                     <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginBottom: '2px' }}>Người phụ trách</p>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div className="avatar-placeholder sm" style={{ background: '#10b981', width: 24, height: 24, fontSize: '0.6rem' }}>AD</div>
+                      <Avatar name={formData.assignee_name} size={24} />
                       <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{formData.assignee_name || 'Admin'}</span>
                     </div>
                   </div>
@@ -188,7 +195,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                 <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '1rem' }}>Thông tin khách hàng</h4>
                 <div className="card" style={{ padding: '1rem', background: 'var(--color-bg)', border: 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '0.75rem' }}>
-                    <div className="avatar-placeholder md" style={{ background: '#3b82f6' }}>{formData.customer_name?.[0]}</div>
+                    <Avatar name={formData.customer_name} size={40} />
                     <div>
                       <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{formData.customer_name}</p>
                       <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách hàng VIP</p>

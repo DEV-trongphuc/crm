@@ -88,7 +88,27 @@ class AuthController {
             'full_name'  => $row['full_name'],
         ];
         $newAccess = JWT::encode($payload);
-        respond(200, ['access_token' => $newAccess], 'Token làm mới thành công');
+
+        // Rotate refresh token
+        $newRefresh = bin2hex(random_bytes(40));
+        $newHash = hash('sha256', $newRefresh);
+        
+        $this->db->beginTransaction();
+        try {
+            $this->db->prepare('DELETE FROM refresh_tokens WHERE id = ?')->execute([$row['id']]);
+            $this->db->prepare(
+                'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))'
+            )->execute([$row['user_id'], $newHash, 30]);
+            $this->db->commit();
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            respond(500, null, 'Không thể tạo token mới', false);
+        }
+
+        respond(200, [
+            'access_token'  => $newAccess,
+            'refresh_token' => $newRefresh
+        ], 'Token làm mới thành công');
     }
 
     public function logout(): void {

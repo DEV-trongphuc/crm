@@ -2,11 +2,14 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Check } from 'lucide-react';
 import styles from './CustomSelect.module.css';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar } from './Avatar';
 
 export interface SelectOption {
   value: string | number;
   label: string;
   icon?: React.ReactNode;
+  avatar?: string;
+  sublabel?: string;
 }
 
 interface CustomSelectProps {
@@ -16,6 +19,7 @@ interface CustomSelectProps {
   placeholder?: string;
   label?: string;
   searchable?: boolean;
+  showAvatars?: boolean;
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({ 
@@ -24,7 +28,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   onChange, 
   placeholder = 'Chọn...', 
   label,
-  searchable = false
+  searchable = false,
+  showAvatars = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -52,8 +57,9 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       >
         <span className={selectedOption ? styles.selectedValue : styles.placeholder}>
           {selectedOption ? (
-            <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
+            <span className={styles.triggerContent}>
+              {showAvatars && <Avatar src={selectedOption.avatar} name={selectedOption.label} size="sm" />}
+              {!showAvatars && selectedOption.icon && <span style={{ display: 'flex' }}>{selectedOption.icon}</span>}
               {selectedOption.label}
             </span>
           ) : placeholder}
@@ -96,14 +102,21 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                     setSearch('');
                   }}
                 >
-                  <span className={styles.optionLabel}>
-                    {option.icon && <span style={{ display: 'flex' }}>{option.icon}</span>}
-                    {option.label}
-                  </span>
-                  {value == option.value && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor' }} />}
+                  <div className={styles.optionLabel}>
+                    {showAvatars ? (
+                      <Avatar src={option.avatar} name={option.label} size="sm" />
+                    ) : (
+                      option.icon && <span style={{ display: 'flex' }}>{option.icon}</span>
+                    )}
+                    <div className={styles.optionText}>
+                      <span className={styles.optionMainLabel}>{option.label}</span>
+                      {option.sublabel && <span className={styles.optionSublabel}>{option.sublabel}</span>}
+                    </div>
+                  </div>
+                  {value == option.value && <Check size={14} className={styles.checkIcon} />}
                 </div>
               )) : (
-                <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Không tìm thấy</div>
+                <div className={styles.empty}>Không tìm thấy</div>
               )}
             </div>
           </motion.div>

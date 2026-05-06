@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Upload, Download, FileText, AlertTriangle, CheckCircle, RefreshCw } from 'lucide-react';
 import { useUIStore } from '../../store/uiStore';
+import { CustomRadio } from './CustomRadio';
 
 interface ImportExportModalProps {
   isOpen: boolean;
@@ -108,19 +109,25 @@ export const ImportExportModal: React.FC<ImportExportModalProps> = ({ isOpen, on
                         <AlertTriangle size={18} /> Phát hiện {duplicates.length} bản ghi trùng lặp
                       </div>
                       
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                          <input type="radio" name="dedupe" checked={dedupeAction === 'skip'} onChange={() => setDedupeAction('skip')} style={{ width: 16, height: 16, accentColor: 'var(--color-warning)' }} />
-                          <div><span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Bỏ qua</span> <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>(Giữ lại dữ liệu cũ trên hệ thống)</span></div>
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                          <input type="radio" name="dedupe" checked={dedupeAction === 'overwrite'} onChange={() => setDedupeAction('overwrite')} style={{ width: 16, height: 16, accentColor: 'var(--color-warning)' }} />
-                          <div><span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Cập nhật (Ghi đè)</span> <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>(Cập nhật dữ liệu từ file mới tải lên)</span></div>
-                        </label>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                          <input type="radio" name="dedupe" checked={dedupeAction === 'duplicate'} onChange={() => setDedupeAction('duplicate')} style={{ width: 16, height: 16, accentColor: 'var(--color-warning)' }} />
-                          <div><span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Tạo bản ghi mới</span> <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>(Chấp nhận trùng lặp dữ liệu)</span></div>
-                        </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1rem' }}>
+                        <CustomRadio 
+                          label={<div><span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Bỏ qua</span> <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>(Giữ lại dữ liệu cũ trên hệ thống)</span></div>}
+                          name="dedupe"
+                          checked={dedupeAction === 'skip'}
+                          onChange={() => setDedupeAction('skip')}
+                        />
+                        <CustomRadio 
+                          label={<div><span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Cập nhật (Ghi đè)</span> <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>(Cập nhật dữ liệu từ file mới tải lên)</span></div>}
+                          name="dedupe"
+                          checked={dedupeAction === 'overwrite'}
+                          onChange={() => setDedupeAction('overwrite')}
+                        />
+                        <CustomRadio 
+                          label={<div><span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Tạo bản ghi mới</span> <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>(Chấp nhận trùng lặp dữ liệu)</span></div>}
+                          name="dedupe"
+                          checked={dedupeAction === 'duplicate'}
+                          onChange={() => setDedupeAction('duplicate')}
+                        />
                       </div>
                     </div>
                   )}

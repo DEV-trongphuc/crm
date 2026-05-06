@@ -4,7 +4,26 @@ class NoteController {
     private PDO $db;
     public function __construct(PDO $db) { $this->db = $db; }
 
+    private function checkEntityAccess(array $auth, string $type, int $id): bool {
+        $table = $type === 'contact' ? 'contacts' : ($type === 'company' ? 'companies' : ($type === 'deal' ? 'deals' : null));
+        if (!$table) return true; // Generic types or non-existing tables
+
+        $sql = "SELECT id FROM $table WHERE id=? AND tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND owner_id=?";
+            $p[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
+        return (bool)$stmt->fetch();
+    }
+
     public function index(array $auth, string $type, int $entityId): void {
+        if (!$this->checkEntityAccess($auth, $type, $entityId)) {
+            respond(403, null, 'Bạn không có quyền xem ghi chú này', false);
+        }
+
         $stmt = $this->db->prepare("
             SELECT n.*, u.full_name as author_name, u.avatar_url as author_avatar,
                    p.full_name as parent_author
@@ -18,20 +37,35 @@ class NoteController {
         $stmt->execute([$auth['tenant_id'], $type, $entityId]);
         $notes = $stmt->fetchAll();
 
-        // Fetch replies for each note
-        foreach ($notes as &$note) {
-            $replies = $this->db->prepare("
+        // Fetch replies for all these notes in a single query
+        if (!empty($notes)) {
+            $noteIds = array_column($notes, 'id');
+            $in = str_repeat('?,', count($noteIds) - 1) . '?';
+            $repliesStmt = $this->db->prepare("
                 SELECT n.*, u.full_name as author_name, u.avatar_url as author_avatar
                 FROM notes n LEFT JOIN users u ON n.user_id=u.id
-                WHERE n.parent_id=? ORDER BY n.created_at ASC
+                WHERE n.parent_id IN ($in) ORDER BY n.created_at ASC
             ");
-            $replies->execute([$note['id']]);
-            $note['replies'] = $replies->fetchAll();
+            $repliesStmt->execute($noteIds);
+            $allReplies = $repliesStmt->fetchAll();
+
+            $repliesByParent = [];
+            foreach ($allReplies as $reply) {
+                $repliesByParent[$reply['parent_id']][] = $reply;
+            }
+
+            foreach ($notes as &$note) {
+                $note['replies'] = $repliesByParent[$note['id']] ?? [];
+            }
         }
         respond(200, $notes);
     }
 
     public function store(array $auth, string $type, int $entityId): void {
+        if (!$this->checkEntityAccess($auth, $type, $entityId)) {
+            respond(403, null, 'Bạn không có quyền thêm ghi chú cho mục này', false);
+        }
+
         $b = getBody();
         if (empty($b['body'])) respond(422, null, 'Nội dung ghi chú là bắt buộc', false);
         $this->db->prepare("
@@ -43,10 +77,42 @@ class NoteController {
             $b['parent_id'] ?? null, $b['is_pinned'] ?? 0
         ]);
         $id = (int)$this->db->lastInsertId();
-        // Parse @mentions: extract user IDs from mentions array
-        if (!empty($b['mentions']) && is_array($b['mentions'])) {
+
+        // 1. Extract mentions from body text (@Full_Name_With_Underscores)
+        $mentions = $b['mentions'] ?? [];
+        if (empty($mentions)) {
+            preg_match_all('/@([a-zA-Z0-9_\u00C0-\u1EF9]+)/u', $b['body'], $matches);
+            if (!empty($matches[1])) {
+                foreach ($matches[1] as $nameWithUnderscores) {
+                    $fullName = str_replace('_', ' ', $nameWithUnderscores);
+                    $stmt = $this->db->prepare("SELECT id FROM users WHERE tenant_id=? AND full_name=?");
+                    $stmt->execute([$auth['tenant_id'], $fullName]);
+                    $uid = $stmt->fetchColumn();
+                    if ($uid) $mentions[] = (int)$uid;
+                }
+            }
+        }
+        $mentions = array_unique($mentions);
+
+        // 2. Process mentions
+        if (!empty($mentions)) {
             $ins = $this->db->prepare("INSERT IGNORE INTO note_mentions (note_id, user_id) VALUES (?,?)");
-            foreach ($b['mentions'] as $uid) $ins->execute([$id, (int)$uid]);
+            $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, type, title, message, related_type, related_id) VALUES (?,?,?,?,?,?,?)");
+            
+            foreach ($mentions as $uid) {
+                $uid = (int)$uid;
+                $ins->execute([$id, $uid]);
+                
+                // Don't notify self
+                if ($uid !== (int)$auth['user_id']) {
+                    $notif->execute([
+                        $uid, $auth['tenant_id'], 'mention', 
+                        'Bạn được nhắc tên', 
+                        $auth['full_name'] . ' đã nhắc tên bạn trong một ghi chú.',
+                        'note', $id
+                    ]);
+                }
+            }
         }
         respond(201, ['id' => $id], 'Đã thêm ghi chú');
     }

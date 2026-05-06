@@ -5,11 +5,19 @@ import { useUIStore } from '../../store/uiStore';
 
 export const GlobalConfirmModal: React.FC = () => {
   const { confirmModal, closeConfirm } = useUIStore();
-  const { isOpen, title, message, confirmText = 'Xác nhận', cancelText = 'Hủy', isDanger, onConfirm, onCancel } = confirmModal;
+  const { isOpen, title, message, confirmText = 'Xác nhận', cancelText = 'Hủy', isDanger, impactInfo, requireWordMatch, onConfirm, onCancel } = confirmModal;
+  const [matchInput, setMatchInput] = React.useState('');
+
+  React.useEffect(() => {
+    if (isOpen) setMatchInput('');
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
+  const isLocked = requireWordMatch && matchInput !== requireWordMatch;
+
   const handleConfirm = () => {
+    if (isLocked) return;
     onConfirm();
     closeConfirm();
   };
@@ -33,7 +41,7 @@ export const GlobalConfirmModal: React.FC = () => {
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
           onClick={(e) => e.stopPropagation()}
           style={{
-            background: 'var(--color-surface)', width: '100%', maxWidth: '400px',
+            background: 'var(--color-surface)', width: '100%', maxWidth: '420px',
             borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-2xl)',
             overflow: 'hidden', display: 'flex', flexDirection: 'column'
           }}
@@ -42,52 +50,81 @@ export const GlobalConfirmModal: React.FC = () => {
           <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
             <div style={{
               width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
-              background: isDanger ? 'var(--color-danger-light)' : 'var(--color-primary-light)',
-              color: isDanger ? 'var(--color-danger)' : 'var(--color-primary)',
+              background: isDanger ? 'rgba(239, 68, 68, 0.1)' : 'rgba(124, 58, 237, 0.1)',
+              color: isDanger ? '#ef4444' : '#7c3aed',
               display: 'flex', alignItems: 'center', justifyContent: 'center'
             }}>
               {isDanger ? <AlertTriangle size={24} /> : <Info size={24} />}
             </div>
             
             <div style={{ flex: 1, paddingTop: '0.25rem' }}>
-              <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--color-text)', marginBottom: '0.5rem' }}>
                 {title}
               </h3>
-              <p style={{ fontSize: '0.9375rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+              <p style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', lineHeight: 1.5, marginBottom: '1rem' }}>
                 {message}
               </p>
+
+              {impactInfo && (
+                <div style={{ 
+                  background: 'rgba(245, 158, 11, 0.08)', 
+                  border: '1px solid rgba(245, 158, 11, 0.2)', 
+                  padding: '0.75rem', 
+                  borderRadius: '12px',
+                  display: 'flex',
+                  gap: '8px',
+                  marginBottom: '1rem'
+                }}>
+                  <AlertTriangle size={16} color="#f59e0b" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span style={{ fontSize: '0.8rem', color: '#d97706', fontWeight: 600 }}>{impactInfo}</span>
+                </div>
+              )}
+
+              {requireWordMatch && (
+                <div style={{ marginTop: '1rem' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', display: 'block', marginBottom: '6px' }}>
+                    Nhập <span style={{ color: 'var(--color-danger)' }}>"{requireWordMatch}"</span> để xác nhận
+                  </label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder={`Nhập ${requireWordMatch}...`}
+                    value={matchInput}
+                    onChange={(e) => setMatchInput(e.target.value)}
+                    style={{ 
+                      textAlign: 'center', 
+                      letterSpacing: '0.1em', 
+                      fontWeight: 800,
+                      borderColor: matchInput === requireWordMatch ? 'var(--color-success)' : 'var(--color-border)'
+                    }}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
           {/* Footer actions */}
           <div style={{ 
-            padding: '1rem 1.5rem', background: 'var(--color-background)',
+            padding: '1.25rem 1.5rem', background: 'var(--color-bg)',
             borderTop: '1px solid var(--color-border)', display: 'flex', 
             justifyContent: 'flex-end', gap: '0.75rem'
           }}>
             <button 
+              className="btn secondary sm"
               onClick={handleCancel}
-              style={{
-                padding: '0.625rem 1rem', borderRadius: 'var(--radius-md)',
-                background: 'transparent', border: '1px solid var(--color-border)',
-                color: 'var(--color-text)', fontWeight: 600, fontSize: '0.875rem',
-                cursor: 'pointer', transition: 'all 0.2s'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              style={{ fontWeight: 600 }}
             >
               {cancelText}
             </button>
             <button 
+              className={`btn ${isDanger ? 'danger' : 'primary'} sm`}
               onClick={handleConfirm}
-              style={{
-                padding: '0.625rem 1rem', borderRadius: 'var(--radius-md)',
-                background: isDanger ? 'var(--color-danger)' : 'var(--color-primary)', 
-                border: 'none', color: '#fff', fontWeight: 600, fontSize: '0.875rem',
-                cursor: 'pointer', transition: 'all 0.2s', boxShadow: 'var(--shadow-sm)'
+              disabled={isLocked}
+              style={{ 
+                minWidth: '100px', 
+                opacity: isLocked ? 0.5 : 1,
+                cursor: isLocked ? 'not-allowed' : 'pointer'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
             >
               {confirmText}
             </button>
@@ -95,5 +132,6 @@ export const GlobalConfirmModal: React.FC = () => {
         </motion.div>
       </div>
     </AnimatePresence>
+
   );
 };

@@ -1,12 +1,15 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar } from '../components/ui/Avatar';
 import confetti from 'canvas-confetti';
 import { useUIStore } from '../store/uiStore';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { CompanyDrawer } from './CompanyDrawer';
 import api from '../api/axios';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
+import { useDebounce } from '../hooks/useDebounce';
 
 const FMT = (n: number) => {
   if (!n) return '0 đ';
@@ -36,6 +39,7 @@ export const DealsPage: React.FC = () => {
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 300);
   const [dateFilterType, setDateFilterType] = useState('');
   const [filterDateFrom, setFilterDateFrom] = useState('');
   const [filterDateTo, setFilterDateTo] = useState('');
@@ -65,8 +69,8 @@ export const DealsPage: React.FC = () => {
       const stageItems = items[stageIdStr as any] || [];
       result[stageIdStr] = stageItems.filter(item => {
         // Text Search
-        if (searchTerm) {
-          const lowerSearch = searchTerm.toLowerCase();
+        if (debouncedSearch) {
+          const lowerSearch = debouncedSearch.toLowerCase();
           const nameMatch = pipelineView === 'contacts' 
             ? `${item.first_name || ''} ${item.last_name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch)
             : `${item.name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch);
@@ -108,7 +112,7 @@ export const DealsPage: React.FC = () => {
       });
     });
     return result;
-  }, [items, searchTerm, dateFilterType, filterDateFrom, filterDateTo, filterAssignee, filterStage, pipelineView]);
+  }, [items, debouncedSearch, dateFilterType, filterDateFrom, filterDateTo, filterAssignee, filterStage, pipelineView]);
 
   const getVisibleItems = () => {
     return Object.values(filteredItems)
@@ -227,6 +231,17 @@ export const DealsPage: React.FC = () => {
   useEffect(() => {
     if (stages.length > 0) fetchData();
   }, [stages, pipelineView]);
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (transitionModal?.isOpen) setTransitionModal(null);
+        if (showBulkMove) setShowBulkMove(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [transitionModal, showBulkMove]);
 
   // Update a single item in the local items state without a full refetch
   const updateItemLocally = (updated: any) => {
@@ -385,9 +400,25 @@ export const DealsPage: React.FC = () => {
               style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
             >
               <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div className="filter-search" style={{ width: '400px' }}>
+                <div className="filter-search" style={{ width: '400px', position: 'relative' }}>
                   <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
-                  <input placeholder="Tìm tên, email, điện thoại..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} />
+                  <input placeholder="Tìm tên, email, điện thoại..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1); }} style={{ paddingRight: '2rem' }} />
+                  <AnimatePresence>
+                    {searchTerm && (
+                      <motion.button 
+                        initial={{ opacity: 0, scale: 0.8 }} 
+                        animate={{ opacity: 1, scale: 1 }} 
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={{ duration: 0.15 }}
+                        className="btn-icon-bare" 
+                        onClick={() => setSearchTerm('')} 
+                        style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', padding: 4 }}
+                        title="Xóa tìm kiếm"
+                      >
+                        <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
                 </div>
                 
                 <div style={{ flex: 1 }} />
@@ -403,7 +434,18 @@ export const DealsPage: React.FC = () => {
                    {/* Phụ trách */}
                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
                       <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.025em' }}>Sale phụ trách</label>
-                      <CustomSelect options={[{value: '', label: 'Tất cả Sale'}, ...allUsers.map(u => ({value: String(u.id), label: u.full_name}))]} value={filterAssignee} onChange={v => setFilterAssignee(v as string)} />
+                       <CustomSelect 
+                         options={[{value: '', label: 'Tất cả Sale'}, ...allUsers.map(u => ({
+                           value: String(u.id), 
+                           label: u.full_name,
+                           avatar: u.avatar_url,
+                           sublabel: u.role
+                         }))]} 
+                         value={filterAssignee} 
+                         onChange={v => setFilterAssignee(v as string)} 
+                         showAvatars
+                         searchable
+                       />
                    </div>
                    {/* Giai đoạn */}
                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem' }}>
@@ -599,9 +641,7 @@ export const DealsPage: React.FC = () => {
                       >
                         {/* Header: Avatar and Name */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.875rem' }}>
-                          <div style={{ width: 38, height: 38, borderRadius: '50%', background: `${stage.color || 'var(--color-primary)'}20`, color: stage.color || 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.0625rem', fontWeight: 800, flexShrink: 0, border: `1.5px solid ${stage.color || 'var(--color-primary)'}40` }}>
-                            {itemName?.charAt(0)?.toUpperCase() || '?'}
-                          </div>
+                           <Avatar name={itemName} src={item.avatar_url} size={38} />
                           <div style={{ minWidth: 0, flex: 1 }}>
                             <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', lineHeight: 1.25, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {itemName}
@@ -638,7 +678,7 @@ export const DealsPage: React.FC = () => {
                              <span>{item.updated_at ? item.updated_at.substring(0,10) : (item.created_at?.substring(0,10) || '')}</span>
                            </div>
                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }} title={item.owner_name || 'Sale phụ trách'}>
-                             <User size={12} />
+                             <Avatar name={item.owner_name} size={16} />
                              <span>{item.owner_name?.split(' ').pop() || 'Sale'}</span>
                            </div>
                         </div>
@@ -659,7 +699,7 @@ export const DealsPage: React.FC = () => {
               <thead>
                 <tr>
                   <th style={{ width: 44, padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
-                    <input type="checkbox" checked={pagedItems.every(item => selected.has(item.id)) && pagedItems.length > 0} onChange={togglePageAll} style={{ cursor: 'pointer' }} />
+                    <CustomCheckbox checked={pagedItems.every(item => selected.has(item.id)) && pagedItems.length > 0} onChange={togglePageAll} />
                   </th>
                   <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Tên {pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp'}</th>
                   <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Dự kiến</th>
@@ -681,13 +721,11 @@ export const DealsPage: React.FC = () => {
                       style={{ cursor: 'pointer', borderBottom: '1px solid var(--color-border-light)' }}
                     >
                       <td style={{ padding: '1rem' }} onClick={e => e.stopPropagation()}>
-                        <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} style={{ cursor: 'pointer' }} />
+                        <CustomCheckbox checked={selected.has(item.id)} onChange={() => toggleSelect(item.id)} />
                       </td>
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.875rem', fontWeight: 800 }}>
-                            {itemName?.charAt(0)?.toUpperCase() || '?'}
-                          </div>
+                           <Avatar name={itemName} src={item.avatar_url} size={32} />
                           <div>
                             <p style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{itemName}</p>
                             {item.company_name && <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{item.company_name}</p>}

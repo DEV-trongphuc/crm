@@ -4,6 +4,7 @@ import { X, Calendar, DollarSign, Users, Briefcase, FileText } from 'lucide-reac
 import api from '../../api/axios';
 import { useUIStore } from '../../store/uiStore';
 import { CustomSelect } from './CustomSelect';
+import { Avatar } from './Avatar';
 
 interface Props {
   isOpen: boolean;
@@ -180,22 +181,29 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
                 <label className="form-label">Áp dụng cho (Chia đều tiền bill)</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
                   {selectedContacts.map(c => (
-                    <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8125rem', fontWeight: 600 }}>
+                    <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '4px 10px', borderRadius: '12px', fontSize: '0.8125rem', fontWeight: 600, border: '1px solid rgba(124, 58, 237, 0.2)' }}>
+                      <Avatar name={c.name} size={20} />
                       {c.name}
-                      <X size={14} style={{ cursor: 'pointer' }} onClick={() => setSelectedContacts(prev => prev.filter(x => x.id !== c.id))} />
+                      <X size={14} style={{ cursor: 'pointer', marginLeft: '2px' }} onClick={() => setSelectedContacts(prev => prev.filter(x => x.id !== c.id))} />
                     </span>
                   ))}
                 </div>
                 <CustomSelect
-                  options={contacts.filter(c => !selectedContacts.find(sc => sc.id === c.id)).map(c => ({ value: String(c.id), label: `${c.first_name} ${c.last_name || ''}`.trim() }))}
+                  options={contacts.filter(c => !selectedContacts.find(sc => sc.id === c.id)).map(c => ({ 
+                    value: String(c.id), 
+                    label: `${c.first_name} ${c.last_name || ''}`.trim(),
+                    avatar: c.avatar_url 
+                  }))}
                   value=""
                   onChange={(val) => {
                     const found = contacts.find(c => String(c.id) === val);
                     if (found) {
-                      setSelectedContacts(prev => [...prev, { id: found.id, name: `${found.first_name} ${found.last_name || ''}`.trim() }]);
+                      setSelectedContacts(prev => [...prev, { id: found.id, name: `${found.first_name} ${found.last_name || ''}`.trim(), avatar: found.avatar_url }]);
                     }
                   }}
                   placeholder="+ Thêm khách hàng..."
+                  showAvatars
+                  searchable
                 />
               </div>
 

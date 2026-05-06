@@ -26,24 +26,36 @@ export const LeadScoreRing: React.FC<LeadScoreRingProps> = ({ score, size = 52, 
 
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }} title={`Lead Score: ${score}/100 — ${label}`}>
-      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+      {/* Dynamic Glow Effect */}
+      <div 
+        style={{
+          position: 'absolute',
+          inset: '4px',
+          borderRadius: '50%',
+          boxShadow: `0 0 15px 2px ${color}40`,
+          animation: score >= 60 ? 'pulse 2s infinite' : 'none',
+          zIndex: 0
+        }} 
+      />
+      
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', position: 'relative', zIndex: 1 }}>
         {/* Background ring */}
         <circle
           cx={size / 2} cy={size / 2} r={r}
           fill="none"
-          stroke="var(--color-border)"
-          strokeWidth={5}
+          stroke="var(--color-border-light)"
+          strokeWidth={size < 40 ? 3 : 5}
         />
         {/* Score ring */}
         <circle
           cx={size / 2} cy={size / 2} r={r}
           fill="none"
           stroke={color}
-          strokeWidth={5}
+          strokeWidth={size < 40 ? 3 : 5}
           strokeLinecap="round"
           strokeDasharray={circ}
           strokeDashoffset={offset}
-          style={{ transition: 'stroke-dashoffset 0.8s ease' }}
+          style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)' }}
         />
       </svg>
       {showLabel && (
@@ -52,8 +64,9 @@ export const LeadScoreRing: React.FC<LeadScoreRingProps> = ({ score, size = 52, 
           display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
           lineHeight: 1,
+          zIndex: 2
         }}>
-          <span style={{ fontSize: size < 44 ? '0.6rem' : '0.75rem', fontWeight: 800, color }}>{score}</span>
+          <span style={{ fontSize: size < 44 ? '0.65rem' : '0.875rem', fontWeight: 900, color }}>{score}</span>
         </div>
       )}
     </div>

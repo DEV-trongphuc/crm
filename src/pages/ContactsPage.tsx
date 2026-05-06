@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Search, Phone, Mail, Eye, Trash2, X, Download, Users, Tag as TagIcon, UserCheck, RefreshCw, Filter, LayoutGrid, List, ArrowDownUp, Columns, Building2, Briefcase, Loader2, User, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
@@ -9,6 +10,7 @@ import { Pagination } from '../components/ui/Pagination';
 import { ColumnCustomizer, type ColumnDef } from '../components/ui/ColumnCustomizer';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { PhoneLink } from '../components/ui/PhoneLink';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
@@ -16,6 +18,7 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore } from '../store/mockStore';
+import { useDebounce } from '../hooks/useDebounce';
 
 const PAGE_SIZE = 50;
 
@@ -33,14 +36,6 @@ const calcScore = (c: any) => {
   return Math.min(100, Math.max(0,s));
 };
 
-const MOCK: any[] = [
-  { id: 1, first_name: 'Nguyễn', last_name: 'Văn An', email: 'an.nv@gmail.com', phone: '0901234567', company_name: 'Công ty TNHH Giải pháp Phần mềm', job_title: 'Giám đốc IT', status: 'customer', source: 'referral', last_contact: '2026-05-04', open_deal_value: 120000000, owner_name: 'Admin Sales', tags: ['vip', 'erp'] },
-  { id: 2, first_name: 'Trần', last_name: 'Thị Bình', email: 'binh.tt@outlook.com', phone: '0987654321', company_name: 'Tập đoàn Bán lẻ Miền Bắc', job_title: 'Trưởng phòng Mua hàng', status: 'qualified', source: 'website', last_contact: '2026-05-01', open_deal_value: 45000000, owner_name: 'Sale A', tags: ['lead_score_high'] },
-  { id: 3, first_name: 'Lê', last_name: 'Minh Cường', email: 'cuong.lm@vinabiz.vn', phone: '0911223344', company_name: 'VinaBiz Co.', job_title: 'CEO', status: 'lead', source: 'cold_call', last_contact: '2026-04-20', open_deal_value: 0, owner_name: 'Sale B', tags: ['potenial'] },
-  { id: 4, first_name: 'Phạm', last_name: 'Hồng Đào', email: 'dao.ph@hitech.vn', phone: '0933445566', company_name: 'HiTech Solution', job_title: 'Quản lý dự án', status: 'customer', source: 'social', last_contact: '2026-05-05', open_deal_value: 89000000, owner_name: 'Admin Sales', tags: ['loyal'] },
-];
-
-
 const SEGMENTS = [
   { key:'all',         label:'Tất cả',              icon:'' },
   { key:'hot',         label:'Hot (≥80đ)',          icon:'' },
@@ -54,10 +49,11 @@ const FMT_VND = (n: number) => n ? new Intl.NumberFormat('vi-VN',{style:'currenc
 const AGO_DAYS = (d: string) => d ? Math.floor((Date.now()-new Date(d).getTime())/86400000) : 999;
 
 export const ContactsPage: React.FC = () => {
-  const { addToast, showConfirm } = useUIStore();
+  const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300); // 300ms debounce
   const [segment, setSegment] = useState('all');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [page, setPage] = useState(1);
@@ -94,17 +90,20 @@ export const ContactsPage: React.FC = () => {
   ]);
   const [showColumns, setShowColumns] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setLoading(true);
     if (DEV_MODE) {
-      setContacts(useMockStore.getState().contacts);
+      setContacts(useMockStore.getState().contacts.map(c => ({ ...c, score: calcScore(c) })));
       setLoading(false);
       return;
     }
     
     // Fetch contacts
     api.get('/contacts')
-      .then(r => { const d = r.data.data?.items||r.data.data||[]; setContacts(d); })
+      .then(r => { 
+        const d = r.data.data?.items||r.data.data||[]; 
+        setContacts(d.map((c: any) => ({ ...c, score: calcScore(c) }))); 
+      })
       .catch(() => {
         setContacts([]);
         addToast('Không thể lấy danh sách liên hệ', 'error');
@@ -115,16 +114,25 @@ export const ContactsPage: React.FC = () => {
     api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showCreateModal && !creating) {
+        setShowCreateModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [showCreateModal, creating]);
+
   const filtered = useMemo(() => {
     return contacts
       .filter(c => c && c.id != null)
-      .map((c, i) => ({ ...c, _idx: i, score: calcScore(c) }))
       .filter(c => {
-        const q = search.toLowerCase();
+        const q = debouncedSearch.toLowerCase();
         const matchSearch = !q || `${c.first_name} ${c.last_name} ${c.email} ${c.company_name} ${c.phone}`.toLowerCase().includes(q);
         if (!matchSearch) return false;
         
-        // Date range filter (only when user has selected a period)
+        // Date range filter
         if (dateFilterActive && (dateRange.from || dateRange.to)) {
           const dateVal = (c[filterDateField] || '').substring(0, 10);
           if (dateRange.from && dateVal < dateRange.from) return false;
@@ -146,7 +154,7 @@ export const ContactsPage: React.FC = () => {
         if (sortBy === 'deal_desc') return (b.open_deal_value || 0) - (a.open_deal_value || 0);
         return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(); // newest
       });
-  }, [contacts, search, segment, sortBy, dateRange, filterDateField, dateFilterActive]);
+  }, [contacts, debouncedSearch, segment, sortBy, dateRange, filterDateField, dateFilterActive]);
 
   const paged = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
 
@@ -159,10 +167,14 @@ export const ContactsPage: React.FC = () => {
   const toggleAll = () => setSelected(selected.size===paged.length ? new Set() : new Set(paged.map(c=>c.id)));
 
   const bulkDelete = () => {
-    showConfirm(
-      `Xóa ${selected.size} liên hệ?`,
-      `Bạn có chắc chắn muốn xóa vĩnh viễn các liên hệ đã chọn? Thao tác này không thể hoàn tác.`,
-      async () => {
+    showConfirm({
+      title: `Xóa ${selected.size} liên hệ?`,
+      message: `Bạn có chắc chắn muốn xóa vĩnh viễn các liên hệ đã chọn? Thao tác này không thể hoàn tác.`,
+      isDanger: true,
+      impactInfo: `Cảnh báo: Thao tác này sẽ xóa vĩnh viễn ${selected.size} liên hệ và toàn bộ lịch sử giao dịch liên quan.`,
+      requireWordMatch: selected.size > 10 ? 'DELETE' : undefined,
+      confirmText: 'Xác nhận xóa vĩnh viễn',
+      onConfirm: async () => {
         try {
           await api.post('/contacts/bulk-delete', { ids: Array.from(selected) });
           setContacts(p => p.filter(c => !selected.has(c.id)));
@@ -170,9 +182,11 @@ export const ContactsPage: React.FC = () => {
           setSelected(new Set());
         } catch (e: any) {
           addToast(e.response?.data?.message || 'Lỗi khi xóa liên hệ', 'error');
+        } finally {
+          closeConfirm();
         }
       }
-    );
+    });
   };
 
   const bulkExport = () => addToast(`Xuất ${selected.size} liên hệ ra CSV...`, 'info');
@@ -222,6 +236,20 @@ export const ContactsPage: React.FC = () => {
     }
   };
 
+  const segmentCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: contacts.length, hot: 0, customer: 0, has_deal: 0, no_contact: 0, new_week: 0 };
+    contacts.forEach(c => {
+      if (!c) return;
+      const days = AGO_DAYS(c.last_contact);
+      if (c.score >= 80) counts.hot++;
+      if (c.status === 'customer') counts.customer++;
+      if ((c.open_deal_value || 0) > 0) counts.has_deal++;
+      if (days > 30) counts.no_contact++;
+      if (days <= 7) counts.new_week++;
+    });
+    return counts;
+  }, [contacts]);
+
   return (
     <div>
       {/* Header */}
@@ -241,15 +269,7 @@ export const ContactsPage: React.FC = () => {
       {/* Smart Segments */}
       <div style={{ display:'flex', gap:'0.5rem', marginBottom:'1rem', overflowX:'auto', paddingBottom:4 }}>
         {SEGMENTS.map(s => {
-          const cnt = s.key==='all' ? contacts.length : contacts.map(c=>({...c,score:calcScore(c)})).filter(c=>{
-            const days=AGO_DAYS(c.last_contact);
-            if(s.key==='hot')        return c.score>=80;
-            if(s.key==='customer')   return c.status==='customer';
-            if(s.key==='has_deal')   return (c.open_deal_value||0)>0;
-            if(s.key==='no_contact') return days>30;
-            if(s.key==='new_week')   return days<=7;
-            return true;
-          }).length;
+          const cnt = segmentCounts[s.key] || 0;
           return (
             <button key={s.key} onClick={() => { setSegment(s.key); setPage(1); }}
               style={{ padding:'0.5rem 1rem', borderRadius:'var(--radius-full)', border:`1px solid ${segment===s.key?'var(--color-primary)':'var(--color-border)'}`, background:segment===s.key?'var(--color-primary)':'var(--color-surface)', color:segment===s.key?'white':'var(--color-text)', fontWeight:600, fontSize:'0.8125rem', whiteSpace:'nowrap', cursor:'pointer', transition:'all 0.15s', display:'flex', alignItems:'center', gap:'6px' }}>
@@ -262,13 +282,26 @@ export const ContactsPage: React.FC = () => {
 
       {/* Search + filter row */}
       <div className="card" style={{ padding:'0.75rem 1rem', marginBottom:'0.75rem', display:'flex', gap:'0.75rem', alignItems:'center', flexWrap: 'wrap' }}>
-        <div className="filter-search" style={{ width: '300px' }}>
+        <div className="filter-search" style={{ width: '300px', position: 'relative' }}>
           <Search size={14} style={{ color:'var(--color-text-muted)' }}/>
-          <input placeholder="Tìm tên, email, điện thoại..." value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/>
+          <input placeholder="Tìm tên, email, điện thoại..." value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} style={{ paddingRight: '2rem' }}/>
+          <AnimatePresence>
+            {search && (
+              <motion.button 
+                initial={{ opacity: 0, scale: 0.8 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                exit={{ opacity: 0, scale: 0.8 }}
+                transition={{ duration: 0.15 }}
+                className="btn-icon-bare" 
+                onClick={() => setSearch('')} 
+                style={{ position: 'absolute', right: '0.5rem', top: '50%', transform: 'translateY(-50%)', padding: 4 }}
+                title="Xóa tìm kiếm"
+              >
+                <X size={14} style={{ color: 'var(--color-text-muted)' }}/>
+              </motion.button>
+            )}
+          </AnimatePresence>
         </div>
-        <button className="btn ghost sm" onClick={() => setSearch('')} style={{ opacity: search?1:0.4 }}>
-          <X size={14}/>
-        </button>
 
         {/* Date filter */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -372,7 +405,7 @@ export const ContactsPage: React.FC = () => {
       {/* Table */}
       {loading ? (
         <div className="card">
-          <TableSkeleton rows={10} cols={8} />
+          <TableSkeleton rows={6} cols={6} />
         </div>
       ) : (
         <div className="card" style={{ overflow: 'hidden' }}>
@@ -382,8 +415,10 @@ export const ContactsPage: React.FC = () => {
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 1px 0 var(--color-border)' }}>
                   <tr>
                     <th style={{ width: 44, padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border)' }}>
-                      <input type="checkbox" checked={selected.size === paged.length && paged.length > 0} onChange={toggleAll}
-                        style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--color-primary)' }} />
+                      <CustomCheckbox 
+                        checked={selected.size === paged.length && paged.length > 0} 
+                        onChange={toggleAll} 
+                      />
                     </th>
                     {columns.find(c => c.id === 'name')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>}
                     {columns.find(c => c.id === 'email')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Email</th>}
@@ -410,15 +445,15 @@ export const ContactsPage: React.FC = () => {
                         className="table-row-hover"
                         onClick={() => setProfileContact(c)}>
                         <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--color-border-light)' }} onClick={e => e.stopPropagation()}>
-                          <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)}
-                            style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--color-primary)' }} />
+                          <CustomCheckbox 
+                            checked={selected.has(c.id)} 
+                            onChange={() => toggleSelect(c.id)} 
+                          />
                         </td>
                         {columns.find(col => col.id === 'name')?.visible && (
                           <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <div style={{ width: 36, height: 36, borderRadius: '10px', background: 'var(--color-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.875rem', flexShrink: 0 }}>
-                                {(c.first_name?.[0] || '?').toUpperCase()}
-                              </div>
+                              <Avatar name={fullName} size={36} style={{ borderRadius: '10px' }} />
                               <div>
                                 <p style={{ fontWeight: 700, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{fullName}</p>
                               </div>
@@ -480,10 +515,10 @@ export const ContactsPage: React.FC = () => {
                           <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             {c.owner_name ? (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
-                                  {c.owner_name.charAt(0).toUpperCase()}
-                                </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Avatar name={c.owner_name} size={24} />
                                 <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{c.owner_name}</span>
+                              </div>
                               </div>
                             ) : (
                               <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa giao</span>
@@ -563,8 +598,10 @@ export const ContactsPage: React.FC = () => {
                       onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--shadow-sm)'}
                     >
                       <div style={{ position: 'absolute', top: '1rem', right: '1rem' }} onClick={e => e.stopPropagation()}>
-                        <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)}
-                          style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--color-primary)' }} />
+                        <CustomCheckbox 
+                          checked={selected.has(c.id)} 
+                          onChange={() => toggleSelect(c.id)} 
+                        />
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                         <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.25rem' }}>
@@ -722,34 +759,48 @@ export const ContactsPage: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 700 }}>Trạng thái Lead</label>
-                    <select className="form-input lg" value={createForm.status} onChange={e => setCreateForm(f => ({ ...f, status: e.target.value }))}>
-                      <option value="lead">Lead mới (Chưa xử lý)</option>
-                      <option value="qualified">Đủ điều kiện (Qualified)</option>
-                      <option value="customer">Khách hàng (Closed Won)</option>
-                    </select>
+                    <CustomSelect 
+                      options={[
+                        { value: 'lead', label: 'Lead mới (Chưa xử lý)' },
+                        { value: 'qualified', label: 'Đủ điều kiện (Qualified)' },
+                        { value: 'customer', label: 'Khách hàng (Closed Won)' }
+                      ]} 
+                      value={createForm.status} 
+                      onChange={val => setCreateForm(f => ({ ...f, status: val.toString() }))} 
+                    />
                   </div>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 700 }}>Phụ trách bởi (Sale)</label>
                     <CustomSelect 
-                      options={users.map(u => ({ value: u.id, label: u.full_name, icon: <UserCheck size={14}/> }))}
+                      options={users.map(u => ({ 
+                        value: u.id, 
+                        label: u.full_name, 
+                        avatar: u.avatar_url,
+                        sublabel: u.role
+                      }))}
                       value={createForm.owner_id}
                       onChange={val => setCreateForm(f => ({ ...f, owner_id: val.toString() }))}
                       placeholder="Chọn sale phụ trách..."
                       searchable
+                      showAvatars
                     />
                   </div>
                 </div>
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 700 }}>Nguồn khách hàng</label>
-                  <select className="form-input lg" value={createForm.source} onChange={e => setCreateForm(f => ({ ...f, source: e.target.value }))}>
-                    <option value="website">Đăng ký từ Website</option>
-                    <option value="referral">Được giới thiệu</option>
-                    <option value="social">Mạng xã hội (FB/Zalo)</option>
-                    <option value="cold_call">Telesale / Cold Call</option>
-                    <option value="event">Sự kiện / Workshop</option>
-                    <option value="other">Nguồn khác</option>
-                  </select>
+                  <CustomSelect 
+                    options={[
+                      { value: 'website', label: 'Đăng ký từ Website' },
+                      { value: 'referral', label: 'Được giới thiệu' },
+                      { value: 'social', label: 'Mạng xã hội (FB/Zalo)' },
+                      { value: 'cold_call', label: 'Telesale / Cold Call' },
+                      { value: 'event', label: 'Sự kiện / Workshop' },
+                      { value: 'other', label: 'Nguồn khác' }
+                    ]} 
+                    value={createForm.source} 
+                    onChange={val => setCreateForm(f => ({ ...f, source: val.toString() }))} 
+                  />
                 </div>
               </div>
 

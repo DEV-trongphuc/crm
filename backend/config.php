@@ -15,3 +15,6 @@ if (!defined('JWT_EXPIRE_REFRESH')) define('JWT_EXPIRE_REFRESH', 2592000);
 // ── CORS allowed origins ────────────────────────
 if (!defined('ALLOWED_ORIGINS'))
     define('ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:3000,http://localhost:4173,http://open.domation.net,https://open.domation.net');
+
+// ── Environment ─────────────────────────────────
+if (!defined('APP_ENV')) define('APP_ENV', 'production'); // 'development' or 'production'

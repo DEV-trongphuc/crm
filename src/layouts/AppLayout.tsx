@@ -93,28 +93,35 @@ export const AppLayout: React.FC = () => {
         {/* Nav Groups */}
         <div className={styles.navSection}>
           {!collapsed && <span className={styles.navGroupLabel}>CHỨC NĂNG CHÍNH</span>}
-          {NAV_ITEMS.map(({ to, icon: Icon, label, end }) => (
-            <NavLink key={to} to={to} end={end}
-              className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
-              title={collapsed ? label : undefined}
-              onClick={() => setMobileOpen(false)}>
-              <Icon size={20} className={styles.navIcon} />
-              {!collapsed && <span className={styles.navLabel}>{label}</span>}
-            </NavLink>
-          ))}
+          {NAV_ITEMS.map(({ to, icon: Icon, label, end }) => {
+            // Role-based visibility for nav items
+            if (user?.role === 'sale' && ['/reports'].includes(to)) return null;
+
+            return (
+              <NavLink key={to} to={to} end={end}
+                className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
+                title={collapsed ? label : undefined}
+                onClick={() => setMobileOpen(false)}>
+                <Icon size={20} className={styles.navIcon} />
+                {!collapsed && <span className={styles.navLabel}>{label}</span>}
+              </NavLink>
+            );
+          })}
         </div>
 
         {!collapsed && <div className={styles.navDivider} />}
 
-        <div className={styles.navSection}>
-          {!collapsed && <span className={styles.navGroupLabel}>HỆ THỐNG</span>}
-          <NavLink to="/settings"
-            className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
-            onClick={() => setMobileOpen(false)}>
-            <Settings size={20} className={styles.navIcon} />
-            {!collapsed && <span className={styles.navLabel}>Cài đặt</span>}
-          </NavLink>
-        </div>
+        {user?.role !== 'sale' && (
+          <div className={styles.navSection}>
+            {!collapsed && <span className={styles.navGroupLabel}>HỆ THỐNG</span>}
+            <NavLink to="/settings"
+              className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
+              onClick={() => setMobileOpen(false)}>
+              <Settings size={20} className={styles.navIcon} />
+              {!collapsed && <span className={styles.navLabel}>Cài đặt</span>}
+            </NavLink>
+          </div>
+        )}
 
         {/* User Profile */}
         <div className={styles.sidebarFooter}>
