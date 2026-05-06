@@ -55,6 +55,37 @@ class DashboardController {
         $stats->execute($p);
         $res = $stats->fetch();
 
+        // Calculate Previous Period Stats for % Change
+        $diff = strtotime($to) - strtotime($from);
+        $prevTo = date('Y-m-d', strtotime($from) - 86400);
+        $prevFrom = date('Y-m-d', strtotime($prevTo) - $diff);
+        
+        $prevFromTs = $prevFrom . ' 00:00:00';
+        $prevToTs   = $prevTo   . ' 23:59:59';
+
+        $pPrev = [
+            'tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid, 'tid6' => $tid, 'tid7' => $tid, 'tid8' => $tid,
+            'f1' => $prevFromTs, 't1' => $prevToTs,
+            'f2' => $prevFromTs, 't2' => $prevToTs,
+            'f3' => $prevFromTs, 't3' => $prevToTs,
+            'f4' => $prevFromTs, 't4' => $prevToTs,
+            'f5' => $prevFromTs, 't5' => $prevToTs,
+            'f6' => $prevFromTs, 't6' => $prevToTs,
+            'f_date' => $prevFrom, 't_date' => $prevTo,
+            'f_date4' => $prevFrom, 't_date4' => $prevTo,
+            'f_date5' => $prevFrom, 't_date5' => $prevTo
+        ];
+        if ($auth['role'] === 'sale') $pPrev['uid'] = $auth['user_id'];
+        
+        $stats->execute($pPrev);
+        $resPrev = $stats->fetch();
+
+        $calcChange = function($curr, $prev) {
+            if ($prev == 0) return $curr > 0 ? '+100%' : null;
+            $pct = (($curr - $prev) / abs($prev)) * 100;
+            return ($pct >= 0 ? '+' : '') . round($pct, 1) . '%';
+        };
+
         // Fetch actual tasks for today for the "Focus" card
         $sqlToday = "SELECT id, subject, type, priority, due_date FROM activities WHERE tenant_id=? AND status='planned' AND due_date BETWEEN CURDATE() AND CONCAT(CURDATE(), ' 23:59:59')";
         $pToday = [$tid];
@@ -68,20 +99,35 @@ class DashboardController {
 
         $rev = (float)$res['actual_revenue'];
         $wonVal = (float)$res['won_value'];
+        $currRev = $rev > 0 ? $rev : $wonVal;
+        
+        $prevRev = (float)$resPrev['actual_revenue'];
+        $prevWonVal = (float)$resPrev['won_value'];
+        $pRevVal = $prevRev > 0 ? $prevRev : $prevWonVal;
+
         $exp = (float)$res['total_expenses'];
+        $pExpVal = (float)$resPrev['total_expenses'];
+
+        $profit = $currRev - $exp;
+        $prevProfit = $pRevVal - $pExpVal;
 
         respond(200, [
             'total_value'       => (float)$res['total_value'],
-            'won_value'         => $rev > 0 ? $rev : $wonVal,
+            'won_value'         => $currRev,
             'won_count'         => (int)$res['won_count'],
             'expenses'          => $exp,
-            'profit'            => ($rev > 0 ? $rev : $wonVal) - $exp,
+            'profit'            => $profit,
             'new_contacts'      => (int)$res['new_contacts'],
             'tasks_due_today'   => (int)$res['tasks_due_today'],
             'tasks_due_tomorrow'=> (int)$res['tasks_due_tomorrow'],
             'overdue_tasks'     => (int)$res['overdue_tasks'],
             'shipping_collected'=> (float)$res['shipping_collected'],
-            'today_tasks'       => $todayTasks
+            'today_tasks'       => $todayTasks,
+            // Changes
+            'revenue_change'    => $calcChange($currRev, $pRevVal),
+            'profit_change'     => $calcChange($profit, $prevProfit),
+            'leads_change'      => $calcChange((int)$res['new_contacts'], (int)$resPrev['new_contacts']),
+            'expenses_change'   => $calcChange($exp, $pExpVal)
         ]);
     }
 
@@ -153,12 +199,14 @@ class DashboardController {
             FROM pipeline_stages ps
             LEFT JOIN deals d ON d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id=?
         ";
-        $p = [$tid, $tid];
+        $p = [$tid];
         if ($auth['role'] === 'sale') {
-            $sql .= " AND (d.owner_id=? OR d.id IS NULL)";
+            $sql .= " AND d.owner_id=? ";
             $p[] = $auth['user_id'];
         }
         $sql .= " WHERE ps.tenant_id=? GROUP BY ps.id ORDER BY ps.order_index ASC";
+        $p[] = $tid;
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         respond(200, $stmt->fetchAll());

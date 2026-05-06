@@ -108,7 +108,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [drawerTickets, setDrawerTickets] = useState<any[]>([]);
   const [drawerActivities, setDrawerActivities] = useState<any[]>([]);
   const [loadingRelated, setLoadingRelated] = useState(false);
-  const [quickUserCard, setQuickUserCard] = useState<{ id: number; name: string; role: string; visible: boolean; x: number; y: number } | null>(null);
+  const [quickUserCard, setQuickUserCard] = useState<{ id: number; name: string; role: string; email?: string; visible: boolean; x: number; y: number } | null>(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [tempAvatar, setTempAvatar] = useState('');
 
@@ -139,6 +139,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       id: user?.id || 0,
       name: user?.full_name || name,
       role: user?.role || 'Nhân viên',
+      email: user?.email,
       visible: true,
       x: e.clientX,
       y: e.clientY
@@ -555,11 +556,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         {quickUserCard.name.charAt(0).toUpperCase()}
                       </div>
                       <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '4px' }}>{quickUserCard.name}</h4>
-                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{quickUserCard.role}</p>
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '1.25rem' }}>
-                        <button className="btn primary sm" style={{ flex: 1, borderRadius: '10px', background: '#8b5cf6', borderColor: '#8b5cf6' }} onClick={() => addToast('Đang mở chat...', 'info')}>Chat</button>
-                        <button className="btn outline sm" style={{ flex: 1, borderRadius: '10px', color: '#8b5cf6', borderColor: '#8b5cf6' }} onClick={() => addToast('Đang mở hồ sơ...', 'info')}>Profile</button>
-                      </div>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{quickUserCard.role === 'admin' ? 'Quản trị viên' : 'Nhân viên kinh doanh'}</p>
+                      {quickUserCard.email && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.8125rem', padding: '8px', background: 'var(--color-bg)', borderRadius: '10px' }}>
+                          <Mail size={12} />
+                          <span style={{ fontWeight: 500 }}>{quickUserCard.email}</span>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 </>

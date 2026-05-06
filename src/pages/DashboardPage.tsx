@@ -136,38 +136,69 @@ export const DashboardPage: React.FC = () => {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
+  const margin = stats?.won_value > 0 ? (stats?.profit / stats?.won_value) * 100 : 0;
+
   const kpiCards = [
     {
+      id: 'revenue',
       label: 'Doanh thu',
       value: FMT_VND(stats?.won_value ?? 0),
       icon: DollarSign,
       color: '#7c3aed',
-      change: '+18.2%',
-      up: true
+      change: stats?.revenue_change,
+      up: (stats?.revenue_change || '').startsWith('+')
     },
     {
+      id: 'profit',
       label: 'Lợi nhuận ròng',
       value: FMT_VND(stats?.profit ?? 0),
       icon: TrendingUp,
       color: '#10b981',
-      change: '+5.4%',
-      up: true
+      change: stats?.profit_change,
+      up: (stats?.profit_change || '').startsWith('+'),
+      extra: (
+        <div style={{ marginTop: '0.75rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', marginBottom: '4px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+            <span>Biên lợi nhuận</span>
+            <span style={{ color: margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{margin.toFixed(1)}%</span>
+          </div>
+          <div style={{ height: 6, background: 'var(--color-bg)', borderRadius: 3, overflow: 'hidden' }}>
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(100, Math.max(0, margin))}%` }}
+              style={{ height: '100%', background: margin >= 20 ? 'var(--color-success)' : margin > 0 ? 'var(--color-primary)' : 'var(--color-danger)', borderRadius: 3 }} 
+            />
+          </div>
+        </div>
+      )
     },
     {
+      id: 'leads',
       label: 'Lead mới',
       value: `${stats?.new_contacts ?? 0} lead`,
       icon: ShoppingCart,
       color: '#3b82f6',
-      change: '+12%',
-      up: true
+      change: stats?.leads_change,
+      up: (stats?.leads_change || '').startsWith('+')
     },
     {
+      id: 'expenses',
       label: 'Chi phí & Hao hụt',
       value: FMT_VND(stats?.expenses ?? 0),
       icon: AlertTriangle,
       color: '#ef4444',
-      change: '-2.1%',
-      up: false
+      change: stats?.expenses_change,
+      up: (stats?.expenses_change || '').startsWith('+'),
+      extra: (
+        <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'var(--color-bg)', borderRadius: '8px', border: '1px dashed var(--color-border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Lợi nhuận ròng còn lại:</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: (stats?.profit ?? 0) >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
+              {FMT_VND(stats?.profit ?? 0)}
+            </span>
+          </div>
+        </div>
+      )
     },
   ];
 
@@ -278,10 +309,14 @@ export const DashboardPage: React.FC = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
               onClick={() => {
-                if (card.label.includes('Lead')) navigate('/contacts');
-                if (card.label.includes('Doanh thu')) navigate('/reports');
+                if (card.id === 'leads' || card.label.includes('Lead')) navigate('/contacts');
+                if (card.id === 'revenue' || card.label.includes('Doanh thu')) navigate('/reports');
+                if (card.id === 'expenses' || card.label.includes('Chi phí')) {
+                  navigate('/expenses', { state: { period, dateRange } });
+                }
+                if (card.id === 'profit' || card.label.includes('Lợi nhuận')) navigate('/reports');
               }}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', minHeight: '140px', display: 'flex', flexDirection: 'column' }}
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="stat-label">{card.label}</span>
@@ -291,14 +326,15 @@ export const DashboardPage: React.FC = () => {
               {loadingStats ? (
                 <Skeleton height="2rem" width="80%" />
               ) : (
-                <>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                   <div className="stat-value" style={{ fontSize: '1.5rem' }}>{card.value}</div>
-                  <div className={`stat-change ${card.up !== false ? 'up' : 'down'}`}>
+                  <div className={`stat-change ${card.up !== false ? 'up' : 'down'}`} style={{ marginBottom: card.extra ? '0' : '0.5rem' }}>
                     {card.up !== false ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
                     {card.change || '+0%'}
                     <span style={{ color: 'var(--color-text-light)', marginLeft: '4px', fontWeight: 400 }}>so với kỳ trước</span>
                   </div>
-                </>
+                  {card.extra}
+                </div>
               )}
             </motion.div>
           );

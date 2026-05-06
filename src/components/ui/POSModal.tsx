@@ -13,9 +13,9 @@ interface Product {
 
 interface Contact {
   id: number;
-  first_name: string;
-  last_name: string;
-  phone: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
 }
 
 interface CartItem extends Product {
@@ -194,10 +194,10 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
               {selectedContact ? (
                 <div className="card" style={{ padding: '1rem', borderRadius: '20px', background: 'var(--color-bg)', border: '1px solid var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div className="avatar-placeholder md" style={{ background: 'var(--color-primary)', borderRadius: '14px', width: 40, height: 40 }}>{selectedContact.first_name[0]}</div>
+                    <div className="avatar-placeholder md" style={{ background: 'var(--color-primary)', borderRadius: '14px', width: 40, height: 40 }}>{selectedContact.first_name?.[0] || '?'}</div>
                     <div>
-                      <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{selectedContact.first_name} {selectedContact.last_name}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{selectedContact.phone}</p>
+                      <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{selectedContact.first_name || 'Khách'} {selectedContact.last_name || 'hàng'}</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>{selectedContact.phone || '—'}</p>
                     </div>
                   </div>
                   <button className="btn ghost sm text-danger" onClick={() => setSelectedContact(null)} style={{ padding: 0, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>

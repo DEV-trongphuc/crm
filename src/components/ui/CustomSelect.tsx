@@ -20,6 +20,7 @@ interface CustomSelectProps {
   label?: string;
   searchable?: boolean;
   showAvatars?: boolean;
+  width?: string | number;
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({ 
@@ -29,7 +30,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   placeholder = 'Chọn...', 
   label,
   searchable = false,
-  showAvatars = false
+  showAvatars = false,
+  width
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -49,7 +51,7 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   const filtered = searchable ? options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())) : options;
 
   return (
-    <div className={styles.wrapper} ref={containerRef}>
+    <div className={styles.wrapper} ref={containerRef} style={{ width }}>
       {label && <label className={styles.label}>{label}</label>}
       <div 
         className={`${styles.trigger} ${isOpen ? styles.open : ''}`}

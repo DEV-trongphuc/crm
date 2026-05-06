@@ -91,6 +91,16 @@ class ContactController {
         $company_id = $this->resolveCompanyId($auth, $b);
         $tags = json_encode($b['tags'] ?? []);
         
+        // Duplicate Phone Check
+        $phone = $b['phone'] ?? $b['mobile'] ?? null;
+        if ($phone) {
+            $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND deleted_at IS NULL LIMIT 1");
+            $check->execute([$auth['tenant_id'], $phone, $phone]);
+            if ($check->fetch()) {
+                respond(422, null, "Số điện thoại '$phone' đã tồn tại trong hệ thống. Vui lòng kiểm tra lại.", false);
+            }
+        }
+
         $stageId = $b['stage_id'] ?? null;
         if (!$stageId) {
             $s = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id=? ORDER BY order_index LIMIT 1");
@@ -176,6 +186,16 @@ class ContactController {
             }
         }
         if (isset($b['tags'])) { $sets[] = 'tags=?'; $params[] = json_encode($b['tags']); }
+        // Duplicate Phone Check (excluding self)
+        $phone = $b['phone'] ?? $b['mobile'] ?? null;
+        if ($phone) {
+            $check = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND (phone=? OR mobile=?) AND id!=? AND deleted_at IS NULL LIMIT 1");
+            $check->execute([$auth['tenant_id'], $phone, $phone, $id]);
+            if ($check->fetch()) {
+                respond(422, null, "Số điện thoại '$phone' đã tồn tại ở một khách hàng khác.", false);
+            }
+        }
+
         if (!$sets) respond(422, null, 'Không có dữ liệu để cập nhật', false);
         // Check permission first
         $check = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND owner_id=?" : ""));

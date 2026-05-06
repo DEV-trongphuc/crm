@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 05, 2026 lúc 08:26 PM
+-- Thời gian đã tạo: Th5 06, 2026 lúc 09:45 AM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.20
 
@@ -517,13 +517,17 @@ CREATE TABLE `pipeline_stages` (
 CREATE TABLE `products` (
   `id` int(11) NOT NULL,
   `tenant_id` int(11) NOT NULL,
+  `created_by` int(11) DEFAULT NULL,
   `category_id` int(11) DEFAULT NULL,
+  `category` varchar(100) DEFAULT NULL,
   `name` varchar(255) NOT NULL,
   `sku` varchar(100) DEFAULT NULL,
   `description` text DEFAULT NULL,
   `price` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `cost` decimal(15,2) NOT NULL DEFAULT 0.00,
   `currency` char(3) NOT NULL DEFAULT 'VND',
   `unit` varchar(50) DEFAULT 'cái',
+  `stock_quantity` int(11) NOT NULL DEFAULT 0,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -756,7 +760,8 @@ ALTER TABLE `audit_logs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_audit_tenant` (`tenant_id`),
   ADD KEY `idx_audit_resource` (`resource`,`resource_id`),
-  ADD KEY `idx_audit_created` (`created_at`);
+  ADD KEY `idx_audit_created` (`created_at`),
+  ADD KEY `idx_audit_tenant_created` (`tenant_id`,`created_at`);
 
 --
 -- Chỉ mục cho bảng `companies`
@@ -780,7 +785,8 @@ ALTER TABLE `contacts`
   ADD KEY `idx_contact_company` (`company_id`),
   ADD KEY `idx_contact_owner` (`owner_id`),
   ADD KEY `idx_contact_status` (`status`),
-  ADD KEY `idx_contact_stage` (`stage_id`);
+  ADD KEY `idx_contact_stage` (`stage_id`),
+  ADD KEY `idx_contact_tenant_created` (`tenant_id`,`created_at`);
 ALTER TABLE `contacts` ADD FULLTEXT KEY `idx_contact_search` (`first_name`,`last_name`,`email`);
 
 --
@@ -825,7 +831,8 @@ ALTER TABLE `deals`
   ADD KEY `idx_deal_stage` (`stage_id`),
   ADD KEY `idx_deal_owner` (`owner_id`),
   ADD KEY `idx_deal_close` (`expected_close_date`),
-  ADD KEY `idx_deal_value` (`tenant_id`,`value`);
+  ADD KEY `idx_deal_value` (`tenant_id`,`value`),
+  ADD KEY `idx_deal_tenant_created` (`tenant_id`,`created_at`);
 
 --
 -- Chỉ mục cho bảng `deal_stage_history`
@@ -865,9 +872,9 @@ ALTER TABLE `expenses`
 --
 ALTER TABLE `expense_entities`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_ee_tenant` (`tenant_id`),
   ADD KEY `idx_ee_expense` (`expense_id`),
-  ADD KEY `idx_ee_entity` (`entity_type`,`entity_id`);
+  ADD KEY `idx_ee_entity` (`entity_type`,`entity_id`),
+  ADD KEY `idx_ee_tenant` (`tenant_id`);
 
 --
 -- Chỉ mục cho bảng `files`
@@ -1367,6 +1374,13 @@ ALTER TABLE `expenses`
   ADD CONSTRAINT `fk_exp_approver` FOREIGN KEY (`approver_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
+-- Ràng buộc cho bảng `expense_entities`
+--
+ALTER TABLE `expense_entities`
+  ADD CONSTRAINT `expense_entities_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `expense_entities_ibfk_2` FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`) ON DELETE CASCADE;
+
+--
 -- Ràng buộc cho bảng `files`
 --
 ALTER TABLE `files`
@@ -1401,13 +1415,6 @@ ALTER TABLE `invoices`
   ADD CONSTRAINT `invoices_ibfk_2` FOREIGN KEY (`deal_id`) REFERENCES `deals` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `invoices_ibfk_3` FOREIGN KEY (`company_id`) REFERENCES `companies` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `invoices_ibfk_4` FOREIGN KEY (`contact_id`) REFERENCES `contacts` (`id`) ON DELETE SET NULL;
-
---
--- Ràng buộc cho bảng `expense_entities`
---
-ALTER TABLE `expense_entities`
-  ADD CONSTRAINT `expense_entities_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `expense_entities_ibfk_2` FOREIGN KEY (`expense_id`) REFERENCES `expenses` (`id`) ON DELETE CASCADE;
 
 --
 -- Ràng buộc cho bảng `invoice_items`
@@ -1449,6 +1456,7 @@ ALTER TABLE `pipeline_stages`
 --
 ALTER TABLE `products`
   ADD CONSTRAINT `fk_prod_cat` FOREIGN KEY (`category_id`) REFERENCES `product_categories` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_products_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `products_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
 
 --

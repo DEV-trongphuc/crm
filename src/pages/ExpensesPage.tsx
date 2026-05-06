@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useUIStore } from '../store/uiStore';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
@@ -59,11 +60,13 @@ const EMPTY_FORM = {
 };
 
 export const ExpensesPage: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { addToast } = useUIStore();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<Period>('this_month');
-  const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_month'));
+  const [period, setPeriod] = useState<Period>(location.state?.period || 'this_month');
+  const [dateRange, setDateRange] = useState<DateRange>(location.state?.dateRange || getDateRange('this_month'));
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');

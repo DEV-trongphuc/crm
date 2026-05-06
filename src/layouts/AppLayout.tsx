@@ -102,7 +102,9 @@ export const AppLayout: React.FC = () => {
                 className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
                 title={collapsed ? label : undefined}
                 onClick={() => setMobileOpen(false)}>
-                <Icon size={20} className={styles.navIcon} />
+                <div className={styles.navIconBox}>
+                  <Icon size={18} className={styles.navIcon} />
+                </div>
                 {!collapsed && <span className={styles.navLabel}>{label}</span>}
               </NavLink>
             );
@@ -117,7 +119,9 @@ export const AppLayout: React.FC = () => {
             <NavLink to="/settings"
               className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
               onClick={() => setMobileOpen(false)}>
-              <Settings size={20} className={styles.navIcon} />
+              <div className={styles.navIconBox}>
+                <Settings size={18} className={styles.navIcon} />
+              </div>
               {!collapsed && <span className={styles.navLabel}>Cài đặt</span>}
             </NavLink>
           </div>

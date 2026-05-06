@@ -69,6 +69,7 @@
   top: calc(100% + 0.5rem);
   left: 0;
   width: 100%;
+  min-width: max-content;
   background: white;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -147,6 +148,7 @@
 
 .optionMainLabel {
   display: block;
+  white-space: nowrap;
 }
 
 .optionSublabel {
