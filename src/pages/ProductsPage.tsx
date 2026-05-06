@@ -212,9 +212,13 @@ export const ProductsPage: React.FC = () => {
                   <td><span className="badge" style={{ background:'var(--color-bg)', color:'var(--color-text-light)' }}>{p.category}</span></td>
                   <td><span className="font-semi" style={{ color:'var(--color-primary)' }}>{FMT(p.price)}</span></td>
                   <td>
-                    <span className={`badge ${(p.stock_quantity || 0) <= 5 ? 'danger' : 'info'}`} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content' }}>
-                      {p.stock_quantity || 0}
-                    </span>
+                    {p.track_inventory ? (
+                      <span className={`badge ${(p.stock_quantity || 0) <= 5 ? 'danger' : 'info'}`} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content' }}>
+                        {p.stock_quantity || 0}
+                      </span>
+                    ) : (
+                      <span className="text-light">—</span>
+                    )}
                   </td>
                   <td><span className="text-sm text-light">{p.unit}</span></td>
                   <td><span className={`badge ${p.is_active ? 'success' : 'danger'}`}>{p.is_active ? 'Đang bán' : 'Ngừng bán'}</span></td>

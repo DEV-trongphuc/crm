@@ -148,7 +148,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                           <div>
                             <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{p.name}</p>
                             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>
-                              Mã: {p.id} {p.track_inventory ? `• Kho: ${p.stock_quantity}` : ''}
+                             Mã: {p.sku || p.id} {!!p.track_inventory ? `• Kho: ${p.stock_quantity || 0}` : ''}
                             </p>
                           </div>
                         </div>
@@ -186,9 +186,9 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                         <Package size={18} color="var(--color-text-muted)" />
                       </div>
                       <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', minHeight: '2.8rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4 }}>{p.name}</p>
-                      {p.track_inventory === 1 && (
-                        <p style={{ fontSize: '0.7rem', color: p.stock_quantity <= 5 ? 'var(--color-danger)' : 'var(--color-text-light)', fontWeight: 700, marginTop: '4px' }}>
-                          Tồn kho: {p.stock_quantity}
+                      {!!p.track_inventory && (
+                        <p style={{ fontSize: '0.7rem', color: (p.stock_quantity || 0) <= 5 ? 'var(--color-danger)' : 'var(--color-text-light)', fontWeight: 700, marginTop: '4px' }}>
+                          Tồn kho: {p.stock_quantity || 0}
                         </p>
                       )}
                     </div>
