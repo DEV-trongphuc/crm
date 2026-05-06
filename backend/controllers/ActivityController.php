@@ -33,9 +33,9 @@ class ActivityController {
                    c.name as company_name
             FROM activities a 
             LEFT JOIN users u ON a.user_id=u.id
-            LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id
-            LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id
-            LEFT JOIN companies c ON a.related_type='company' AND a.related_id=c.id
+            LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id AND ct.deleted_at IS NULL
+            LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id AND d.deleted_at IS NULL
+            LEFT JOIN companies c ON a.related_type='company' AND a.related_id=c.id AND c.deleted_at IS NULL
             WHERE $w ORDER BY a.created_at DESC
             LIMIT $limit OFFSET $offset
         ");

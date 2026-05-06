@@ -16,11 +16,20 @@ class QuoteController {
         respond(200,$stmt->fetchAll());
     }
     public function store(array $auth): void {
+        $tid = $auth['tenant_id'];
         $b=getBody(); if(empty($b['title'])) respond(422,null,'Tiêu đề là bắt buộc',false);
+        
+        // Verify contact belongs to tenant
+        if (!empty($b['contact_id'])) {
+            $c = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
+            $c->execute([(int)$b['contact_id'], $tid]);
+            if (!$c->fetch()) $b['contact_id'] = null;
+        }
+
         // Generate robust quote number
         $qNum = 'QT-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(2)));
         $this->db->prepare("INSERT INTO quotes (tenant_id,deal_id,contact_id,created_by,quote_number,title,status,subtotal,discount,tax,total,valid_until,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
-            ->execute([$auth['tenant_id'],$b['deal_id']??null,$b['contact_id']??null,$auth['user_id'],$qNum,$b['title'],$b['status']??'draft',$b['subtotal']??0,$b['discount']??0,$b['tax']??0,$b['total']??0,$b['valid_until']??null,$b['notes']??null]);
+            ->execute([$tid,$b['deal_id']??null,$b['contact_id']??null,$auth['user_id'],$qNum,$b['title'],$b['status']??'draft',$b['subtotal']??0,$b['discount']??0,$b['tax']??0,$b['total']??0,$b['valid_until']??null,$b['notes']??null]);
         $qid=(int)$this->db->lastInsertId();
         if(!empty($b['items'])) {
             $ins=$this->db->prepare("INSERT INTO quote_items (quote_id,product_id,name,description,quantity,unit_price,discount,subtotal,sort_order) VALUES (?,?,?,?,?,?,?,?,?)");

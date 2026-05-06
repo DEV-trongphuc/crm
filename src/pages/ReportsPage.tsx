@@ -150,7 +150,7 @@ export const ReportsPage: React.FC = () => {
           <div className="grid grid-4">
             {[
               { label: 'Tổng doanh thu', value: FMT_VND(salesData?.summary?.total_revenue || 0), change: salesData?.summary?.revenue_change, up: (salesData?.summary?.revenue_change || '').startsWith('+'), icon: TrendingUp, color: '#7c3aed' },
-              { label: 'Cơ hội (Deals)', value: String(salesData?.summary?.deals || 0), change: salesData?.summary?.deals_change, up: (salesData?.summary?.deals_change || '').startsWith('+'), icon: Briefcase, color: '#10b981' },
+              { label: 'Cơ hội bán hàng', value: String(salesData?.summary?.deals || 0), change: salesData?.summary?.deals_change, up: (salesData?.summary?.deals_change || '').startsWith('+'), icon: Briefcase, color: '#10b981' },
               { label: 'Khách hàng', value: String(salesData?.summary?.contacts || 0), change: salesData?.summary?.contacts_change, up: (salesData?.summary?.contacts_change || '').startsWith('+'), icon: Users, color: '#3b82f6' },
               { label: 'Tỷ lệ chốt deal', value: `${salesData?.summary?.win_rate || 0}%`, change: salesData?.summary?.win_rate_change, up: (salesData?.summary?.win_rate_change || '').startsWith('+'), icon: BarChart3, color: '#f59e0b' },
             ].map((card, i) => {

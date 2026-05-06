@@ -27,15 +27,15 @@ class DashboardController {
         // Optimized consolidated query with unique parameter names
         $stats = $this->db->prepare("
             SELECT
-                (SELECT COALESCE(SUM(value),0) FROM deals WHERE tenant_id=:tid1 AND deleted_at IS NULL AND created_at BETWEEN :f1 AND :t1 $saleFilter) as total_value,
+                (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts WHERE tenant_id=:tid1 AND deleted_at IS NULL AND created_at BETWEEN :f1 AND :t1 $saleFilter) as total_value,
                 (SELECT COALESCE(SUM(total),0) FROM invoices WHERE tenant_id=:tid2 AND status='paid' AND paid_at BETWEEN :f2 AND :t2 ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "").") as actual_revenue,
                 (SELECT COALESCE(SUM(amount),0) FROM expenses WHERE tenant_id=:tid3 AND status='approved' AND date BETWEEN :f_date AND :t_date ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "").") as total_expenses,
                 (SELECT COUNT(*) FROM contacts WHERE tenant_id=:tid4 AND deleted_at IS NULL AND created_at BETWEEN :f3 AND :t3 $saleFilter) as new_contacts,
                 (SELECT COUNT(*) FROM activities WHERE tenant_id=:tid5 AND status='planned' AND due_date BETWEEN CURDATE() AND CONCAT(CURDATE(), ' 23:59:59') $uidF) as tasks_due_today,
                 (SELECT COUNT(*) FROM activities WHERE tenant_id=:tid9 AND status='planned' AND due_date BETWEEN DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 23:59:59') $uidF) as tasks_due_tomorrow,
                 (SELECT COUNT(*) FROM activities WHERE tenant_id=:tid10 AND status='planned' AND due_date < CURDATE() $uidF) as overdue_tasks,
-                (SELECT COUNT(*) FROM deals d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid6 AND d.deleted_at IS NULL AND ps.is_won=1 AND (d.actual_close_date BETWEEN :f_date4 AND :t_date4 OR (d.actual_close_date IS NULL AND d.updated_at BETWEEN :f4 AND :t4)) $uidD) as won_count,
-                (SELECT COALESCE(SUM(d.value),0) FROM deals d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid7 AND d.deleted_at IS NULL AND ps.is_won=1 AND (d.actual_close_date BETWEEN :f_date5 AND :t_date5 OR (d.actual_close_date IS NULL AND d.updated_at BETWEEN :f5 AND :t5)) $uidD) as won_value,
+                (SELECT COUNT(*) FROM contacts d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid6 AND d.deleted_at IS NULL AND ps.is_won=1 AND d.created_at BETWEEN :f4 AND :t4 $saleFilter) as won_count,
+                (SELECT COALESCE(SUM(d.expected_revenue),0) FROM contacts d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid7 AND d.deleted_at IS NULL AND ps.is_won=1 AND d.created_at BETWEEN :f5 AND :t5 $saleFilter) as won_value,
                 (SELECT COALESCE(SUM(shipping_fee),0) FROM invoices WHERE tenant_id=:tid8 AND status='paid' AND shipping_customer_pay=1 AND paid_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "").") as shipping_collected
         ");
         
@@ -47,9 +47,7 @@ class DashboardController {
             'f4' => $fromTs, 't4' => $toTs,
             'f5' => $fromTs, 't5' => $toTs,
             'f6' => $fromTs, 't6' => $toTs,
-            'f_date' => $from, 't_date' => $to,
-            'f_date4' => $from, 't_date4' => $to,
-            'f_date5' => $from, 't_date5' => $to
+            'f_date' => $from, 't_date' => $to
         ];
         if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
         $stats->execute($p);
@@ -64,16 +62,14 @@ class DashboardController {
         $prevToTs   = $prevTo   . ' 23:59:59';
 
         $pPrev = [
-            'tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid, 'tid6' => $tid, 'tid7' => $tid, 'tid8' => $tid,
+            'tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid, 'tid5' => $tid, 'tid6' => $tid, 'tid7' => $tid, 'tid8' => $tid, 'tid9' => $tid, 'tid10' => $tid,
             'f1' => $prevFromTs, 't1' => $prevToTs,
             'f2' => $prevFromTs, 't2' => $prevToTs,
             'f3' => $prevFromTs, 't3' => $prevToTs,
             'f4' => $prevFromTs, 't4' => $prevToTs,
             'f5' => $prevFromTs, 't5' => $prevToTs,
             'f6' => $prevFromTs, 't6' => $prevToTs,
-            'f_date' => $prevFrom, 't_date' => $prevTo,
-            'f_date4' => $prevFrom, 't_date4' => $prevTo,
-            'f_date5' => $prevFrom, 't_date5' => $prevTo
+            'f_date' => $prevFrom, 't_date' => $prevTo
         ];
         if ($auth['role'] === 'sale') $pPrev['uid'] = $auth['user_id'];
         
@@ -133,21 +129,42 @@ class DashboardController {
 
     public function chartRevenue(array $auth): void {
         $tid    = $auth['tenant_id'];
-        $months = (int)($_GET['months'] ?? 6);
+        $months = (int)($_GET['months'] ?? 8);
 
-        $sql = "SELECT 
-                DATE_FORMAT(d.created_at,'%Y-%m') as month,
-                COALESCE(SUM(CASE WHEN ps.is_won=1 THEN d.value ELSE 0 END),0) as revenue,
-                COUNT(CASE WHEN ps.is_won=1 THEN 1 END) as deals_won
-            FROM deals d
-            LEFT JOIN pipeline_stages ps ON d.stage_id = ps.id
-            WHERE d.tenant_id=? AND d.created_at >= DATE_SUB(NOW(), INTERVAL ? MONTH)";
-        $p = [$tid, $months];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND d.owner_id = ?";
-            $p[] = $auth['user_id'];
-        }
-        $sql .= " GROUP BY DATE_FORMAT(d.created_at,'%Y-%m') ORDER BY month ASC";
+        // Tạo chuỗi các tháng gần đây
+        $sql = "
+            SELECT 
+                DATE_FORMAT(dates.date, '%m/%Y') as month,
+                (
+                    SELECT COALESCE(SUM(total), 0) 
+                    FROM invoices 
+                    WHERE tenant_id = :tid1 
+                      AND status = 'paid' 
+                      AND DATE_FORMAT(paid_at, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
+                      ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "")."
+                ) as revenue,
+                (
+                    SELECT COALESCE(SUM(amount), 0) 
+                    FROM expenses 
+                    WHERE tenant_id = :tid2 
+                      AND status = 'approved' 
+                      AND DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
+                      ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "")."
+                ) as cost
+            FROM (
+                SELECT LAST_DAY(CURRENT_DATE) - INTERVAL (a.a + (10 * b.a)) MONTH as date
+                FROM (SELECT 0 as a UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9) as a
+                CROSS JOIN (SELECT 0 as a UNION ALL SELECT 1) as b
+            ) dates
+            WHERE dates.date >= DATE_SUB(LAST_DAY(CURRENT_DATE), INTERVAL ($months - 1) MONTH)
+              AND dates.date <= LAST_DAY(CURRENT_DATE)
+            GROUP BY month
+            ORDER BY dates.date ASC
+        ";
+        
+        $p = ['tid1' => $tid, 'tid2' => $tid];
+        if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         respond(200, $stmt->fetchAll());
@@ -193,19 +210,21 @@ class DashboardController {
 
     public function pipelineFunnel(array $auth): void {
         $tid = $auth['tenant_id'];
-        $sql = "SELECT ps.id, ps.name, ps.color, ps.order_index, ps.is_won, ps.is_lost,
-                   COUNT(d.id) as deal_count,
-                   COALESCE(SUM(d.value),0) as total_value
+        $sql = "
+            SELECT ps.id, ps.name, ps.color, ps.order_index, ps.is_won, ps.is_lost,
+                   (
+                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid1 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid" : "").") +
+                     (SELECT COUNT(*) FROM companies comp WHERE comp.stage_id = ps.id AND comp.deleted_at IS NULL AND comp.tenant_id = :tid2 ".(($auth['role'] === 'sale') ? " AND comp.owner_id = :uid" : "").")
+                   ) as deal_count,
+                   (
+                     (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid3 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid" : "").") +
+                     (SELECT COALESCE(SUM(expected_revenue),0) FROM companies comp WHERE comp.stage_id = ps.id AND comp.deleted_at IS NULL AND comp.tenant_id = :tid5 ".(($auth['role'] === 'sale') ? " AND comp.owner_id = :uid" : "").")
+                   ) as total_value
             FROM pipeline_stages ps
-            LEFT JOIN deals d ON d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id=?
         ";
-        $p = [$tid];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND d.owner_id=? ";
-            $p[] = $auth['user_id'];
-        }
-        $sql .= " WHERE ps.tenant_id=? GROUP BY ps.id ORDER BY ps.order_index ASC";
-        $p[] = $tid;
+        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid, 'tid5' => $tid];
+        if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
+        $sql .= " WHERE ps.tenant_id = :tid4 GROUP BY ps.id ORDER BY ps.order_index ASC";
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);

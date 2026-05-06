@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 06, 2026 lúc 09:45 AM
+-- Thời gian đã tạo: Th5 06, 2026 lúc 11:59 AM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.20
 
@@ -86,6 +86,7 @@ CREATE TABLE `companies` (
   `address` text DEFAULT NULL,
   `ward` varchar(100) DEFAULT NULL,
   `city` varchar(100) DEFAULT NULL,
+  `expected_revenue` decimal(15,2) DEFAULT 0.00,
   `country` varchar(100) DEFAULT 'Việt Nam',
   `size` enum('1-10','11-50','51-200','201-500','500+') DEFAULT NULL,
   `status` enum('active','inactive','prospect') NOT NULL DEFAULT 'prospect',
@@ -786,7 +787,8 @@ ALTER TABLE `contacts`
   ADD KEY `idx_contact_owner` (`owner_id`),
   ADD KEY `idx_contact_status` (`status`),
   ADD KEY `idx_contact_stage` (`stage_id`),
-  ADD KEY `idx_contact_tenant_created` (`tenant_id`,`created_at`);
+  ADD KEY `idx_contact_tenant_created` (`tenant_id`,`created_at`),
+  ADD KEY `idx_contacts_tenant_deleted` (`tenant_id`,`deleted_at`);
 ALTER TABLE `contacts` ADD FULLTEXT KEY `idx_contact_search` (`first_name`,`last_name`,`email`);
 
 --
@@ -832,7 +834,8 @@ ALTER TABLE `deals`
   ADD KEY `idx_deal_owner` (`owner_id`),
   ADD KEY `idx_deal_close` (`expected_close_date`),
   ADD KEY `idx_deal_value` (`tenant_id`,`value`),
-  ADD KEY `idx_deal_tenant_created` (`tenant_id`,`created_at`);
+  ADD KEY `idx_deal_tenant_created` (`tenant_id`,`created_at`),
+  ADD KEY `idx_deals_tenant_deleted` (`tenant_id`,`deleted_at`);
 
 --
 -- Chỉ mục cho bảng `deal_stage_history`
@@ -972,7 +975,8 @@ ALTER TABLE `products`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_product_tenant` (`tenant_id`),
   ADD KEY `idx_product_sku` (`tenant_id`,`sku`),
-  ADD KEY `fk_prod_cat` (`category_id`);
+  ADD KEY `fk_prod_cat` (`category_id`),
+  ADD KEY `fk_products_creator` (`created_by`);
 
 --
 -- Chỉ mục cho bảng `product_categories`

@@ -73,6 +73,18 @@ class FinanceController {
 
         $this->db->beginTransaction();
         try {
+            // Verify entities belong to tenant
+            if (!empty($data['contact_id'])) {
+                $c = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
+                $c->execute([(int)$data['contact_id'], $tid]);
+                if (!$c->fetch()) $data['contact_id'] = null;
+            }
+            if (!empty($data['company_id'])) {
+                $c = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=?");
+                $c->execute([(int)$data['company_id'], $tid]);
+                if (!$c->fetch()) $data['company_id'] = null;
+            }
+
             $stmt = $this->db->prepare("
                 INSERT INTO invoices (tenant_id,deal_id,company_id,contact_id,created_by,invoice_number,title,status,issue_date,due_date,subtotal,discount,tax,total,notes,shipping_customer_pay,shipping_fee)
                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
@@ -371,6 +383,7 @@ class FinanceController {
     }
 
     public function summary(array $auth): void {
+        requireRole($auth, ['admin', 'manager']);
         $tid = $auth['tenant_id'];
         $sInv = $this->db->prepare("
             SELECT COALESCE(SUM(total),0) as total_revenue,

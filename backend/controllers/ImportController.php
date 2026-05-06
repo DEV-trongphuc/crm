@@ -121,14 +121,14 @@ class ImportController {
         }
 
         if ($type === 'contact') {
-            $stmt = $this->db->prepare("SELECT c.first_name,c.last_name,c.email,c.phone,c.job_title,c.source,c.status,co.name as company_name,u.full_name as owner FROM contacts c LEFT JOIN companies co ON c.company_id=co.id LEFT JOIN users u ON c.owner_id=u.id WHERE c.tenant_id=? $saleFilter ORDER BY c.created_at DESC");
+            $stmt = $this->db->prepare("SELECT c.first_name,c.last_name,c.email,c.phone,c.job_title,c.source,c.status,co.name as company_name,u.full_name as owner FROM contacts c LEFT JOIN companies co ON c.company_id=co.id LEFT JOIN users u ON c.owner_id=u.id WHERE c.tenant_id=? AND c.deleted_at IS NULL $saleFilter ORDER BY c.created_at DESC");
             $stmt->execute($params);
             echo "first_name,last_name,email,phone,job_title,source,status,company_name,owner\n";
             while ($row = $stmt->fetch(PDO::FETCH_NUM)) {
                 echo implode(',', array_map(fn($v) => '"' . str_replace('"','""',$v??'') . '"', $row)) . "\n";
             }
         } elseif ($type === 'company') {
-            $stmt = $this->db->prepare("SELECT name,industry,city,phone,email,website,status FROM companies WHERE tenant_id=? $saleFilter ORDER BY name");
+            $stmt = $this->db->prepare("SELECT name,industry,city,phone,email,website,status FROM companies WHERE tenant_id=? AND deleted_at IS NULL $saleFilter ORDER BY name");
             $stmt->execute($params);
             echo "name,industry,city,phone,email,website,status\n";
             while ($row = $stmt->fetch(PDO::FETCH_NUM)) {

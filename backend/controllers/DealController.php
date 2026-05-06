@@ -6,18 +6,20 @@ class DealController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function stages(array $auth): void {
+        $tid = $auth['tenant_id'];
         $sql = "
-            SELECT ps.*, COUNT(d.id) as deals
+            SELECT ps.*, 
+                   (
+                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid1 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid" : "").") +
+                     (SELECT COUNT(*) FROM companies comp WHERE comp.stage_id = ps.id AND comp.deleted_at IS NULL AND comp.tenant_id = :tid2 ".(($auth['role'] === 'sale') ? " AND comp.owner_id = :uid" : "").")
+                   ) as deals
             FROM pipeline_stages ps
-            LEFT JOIN deals d ON d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id=?
-            WHERE ps.tenant_id=?
+            WHERE ps.tenant_id = :tid3
+            ORDER BY ps.order_index
         ";
-        $p = [$auth['tenant_id'], $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND (d.owner_id=? OR d.id IS NULL)";
-            $p[] = $auth['user_id'];
-        }
-        $sql .= " GROUP BY ps.id ORDER BY ps.order_index";
+        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid];
+        if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         respond(200, $stmt->fetchAll());

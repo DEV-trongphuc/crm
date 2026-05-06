@@ -38,6 +38,9 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
   
   // B2B Sub-contacts State — loaded from API
   const [subContacts, setSubContacts] = useState<any[]>([]);
+  const [showDealModal, setShowDealModal] = useState(false);
+  const [dealForm, setDealForm] = useState({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '' });
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [subLoading, setSubLoading] = useState(false);
 
   // Deals — loaded from API
@@ -62,6 +65,32 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       setActivities([]);
     } finally {
       setActivitiesLoading(false);
+    }
+  };
+
+  const handleCreateDeal = async () => {
+    if (!dealForm.title.trim()) return;
+    try {
+      await api.post('/deals', {
+        company_id: entity.id,
+        title: dealForm.title,
+        value: Number(dealForm.value) || 0,
+        stage: dealForm.stage,
+        expected_close: dealForm.expected_close
+      });
+      setShowDealModal(false);
+      setDealForm({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '' });
+      
+      // Refresh deals
+      setDealsLoading(true);
+      api.get('/deals', { params: { company_id: entity.id } })
+        .then(r => setDeals(r.data.data?.items || r.data.data || []))
+        .catch(() => setDeals([]))
+        .finally(() => setDealsLoading(false));
+
+      addToast('Đã tạo cơ hội mới thành công', 'success');
+    } catch (e: any) {
+      addToast(e?.response?.data?.message || 'Lỗi khi tạo cơ hội', 'error');
     }
   };
 
@@ -195,15 +224,15 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       <div className="grid grid-2">
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                           <label className="form-label">Tên công ty <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                          <input className="form-input" placeholder="Tên đầy đủ của doanh nghiệp..." value={formData?.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} />
+                          <input className="form-input" placeholder="Tên đầy đủ của doanh nghiệp..." value={formData?.name || ''} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Mã số thuế (Tax ID)</label>
-                          <input className="form-input" placeholder="Nhập MST..." value={formData?.tax_id || ''} onChange={e => setFormData({...formData, tax_id: e.target.value})} />
+                          <input className="form-input" placeholder="Nhập MST..." value={formData?.tax_id || ''} onChange={e => setFormData(prev => ({ ...prev, tax_id: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Ngành nghề (Industry)</label>
-                          <input className="form-input" placeholder="Ví dụ: Công nghệ, Bán lẻ, Tài chính..." value={formData?.industry || ''} onChange={e => setFormData({...formData, industry: e.target.value})} />
+                          <input className="form-input" placeholder="Ví dụ: Công nghệ, Bán lẻ, Tài chính..." value={formData?.industry || ''} onChange={e => setFormData(prev => ({ ...prev, industry: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Quy mô công ty</label>
@@ -216,7 +245,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                               { value: '500+', label: 'Hơn 500 nhân viên' }
                             ]}
                             value={formData?.size || ''}
-                            onChange={val => setFormData({...formData, size: val as string})}
+                            onChange={val => setFormData(prev => ({ ...prev, size: val as string }))}
                             placeholder="Chọn quy mô..."
                           />
                         </div>
@@ -229,7 +258,33 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                               { value: 'inactive', label: 'Ngừng hoạt động (Inactive)' }
                             ]}
                             value={formData?.status || 'prospect'}
-                            onChange={val => setFormData({...formData, status: val as string})}
+                            onChange={val => setFormData(prev => ({ ...prev, status: val as string }))}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Giai đoạn Pipeline</label>
+                          <CustomSelect 
+                            options={[
+                              { value: 1, label: 'Giai đoạn mới' },
+                              { value: 2, label: 'Đã liên hệ' },
+                              { value: 3, label: 'Đang thương lượng' },
+                              { value: 4, label: 'Gửi báo giá' },
+                              { value: 5, label: 'Chốt thành công' },
+                              { value: 6, label: 'Thất bại' },
+                            ]}
+                            value={formData?.stage_id || ''}
+                            onChange={val => setFormData(prev => ({ ...prev, stage_id: val }))}
+                            placeholder="Chọn giai đoạn..."
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Doanh thu dự kiến (VND)</label>
+                          <input 
+                            className="form-input" 
+                            type="number" 
+                            placeholder="Nhập giá trị..." 
+                            value={formData?.expected_revenue || ''} 
+                            onChange={e => setFormData(prev => ({ ...prev, expected_revenue: e.target.value }))} 
                           />
                         </div>
                       </div>
@@ -240,19 +295,19 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       <div className="grid grid-2">
                         <div className="form-group">
                           <label className="form-label">Điện thoại Hotline</label>
-                          <input className="form-input" type="tel" placeholder="028 xxx xxxx" value={formData?.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} />
+                          <input className="form-input" type="tel" placeholder="028 xxx xxxx" value={formData?.phone || ''} onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Email Doanh nghiệp</label>
-                          <input className="form-input" type="email" placeholder="info@congty.com" value={formData?.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} />
+                          <input className="form-input" type="email" placeholder="info@congty.com" value={formData?.email || ''} onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Website</label>
-                          <input className="form-input" placeholder="www.congty.com" value={formData?.website || ''} onChange={e => setFormData({...formData, website: e.target.value})} />
+                          <input className="form-input" placeholder="www.congty.com" value={formData?.website || ''} onChange={e => setFormData(prev => ({ ...prev, website: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Mạng xã hội (LinkedIn/FB)</label>
-                          <input className="form-input" placeholder="https://..." value={formData?.social_link || ''} onChange={e => setFormData({...formData, social_link: e.target.value})} />
+                          <input className="form-input" placeholder="https://..." value={formData?.social_link || ''} onChange={e => setFormData(prev => ({ ...prev, social_link: e.target.value }))} />
                         </div>
                       </div>
                     </div>
@@ -262,12 +317,12 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       <AddressSelect 
                         city={formData?.city || ''}
                         ward={formData?.ward || ''}
-                        onCityChange={city => setFormData({...formData, city})}
-                        onWardChange={ward => setFormData({...formData, ward})}
+                        onCityChange={city => setFormData(prev => ({ ...prev, city }))}
+                        onWardChange={ward => setFormData(prev => ({ ...prev, ward }))}
                       />
                       <div className="form-group" style={{ marginTop: '0.75rem' }}>
                         <label className="form-label" style={{ fontSize: '0.8rem' }}>Địa chỉ chi tiết</label>
-                        <input className="form-input" placeholder="Số nhà, đường, tòa nhà..." value={formData?.address || ''} onChange={e => setFormData({...formData, address: e.target.value})} />
+                        <input className="form-input" placeholder="Số nhà, đường, tòa nhà..." value={formData?.address || ''} onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))} />
                       </div>
                     </div>
 
@@ -431,11 +486,12 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   </div>
                 )}
 
+
                 {activeTab === 'deals' && (
                   <div className="animate-fade">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                      <h4 className="panel-title" style={{ margin: 0 }}>Cơ hội Bán hàng (Deals)</h4>
-                      <button className="btn primary sm" onClick={() => addToast('Tạo Deal mới trong module Pipeline', 'info')}><Plus size={14}/> Tạo Deal</button>
+                      <h4 className="panel-title" style={{ margin: 0 }}>Cơ hội Bán hàng (Hợp đồng/Deals)</h4>
+                      <button className="btn primary sm" onClick={() => setShowDealModal(true)}><Plus size={14}/> Tạo Deal</button>
                     </div>
                     {dealsLoading ? (
                       <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
@@ -444,8 +500,8 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     ) : deals.length === 0 ? (
                       <div className="card-panel" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
                         <Briefcase size={32} style={{ margin: '0 auto 1rem', opacity: 0.4 }} />
-                        <p style={{ fontWeight: 600 }}>Chưa có deal nào</p>
-                        <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>Tạo deal mới từ module Pipeline</p>
+                        <p style={{ fontWeight: 600 }}>Chưa có hợp đồng nào</p>
+                        <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>Module này dùng để quản lý các giao dịch cụ thể.</p>
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -453,7 +509,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                           <div key={d.id} className="card-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem' }}>
                             <div>
                               <h4 style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--color-primary)' }}>{d.title}</h4>
-                              <p className="text-xs text-light mt-1">Dự kiến: <strong style={{ color: 'var(--color-text)' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</strong> • Chốt: {d.close_date ? new Date(d.close_date).toLocaleDateString('vi-VN') : 'Chưa xác định'}</p>
+                              <p className="text-xs text-light mt-1">Giá trị: <strong style={{ color: 'var(--color-text)' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</strong> • Ngày dự kiến: {d.expected_close || 'Chưa xác định'}</p>
                             </div>
                             <span className={`badge ${d.stage_color ? '' : 'warning'}`} style={d.stage_color ? { background: d.stage_color + '20', color: d.stage_color } : {}}>{d.stage || d.pipeline_stage || 'Đang xử lý'}</span>
                           </div>
@@ -461,9 +517,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       </div>
                     )}
                   </div>
-                )}
-
-                {activeTab === 'docs' && (
+                )}                {activeTab === 'docs' && (
                   <div className="animate-fade">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                       <h4 className="panel-title" style={{ margin: 0 }}>Tài liệu Doanh nghiệp</h4>
@@ -600,50 +654,110 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
               </button>
             </div>
           </motion.div>
+
+          {/* Help Modal */}
+          <AnimatePresence>
+            {helpModal && (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <motion.div 
+                  className="overlay-backdrop" 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+                  onClick={() => setHelpModal(null)} 
+                  style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
+                />
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  style={{
+                    position: 'relative',
+                    background: 'var(--color-surface)', width: '400px', borderRadius: 'var(--radius-lg)',
+                    boxShadow: 'var(--shadow-xl)', zIndex: 1010, border: '1px solid var(--color-border)',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <div style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #6366f1 100%)', padding: '1rem 1.25rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}><HelpCircle size={18} /> {helpModal.title}</h3>
+                    <button onClick={() => setHelpModal(null)} style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '50%', padding: '4px', color: 'white' }}><X size={16} /></button>
+                  </div>
+                  <div style={{ padding: '1.25rem', fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>
+                    {helpModal.content}
+                  </div>
+                  <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', background: 'var(--color-bg)' }}>
+                    <button className="btn outline" onClick={() => setHelpModal(null)}>Đã hiểu</button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          {/* CREATE DEAL MODAL */}
+          <AnimatePresence>
+            {showDealModal && (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <motion.div 
+                  className="overlay-backdrop" 
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
+                  onClick={() => setShowDealModal(false)}
+                  style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(2px)' }}
+                />
+                <motion.div
+                  className="modal-sheet"
+                  style={{ position: 'relative', width: '100%', maxWidth: 500, zIndex: 1110 }}
+                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="modal-header">
+                    <h3>Tạo Deal mới cho {formData.name}</h3>
+                    <button className="btn-icon-bare" onClick={() => setShowDealModal(false)}><X size={20} /></button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="form-group">
+                      <label className="form-label">Tên Deal *</label>
+                      <input className="form-input" placeholder="VD: Hợp đồng triển khai phần mềm..." value={dealForm.title} onChange={e => setDealForm(prev => ({ ...prev, title: e.target.value }))} autoFocus />
+                    </div>
+                    <div className="grid grid-2">
+                      <div className="form-group">
+                        <label className="form-label">Giá trị dự kiến (VND)</label>
+                        <input className="form-input" type="number" placeholder="0" value={dealForm.value} onChange={e => setDealForm(prev => ({ ...prev, value: e.target.value }))} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Giai đoạn</label>
+                        <CustomSelect 
+                          options={[
+                            { value: 'lead', label: 'Tiềm năng' },
+                            { value: 'contacted', label: 'Đã liên hệ' },
+                            { value: 'negotiation', label: 'Thương lượng' },
+                            { value: 'proposal', label: 'Báo giá' },
+                            { value: 'won', label: 'Thành công' },
+                            { value: 'lost', label: 'Thất bại' }
+                          ]} 
+                          value={dealForm.stage} 
+                          onChange={val => setDealForm(prev => ({ ...prev, stage: val.toString() }))} 
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Ngày dự kiến chốt</label>
+                      <input className="form-input" type="date" value={dealForm.expected_close} onChange={e => setDealForm(prev => ({ ...prev, expected_close: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button className="btn outline" onClick={() => setShowDealModal(false)}>Hủy</button>
+                    <button className="btn primary" onClick={handleCreateDeal}>Tạo Deal</button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
+          <ActivityModal 
+            isOpen={showActivityModal} 
+            onClose={() => setShowActivityModal(false)}
+            entityType="company"
+            entityId={entity?.id}
+            onSuccess={fetchActivities}
+          />
         </>
       )}
-
-      {/* Help Modal */}
-      <AnimatePresence>
-        {helpModal && (
-          <>
-            <motion.div 
-              className="overlay-backdrop" 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
-              onClick={() => setHelpModal(null)} 
-              style={{ zIndex: 600, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              style={{
-                position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                background: 'var(--color-surface)', width: '400px', borderRadius: 'var(--radius-lg)',
-                boxShadow: 'var(--shadow-xl)', zIndex: 610, border: '1px solid var(--color-border)',
-                overflow: 'hidden'
-              }}
-            >
-              <div style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, #6366f1 100%)', padding: '1rem 1.25rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}><HelpCircle size={18} /> {helpModal.title}</h3>
-                <button onClick={() => setHelpModal(null)} style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '50%', padding: '4px', color: 'white' }}><X size={16} /></button>
-              </div>
-              <div style={{ padding: '1.25rem', fontSize: '0.9rem', lineHeight: 1.6, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>
-                {helpModal.content}
-              </div>
-              <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--color-border-light)', display: 'flex', justifyContent: 'flex-end', background: 'var(--color-bg)' }}>
-                <button className="btn outline" onClick={() => setHelpModal(null)}>Đã hiểu</button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-      {/* Activity Modal */}
-      <ActivityModal 
-        isOpen={showActivityModal} 
-        onClose={() => setShowActivityModal(false)}
-        entityType="company"
-        entityId={entity?.id}
-        onSuccess={fetchActivities}
-      />
     </AnimatePresence>
   );
 };

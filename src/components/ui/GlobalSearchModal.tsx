@@ -99,7 +99,7 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
                   actions={[
                     { icon: <Phone size={12} />, label: 'Gọi điện', onClick: () => window.location.href = `tel:${c.phone}` },
                     { icon: <Mail size={12} />, label: 'Gửi Email', onClick: () => window.location.href = `mailto:${c.email}` },
-                    { icon: <Plus size={12} />, label: 'Tạo Deal', onClick: () => goTo('/deals') }
+                    { icon: <Plus size={12} />, label: 'Tạo cơ hội', onClick: () => goTo('/deals') }
                   ]}
                 />
               ))}
@@ -114,7 +114,7 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
                   subtitle={c.industry || c.city || ''} 
                   onClick={() => goTo('/companies')} 
                   actions={[
-                    { icon: <Plus size={12} />, label: 'Tạo Deal', onClick: () => goTo('/deals') }
+                    { icon: <Plus size={12} />, label: 'Tạo cơ hội', onClick: () => goTo('/deals') }
                   ]}
                 />
               ))}

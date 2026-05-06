@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Building2, X, Loader2, Pencil, Trash2, Globe, Phone, Mail, Users, LayoutGrid, List, Filter, RefreshCw, Download } from 'lucide-react';
+import { Plus, Search, Building2, X, Loader2, Pencil, Trash2, Globe, Phone, Mail, Users, LayoutGrid, List, Filter, RefreshCw, Download, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -90,7 +90,7 @@ export const CompaniesPage: React.FC = () => {
       title: 'Xóa công ty?',
       message: `Bạn có chắc chắn muốn xóa vĩnh viễn công ty "${co.name}"? Thao tác này không thể hoàn tác.`,
       isDanger: true,
-      impactInfo: `Cảnh báo: Xóa công ty sẽ gỡ bỏ liên kết với ${co.contact_count || 0} liên hệ và ${co.deal_count || 0} cơ hội liên quan.`,
+      impactInfo: `Cảnh báo: Xóa công ty sẽ gỡ bỏ liên kết với ${co.contact_count || 0} liên hệ và toàn bộ lịch sử hoạt động liên quan.`,
       confirmText: 'Xác nhận xóa',
       onConfirm: async () => {
         try {
@@ -199,11 +199,12 @@ export const CompaniesPage: React.FC = () => {
                   {co.phone && <PhoneLink phone={co.phone} showIcon style={{ fontSize: '0.75rem' }} />}
                   {co.email && <span className="flex items-center gap-2 text-xs text-light"><Mail size={11} />{co.email}</span>}
                   {co.website && <span className="flex items-center gap-2 text-xs text-light"><Globe size={11} />{co.website}</span>}
+                  {co.expected_revenue > 0 && <span className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--color-primary)' }}><DollarSign size={11} />{new Intl.NumberFormat('vi-VN').format(co.expected_revenue)} đ</span>}
                 </div>
                 <div className="flex items-center justify-between">
-                  <div className="flex gap-3">
-                    <span className="flex items-center gap-1 text-xs text-light"><Users size={12} />{co.contact_count || 0} liên hệ</span>
-                    <span className="flex items-center gap-1 text-xs text-light"><Building2 size={12} />{co.deal_count || 0} deal</span>
+                  <div className="flex gap-2 items-center">
+                    <span className="flex items-center gap-1 text-xs text-light"><Users size={12} />{co.contact_count || 0}</span>
+                    {co.stage_name && <span className="badge sm" style={{ background: (co.stage_color || '#7c3aed') + '15', color: co.stage_color || '#7c3aed', fontSize: '0.65rem' }}>{co.stage_name}</span>}
                   </div>
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
                     <button className="btn ghost sm" onClick={() => openEdit(co)}><Pencil size={13} /></button>
@@ -239,8 +240,8 @@ export const CompaniesPage: React.FC = () => {
                   <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Công ty</th>
                   <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Trạng thái</th>
                   <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Ngành</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Liên hệ</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Deals</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Giai đoạn</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Dự kiến</th>
                   <th style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}></th>
                 </tr>
               </thead>
@@ -271,7 +272,10 @@ export const CompaniesPage: React.FC = () => {
                         </div>
                       </td>
                       <td style={{ padding: '1rem' }}>
-                        <span className="text-xs text-light">{co.contact_count || 0} liên hệ · {co.deal_count || 0} deal</span>
+                        {co.stage_name ? <span className="badge sm" style={{ background: (co.stage_color || '#7c3aed') + '15', color: co.stage_color || '#7c3aed' }}>{co.stage_name}</span> : '—'}
+                      </td>
+                      <td style={{ padding: '1rem', fontWeight: 700, fontSize: '0.875rem' }}>
+                        {co.expected_revenue > 0 ? new Intl.NumberFormat('vi-VN').format(co.expected_revenue) + ' đ' : '—'}
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div className="flex gap-1" style={{ justifyContent: 'flex-end' }}>

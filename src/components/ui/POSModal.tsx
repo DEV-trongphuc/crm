@@ -220,9 +220,18 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                           <button onClick={() => setShowQuickAdd(false)} style={{ color: 'var(--color-text-light)', background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={14} /></button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                          <input className="form-input sm" placeholder="Họ" value={newCust.last_name} onChange={e => setNewCust({...newCust, last_name: e.target.value})} />
-                          <input className="form-input sm" placeholder="Tên *" value={newCust.first_name} onChange={e => setNewCust({...newCust, first_name: e.target.value})} />
-                          <input className="form-input sm" placeholder="Số điện thoại *" value={newCust.phone} onChange={e => setNewCust({...newCust, phone: e.target.value})} />
+                          <input className="form-input sm" placeholder="Họ" value={newCust.last_name} onChange={e => {
+                            const val = e.target.value;
+                            setNewCust(prev => ({ ...prev, last_name: val }));
+                          }} />
+                          <input className="form-input sm" placeholder="Tên *" value={newCust.first_name} onChange={e => {
+                            const val = e.target.value;
+                            setNewCust(prev => ({ ...prev, first_name: val }));
+                          }} />
+                          <input className="form-input sm" placeholder="Số điện thoại *" value={newCust.phone} onChange={e => {
+                            const val = e.target.value;
+                            setNewCust(prev => ({ ...prev, phone: val }));
+                          }} />
                           <button className="btn primary sm" style={{ width: '100%', marginTop: '4px' }} onClick={handleQuickAdd} disabled={loading}>Lưu & Chọn</button>
                         </div>
                       </motion.div>

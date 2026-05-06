@@ -7,15 +7,28 @@ class TagController {
     }
 
     public function index($auth) {
-        $stmt = $this->db->prepare("
-            SELECT t.*, 
-                   (SELECT COUNT(*) FROM entity_tags et WHERE et.tag_id = t.id) as count
-            FROM tags t 
-            WHERE t.tenant_id = ?
-            ORDER BY t.name ASC
-        ");
-        $stmt->execute([$auth['tenant_id']]);
-        respond(200, $stmt->fetchAll(PDO::FETCH_ASSOC));
+        $tid = $auth['tenant_id'];
+        
+        // Lấy tất cả tags
+        $stmt = $this->db->prepare("SELECT * FROM tags WHERE tenant_id = ? ORDER BY name ASC");
+        $stmt->execute([$tid]);
+        $tags = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Đếm số lượng sử dụng từ contacts và companies (JSON column)
+        foreach ($tags as &$tag) {
+            $tagName = $tag['name'];
+            $s1 = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id = ? AND JSON_CONTAINS(tags, ?)");
+            $s1->execute([$tid, json_encode($tagName)]);
+            $count1 = (int)$s1->fetchColumn();
+
+            $s2 = $this->db->prepare("SELECT COUNT(*) FROM companies WHERE tenant_id = ? AND JSON_CONTAINS(tags, ?)");
+            $s2->execute([$tid, json_encode($tagName)]);
+            $count2 = (int)$s2->fetchColumn();
+
+            $tag['count'] = $count1 + $count2;
+        }
+
+        respond(200, $tags);
     }
 
     public function store($auth) {
@@ -83,8 +96,17 @@ class TagController {
         $rows = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         $counts = [];
-        foreach ($rows as $jsonTags) {
-            $tags = json_decode($jsonTags ?? '[]', true) ?: [];
+        foreach ($rows as $rawTags) {
+            if (empty($rawTags)) continue;
+            
+            // Thử giải mã JSON
+            $tags = json_decode($rawTags, true);
+            
+            // Nếu không phải JSON, thử tách bằng dấu phẩy
+            if (!is_array($tags)) {
+                $tags = explode(',', $rawTags);
+            }
+
             foreach ($tags as $tag) {
                 $tag = trim((string)$tag);
                 if ($tag === '') continue;

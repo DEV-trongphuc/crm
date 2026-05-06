@@ -12,38 +12,31 @@ class POSController {
         $data = getBody();
 
         if (empty($data['cart']) || empty($data['customer_id'])) {
-            respond(400, "Missing cart or customer info");
+            respond(400, null, "Thiếu giỏ hàng hoặc thông tin khách hàng", false);
+        }
+
+        // Verify customer belongs to tenant
+        $checkCust = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
+        $checkCust->execute([(int)$data['customer_id'], $tid]);
+        if (!$checkCust->fetch()) {
+            respond(403, null, "Khách hàng không hợp lệ hoặc không thuộc quyền quản lý", false);
         }
 
         $this->db->beginTransaction();
         try {
-            // 1. Create a Deal (automatically Won)
-            $sDeal = $this->db->prepare("
-                INSERT INTO deals (tenant_id, contact_id, owner_id, created_by, title, value, probability, expected_close_date, actual_close_date)
-                VALUES (?, ?, ?, ?, ?, ?, 100, CURDATE(), CURDATE())
-            ");
             $title = "Đơn hàng POS - " . date('d/m/Y H:i');
-            $sDeal->execute([
-                $tid,
-                $data['customer_id'],
-                $uid,
-                $uid,
-                $title,
-                $data['total_amount']
-            ]);
-            $dealId = $this->db->lastInsertId();
-
-            // 2. Create an Invoice
+            
+            // 1. Create an Invoice (Status: paid)
             $today = date('Ymd');
             $invNum = 'POS-' . $today . '-' . strtoupper(bin2hex(random_bytes(3)));
             $sInv = $this->db->prepare("
-                INSERT INTO invoices (tenant_id, deal_id, contact_id, created_by, invoice_number, title, status, issue_date, due_date, paid_at, total)
-                VALUES (?, ?, ?, ?, ?, ?, 'paid', CURDATE(), CURDATE(), NOW(), ?)
+                INSERT INTO invoices (tenant_id, contact_id, created_by, invoice_number, title, status, issue_date, due_date, paid_at, total)
+                VALUES (?, ?, ?, ?, ?, 'paid', CURDATE(), CURDATE(), NOW(), ?)
             ");
-            $sInv->execute([$tid, $dealId, $data['customer_id'], $uid, $invNum, $title, $data['total_amount']]);
+            $sInv->execute([$tid, $data['customer_id'], $uid, $invNum, $title, $data['total_amount']]);
             $invId = $this->db->lastInsertId();
 
-            // 3. Add Invoice Items and Deduct Stock (if applicable)
+            // 2. Add Invoice Items and Deduct Stock
             $sItem = $this->db->prepare("INSERT INTO invoice_items (invoice_id, product_id, name, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?, ?)");
             foreach ($data['cart'] as $item) {
                 $sItem->execute([
@@ -62,7 +55,7 @@ class POSController {
                 }
             }
 
-            // 4. Update Customer Stats
+            // 3. Update Customer Stats
             $sCust = $this->db->prepare("
                 UPDATE contacts 
                 SET total_spent = total_spent + ?, 
@@ -73,7 +66,7 @@ class POSController {
             ");
             $sCust->execute([$data['total_amount'], $data['customer_id'], $tid]);
 
-            // 5. Audit Trail Activity (Redirected to logActivity to keep main feed clean)
+            // 4. Audit Trail Activity
             logActivity(
                 $this->db, $tid, $uid, 'task', 
                 "Tạo đơn hàng POS #$invNum", 
@@ -82,10 +75,10 @@ class POSController {
             );
 
             $this->db->commit();
-            respond(201, ["invoice_id" => $invId, "message" => "Order completed successfully"]);
+            respond(201, ["invoice_id" => $invId, "message" => "Đơn hàng hoàn tất thành công"]);
         } catch (Exception $e) {
             $this->db->rollBack();
-            respond(500, $e->getMessage());
+            respond(500, null, $e->getMessage(), false);
         }
     }
 }

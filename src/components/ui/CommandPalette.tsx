@@ -35,7 +35,7 @@ export const CommandPalette = () => {
 
   const results = [
     { title: 'Quản lý Liên hệ (Contacts)', icon: <User size={16}/>, action: () => handleAction('/contacts') },
-    { title: 'Quản lý Cơ hội (Deals)', icon: <CreditCard size={16}/>, action: () => handleAction('/deals') },
+    { title: 'Quản lý Pipeline', icon: <CreditCard size={16}/>, action: () => handleAction('/deals') },
     { title: 'Quản lý Sản phẩm', icon: <Package size={16}/>, action: () => handleAction('/products') },
     { title: 'Hóa đơn & Bán hàng', icon: <FileText size={16}/>, action: () => handleAction('/invoices') },
     { title: 'Hoạt động & Lịch (Activities)', icon: <Activity size={16}/>, action: () => handleAction('/activities') },

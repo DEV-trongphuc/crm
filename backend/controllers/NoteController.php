@@ -126,8 +126,17 @@ class NoteController {
     }
 
     public function destroy(array $auth, int $id): void {
-        $stmt = $this->db->prepare("DELETE FROM notes WHERE id=? AND tenant_id=? AND (user_id=? OR ? IN (SELECT id FROM users WHERE tenant_id=? AND role IN ('admin','manager')))");
-        $stmt->execute([$id, $auth['tenant_id'], $auth['user_id'], $auth['user_id'], $auth['tenant_id']]);
+        $sql = "DELETE FROM notes WHERE id=? AND tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        
+        if ($auth['role'] !== 'admin' && $auth['role'] !== 'manager') {
+            $sql .= " AND user_id=?";
+            $p[] = $auth['user_id'];
+        }
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
+        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy ghi chú hoặc không có quyền', false);
         respond(200, null, 'Đã xóa ghi chú');
     }
 }

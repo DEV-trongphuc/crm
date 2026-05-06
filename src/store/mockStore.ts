@@ -12,21 +12,21 @@ const USERS = [
 ];
 
 const COMPANIES = [
-  { id: 1, name: 'Công ty Cổ phần Công nghệ ABC', industry: 'Công nghệ', address: 'Quận 1, TP.HCM', website: 'https://abc-tech.com' },
-  { id: 2, name: 'Tập đoàn Bán lẻ VinGroup', industry: 'Bán lẻ', address: 'Long Biên, Hà Nội', website: 'https://vingroup.net' },
-  { id: 3, name: 'Ngân hàng TMCP Vietcombank', industry: 'Tài chính', address: 'Hoàn Kiếm, Hà Nội', website: 'https://vietcombank.com.vn' },
-  { id: 4, name: 'Công ty TNHH Giải pháp Phần mềm Minth', industry: 'SaaS', address: 'Bình Thạnh, TP.HCM', website: 'https://minth.io' },
-  { id: 5, name: 'Tập đoàn Sữa Việt Nam (Vinamilk)', industry: 'F&B', address: 'Quận 7, TP.HCM', website: 'https://vinamilk.com.vn' },
-  { id: 6, name: 'Hãng hàng không Vietjet Air', industry: 'Hàng không', address: 'Tân Bình, TP.HCM', website: 'https://vietjetair.com' },
+  { id: 1, name: 'Công ty Cổ phần Công nghệ ABC', industry: 'Công nghệ', address: 'Quận 1, TP.HCM', website: 'https://abc-tech.com', stage_id: 4, expected_revenue: 2500000000, status: 'active' },
+  { id: 2, name: 'Tập đoàn Bán lẻ VinGroup', industry: 'Bán lẻ', address: 'Long Biên, Hà Nội', website: 'https://vingroup.net', stage_id: 1, expected_revenue: 850000000, status: 'prospect' },
+  { id: 3, name: 'Ngân hàng TMCP Vietcombank', industry: 'Tài chính', address: 'Hoàn Kiếm, Hà Nội', website: 'https://vietcombank.com.vn', stage_id: 3, expected_revenue: 450000000, status: 'active' },
+  { id: 4, name: 'Công ty TNHH Giải pháp Phần mềm Minth', industry: 'SaaS', address: 'Bình Thạnh, TP.HCM', website: 'https://minth.io', stage_id: 5, expected_revenue: 120000000, status: 'active' },
+  { id: 5, name: 'Tập đoàn Sữa Việt Nam (Vinamilk)', industry: 'F&B', address: 'Quận 7, TP.HCM', website: 'https://vinamilk.com.vn', stage_id: 4, expected_revenue: 300000000, status: 'prospect' },
+  { id: 6, name: 'Hãng hàng không Vietjet Air', industry: 'Hàng không', address: 'Tân Bình, TP.HCM', website: 'https://vietjetair.com', stage_id: 5, expected_revenue: 0, status: 'active' },
 ];
 
 const CONTACTS = [
-  { id: 1, first_name: 'Nguyễn', last_name: 'Văn An', email: 'an.nv@gmail.com', phone: '0901234567', company_id: 1, company_name: 'ABC Tech', job_title: 'Giám đốc IT', status: 'customer', source: 'referral', last_contact: '2026-05-04', owner_id: 2 },
-  { id: 2, first_name: 'Trần', last_name: 'Thị Bình', email: 'binh.tt@outlook.com', phone: '0987654321', company_id: 2, company_name: 'VinGroup', job_title: 'Trưởng phòng Mua hàng', status: 'qualified', source: 'website', last_contact: '2026-05-01', owner_id: 1 },
-  { id: 3, first_name: 'Lê', last_name: 'Minh Cường', email: 'cuong.lm@vinabiz.vn', phone: '0911223344', company_id: 3, company_name: 'Vietcombank', job_title: 'CEO', status: 'lead', source: 'cold_call', last_contact: '2026-04-20', owner_id: 3 },
-  { id: 4, first_name: 'Phạm', last_name: 'Hồng Đào', email: 'dao.ph@hitech.vn', phone: '0933445566', company_id: 4, company_name: 'Minth SaaS', job_title: 'Quản lý dự án', status: 'customer', source: 'social', last_contact: '2026-05-05', owner_id: 2 },
-  { id: 5, first_name: 'Hoàng', last_name: 'Gia Bảo', email: 'bao.hg@gmail.com', phone: '0966778899', company_id: 5, company_name: 'Vinamilk', job_title: 'CTO', status: 'qualified', source: 'event', last_contact: '2026-04-30', owner_id: 1 },
-  { id: 6, first_name: 'Đặng', last_name: 'Văn Hải', email: 'hai.dv@vietjet.com', phone: '0944556677', company_id: 6, company_name: 'Vietjet Air', job_title: 'Phó giám đốc', status: 'customer', source: 'other', last_contact: '2026-05-02', owner_id: 2 },
+  { id: 1, first_name: 'Nguyễn', last_name: 'Văn An', email: 'an.nv@gmail.com', phone: '0901234567', company_id: 1, company_name: 'ABC Tech', job_title: 'Giám đốc IT', status: 'customer', source: 'referral', last_contact: '2026-05-04', owner_id: 2, stage_id: 4, expected_revenue: 2500000000 },
+  { id: 2, first_name: 'Trần', last_name: 'Thị Bình', email: 'binh.tt@outlook.com', phone: '0987654321', company_id: 2, company_name: 'VinGroup', job_title: 'Trưởng phòng Mua hàng', status: 'qualified', source: 'website', last_contact: '2026-05-01', owner_id: 1, stage_id: 1, expected_revenue: 850000000 },
+  { id: 3, first_name: 'Lê', last_name: 'Minh Cường', email: 'cuong.lm@vinabiz.vn', phone: '0911223344', company_id: 3, company_name: 'Vietcombank', job_title: 'CEO', status: 'lead', source: 'cold_call', last_contact: '2026-04-20', owner_id: 3, stage_id: 3, expected_revenue: 450000000 },
+  { id: 4, first_name: 'Phạm', last_name: 'Hồng Đào', email: 'dao.ph@hitech.vn', phone: '0933445566', company_id: 4, company_name: 'Minth SaaS', job_title: 'Quản lý dự án', status: 'customer', source: 'social', last_contact: '2026-05-05', owner_id: 2, stage_id: 5, expected_revenue: 120000000 },
+  { id: 5, first_name: 'Hoàng', last_name: 'Gia Bảo', email: 'bao.hg@gmail.com', phone: '0966778899', company_id: 5, company_name: 'Vinamilk', job_title: 'CTO', status: 'qualified', source: 'event', last_contact: '2026-04-30', owner_id: 1, stage_id: 4, expected_revenue: 300000000 },
+  { id: 6, first_name: 'Đặng', last_name: 'Văn Hải', email: 'hai.dv@vietjet.com', phone: '0944556677', company_id: 6, company_name: 'Vietjet Air', job_title: 'Phó giám đốc', status: 'customer', source: 'other', last_contact: '2026-05-02', owner_id: 2, stage_id: 5, expected_revenue: 0 },
 ];
 
 const DEALS = [

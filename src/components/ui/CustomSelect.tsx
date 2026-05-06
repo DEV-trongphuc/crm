@@ -97,8 +97,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
                 <div 
                   key={option.value}
                   className={`${styles.option} ${value == option.value ? styles.optionSelected : ''}`}
-                  onMouseDown={(e) => {
-                    e.preventDefault(); 
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onChange(option.value);
                     setIsOpen(false);
                     setSearch('');

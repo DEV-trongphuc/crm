@@ -4,6 +4,7 @@ class UploadController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function handle(array $auth): void {
+        $tid = $auth['tenant_id'];
         if (!isset($_FILES['file'])) {
             respond(400, null, 'Không có file nào được tải lên');
         }
@@ -23,9 +24,10 @@ class UploadController {
             respond(400, null, 'Dung lượng file quá lớn (tối đa 2MB)');
         }
 
-        $storageDir = __DIR__ . '/../storage/uploads/';
+        // Tenant-isolated storage directory
+        $storageDir = __DIR__ . "/../storage/uploads/tenant_{$tid}/";
         if (!is_dir($storageDir)) {
-            mkdir($storageDir, 0777, true);
+            mkdir($storageDir, 0755, true);
         }
 
         $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
@@ -33,18 +35,18 @@ class UploadController {
         $targetPath = $storageDir . $filename;
 
         if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-            // Delete old file if requested
+            // Delete old file if requested (strictly within tenant dir)
             $oldUrl = $_POST['previous_url'] ?? null;
-            if ($oldUrl && strpos($oldUrl, '/storage/uploads/') !== false) {
+            if ($oldUrl && strpos($oldUrl, "/storage/uploads/tenant_{$tid}/") !== false) {
                 $oldFilename = basename($oldUrl);
                 $oldPath = $storageDir . $oldFilename;
-                if (file_exists($oldPath)) {
+                if (file_exists($oldPath) && is_file($oldPath)) {
                     unlink($oldPath);
                 }
             }
 
-            // Return relative URL from backend root
-            $url = '/backend/storage/uploads/' . $filename;
+            // Return relative URL
+            $url = "/backend/storage/uploads/tenant_{$tid}/" . $filename;
             respond(200, ['url' => $url], 'Tải lên thành công');
         } else {
             respond(500, null, 'Không thể lưu file trên server');

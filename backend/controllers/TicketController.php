@@ -11,6 +11,13 @@ class TicketController {
         
         $where = ['t.tenant_id=?'];
         $params = [$tid];
+        
+        if ($auth['role'] === 'sale') {
+            $where[] = '(t.created_by = ? OR t.assignee_id = ?)';
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        }
+
         if ($status && $status !== 'all') {
             $where[] = 't.status=?';
             $params[] = $status;

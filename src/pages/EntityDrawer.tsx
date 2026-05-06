@@ -116,21 +116,21 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                           <div className="form-group">
                             <label className="form-label">Họ tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <input className="form-input" placeholder="Họ" value={formData?.first_name || ''} onChange={e => setFormData({ ...formData, first_name: e.target.value })} />
-                              <input className="form-input" placeholder="Tên" value={formData?.last_name || ''} onChange={e => setFormData({ ...formData, last_name: e.target.value })} />
+                              <input className="form-input" placeholder="Họ" value={formData?.first_name || ''} onChange={e => setFormData(prev => ({ ...prev, first_name: e.target.value }))} />
+                              <input className="form-input" placeholder="Tên" value={formData?.last_name || ''} onChange={e => setFormData(prev => ({ ...prev, last_name: e.target.value }))} />
                             </div>
                           </div>
                           <div className="form-group">
                             <label className="form-label">Email</label>
-                            <input className="form-input" type="email" placeholder="ví dụ: email@congty.com" value={formData?.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                            <input className="form-input" type="email" placeholder="ví dụ: email@congty.com" value={formData?.email || ''} onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))} />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Số điện thoại chính</label>
-                            <input className="form-input" type="tel" placeholder="09xx xxx xxx" value={formData?.phone || ''} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                            <input className="form-input" type="tel" placeholder="09xx xxx xxx" value={formData?.phone || ''} onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))} />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Ngày sinh</label>
-                            <input className="form-input" type="date" value={formData?.birthday || ''} onChange={e => setFormData({ ...formData, birthday: e.target.value })} />
+                            <input className="form-input" type="date" value={formData?.birthday || ''} onChange={e => setFormData(prev => ({ ...prev, birthday: e.target.value }))} />
                           </div>
                         </div>
 
@@ -139,11 +139,11 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                         <div className="grid grid-2">
                           <div className="form-group">
                             <label className="form-label">Công ty / Tổ chức</label>
-                            <input className="form-input" placeholder="Tên công ty" value={formData?.company_name || ''} onChange={e => setFormData({ ...formData, company_name: e.target.value })} />
+                            <input className="form-input" placeholder="Tên công ty" value={formData?.company_name || ''} onChange={e => setFormData(prev => ({ ...prev, company_name: e.target.value }))} />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Chức vụ</label>
-                            <input className="form-input" placeholder="Ví dụ: Giám đốc, Kế toán trưởng..." value={formData?.job_title || ''} onChange={e => setFormData({ ...formData, job_title: e.target.value })} />
+                            <input className="form-input" placeholder="Ví dụ: Giám đốc, Kế toán trưởng..." value={formData?.job_title || ''} onChange={e => setFormData(prev => ({ ...prev, job_title: e.target.value }))} />
                           </div>
                         </div>
                       </div>
@@ -164,7 +164,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                                 { value: 'churned', label: 'Đã rời bỏ (Churned)' }
                               ]}
                               value={formData?.status || 'lead'}
-                              onChange={val => setFormData({ ...formData, status: val as string })}
+                              onChange={val => setFormData(prev => ({ ...prev, status: val as string }))}
                             />
                           </div>
                           <div className="form-group">
@@ -177,7 +177,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                                 { value: 'cold_call', label: 'Cold Call' }
                               ]}
                               value={formData?.source || 'website'}
-                              onChange={val => setFormData({ ...formData, source: val as string })}
+                              onChange={val => setFormData(prev => ({ ...prev, source: val as string }))}
                             />
                           </div>
                           <div className="form-group">
@@ -186,7 +186,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                               <button className="btn-icon-bare" onClick={() => setHelpModal({ title: 'Dự kiến doanh thu', content: 'Ước tính số tiền mà Deal này có thể mang lại nếu chốt thành công.\n\nChỉ số này sẽ được tổng hợp tự động lên Bảng điều khiển (Dashboard) của Giám đốc để dự báo dòng tiền trong tương lai của doanh nghiệp.' })}><HelpCircle size={14} color="var(--color-text-muted)" /></button>
                             </label>
                             <div style={{ position: 'relative' }}>
-                              <input className="form-input" type="number" placeholder="0" style={{ paddingRight: '40px' }} value={formData?.expected_revenue || ''} onChange={e => setFormData({ ...formData, expected_revenue: e.target.value })} />
+                              <input className="form-input" type="number" placeholder="0" style={{ paddingRight: '40px' }} value={formData?.expected_revenue || ''} onChange={e => setFormData(prev => ({ ...prev, expected_revenue: e.target.value }))} />
                               <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>VNĐ</span>
                             </div>
                           </div>
@@ -195,7 +195,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                               Xác suất chốt (%)
                               <button className="btn-icon-bare" onClick={() => setHelpModal({ title: 'Xác suất chốt (Win Probability)', content: 'Đánh giá khả năng chốt sale thành công (từ 0% đến 100%).\n\nVí dụ:\n- 20%: Khách hàng mới quan tâm sơ bộ.\n- 50%: Khách hàng đang xem xét báo giá.\n- 80%: Khách hàng đã chốt mồm, đang chờ ký hợp đồng.\n\nXác suất này kết hợp với Dự kiến doanh thu để tính ra Giá trị trọng số (Weighted Value).' })}><HelpCircle size={14} color="var(--color-text-muted)" /></button>
                             </label>
-                            <input className="form-input" type="number" min="0" max="100" placeholder="50" value={formData?.win_probability || ''} onChange={e => setFormData({ ...formData, win_probability: e.target.value })} />
+                            <input className="form-input" type="number" min="0" max="100" placeholder="50" value={formData?.win_probability || ''} onChange={e => setFormData(prev => ({ ...prev, win_probability: e.target.value }))} />
                           </div>
                         </div>
                       </div>
@@ -222,12 +222,12 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                         <AddressSelect
                           city={formData?.city || ''}
                           ward={formData?.ward || ''}
-                          onCityChange={city => setFormData({ ...formData, city })}
-                          onWardChange={ward => setFormData({ ...formData, ward })}
+                          onCityChange={city => setFormData(prev => ({ ...prev, city }))}
+                          onWardChange={ward => setFormData(prev => ({ ...prev, ward }))}
                         />
                         <div className="form-group" style={{ marginTop: '0.75rem' }}>
                           <label className="form-label" style={{ fontSize: '0.8rem' }}>Địa chỉ chi tiết</label>
-                          <input className="form-input" placeholder="Số nhà, đường..." value={formData?.address_detail || ''} onChange={e => setFormData({ ...formData, address_detail: e.target.value })} />
+                          <input className="form-input" placeholder="Số nhà, đường..." value={formData?.address_detail || ''} onChange={e => setFormData(prev => ({ ...prev, address_detail: e.target.value }))} />
                         </div>
                       </div>
                     </div>
@@ -239,7 +239,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                         <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
                           <button
                             className={`btn ${formData?.has_called ? 'success' : 'outline'}`}
-                            onClick={() => setFormData({ ...formData, has_called: !formData?.has_called })}
+                            onClick={() => setFormData(prev => ({ ...prev, has_called: !prev?.has_called }))}
                             style={{ flex: 1, padding: '0.75rem', fontWeight: 600, border: formData?.has_called ? 'none' : '1px solid var(--color-border)' }}
                           >
                             <Phone size={16} />
@@ -425,7 +425,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                           </div>
                           <button
                             className={`btn ${formData?.portal_access ? 'primary' : 'outline'}`}
-                            onClick={() => setFormData({ ...formData, portal_access: !formData?.portal_access })}
+                            onClick={() => setFormData(prev => ({ ...prev, portal_access: !prev?.portal_access }))}
                           >
                             {formData?.portal_access ? 'Đã Cấp quyền' : 'Chưa Cấp quyền'}
                           </button>

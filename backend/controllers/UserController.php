@@ -4,11 +4,13 @@ class UserController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function index(array $auth): void {
+        if ($auth['role'] !== 'admin') respond(403, null, 'Quyền admin là bắt buộc', false);
         $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE tenant_id=? ORDER BY full_name");
         $stmt->execute([$auth['tenant_id']]);
         respond(200,$stmt->fetchAll());
     }
     public function store(array $auth): void {
+        if ($auth['role'] !== 'admin') respond(403, null, 'Quyền admin là bắt buộc', false);
         $b=getBody();
         if(empty($b['email'])||empty($b['password'])||empty($b['full_name'])) respond(422,null,'Email, mật khẩu và tên là bắt buộc',false);
         // Check duplicate
@@ -21,12 +23,14 @@ class UserController {
         $this->show($auth,(int)$this->db->lastInsertId());
     }
     public function show(array $auth,int $id): void {
+        if ($auth['role'] !== 'admin' && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền xem thông tin người khác', false);
         $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE id=? AND tenant_id=?");
         $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
         if(!$row) respond(404,null,'Không tìm thấy người dùng',false);
         respond(200,$row);
     }
     public function update(array $auth,int $id): void {
+        if ($auth['role'] !== 'admin' && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
         $b=getBody(); $fields=['full_name','role','phone','is_active'];
         $sets=[];$params=[];
         foreach($fields as $f){if(array_key_exists($f,$b)){$sets[]="$f=?";$params[]=$b[$f];}}
@@ -37,6 +41,7 @@ class UserController {
         $this->show($auth,$id);
     }
     public function destroy(array $auth,int $id): void {
+        if ($auth['role'] !== 'admin') respond(403, null, 'Quyền admin là bắt buộc', false);
         if($id===$auth['user_id']) respond(403,null,'Không thể xóa tài khoản của chính mình',false);
         $this->db->prepare("DELETE FROM users WHERE id=? AND tenant_id=?")->execute([$id,$auth['tenant_id']]);
         respond(200,null,'Đã xóa người dùng');

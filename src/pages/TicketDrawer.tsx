@@ -62,13 +62,13 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
 
   const handleStatusChange = (newStatus: string) => {
     const oldStatus = formData.status;
-    setFormData({ ...formData, status: newStatus });
+    setFormData((prev: any) => ({ ...prev, status: newStatus }));
     onUpdate?.({ ...formData, status: newStatus });
     
     addToast('Đã cập nhật trạng thái', 'success', {
       label: 'Undo',
       onClick: () => {
-        setFormData({ ...formData, status: oldStatus });
+        setFormData((prev: any) => ({ ...prev, status: oldStatus }));
         onUpdate?.({ ...formData, status: oldStatus });
       }
     });

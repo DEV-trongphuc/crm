@@ -49,7 +49,7 @@ export const DashboardPage: React.FC = () => {
     setLoadingStats(true);
 
     if (DEV_MODE) {
-      const { expenses, contacts, deals, invoices } = useMockStore.getState();
+      const { expenses, contacts, companies, invoices } = useMockStore.getState();
       const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
       const totalWon = invoices.filter((i: any) => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
 
@@ -72,24 +72,23 @@ export const DashboardPage: React.FC = () => {
         { month: 'T5', revenue: totalWon, cost: totalExpenses },
       ]);
       const funnelStages = [
-        { id: 'lead', name: 'Khách hàng tiềm năng', color: '#3b82f6' },
-        { id: 'contacted', name: 'Đã liên hệ', color: '#6366f1' },
-        { id: 'negotiation', name: 'Đang thương lượng', color: '#f59e0b' },
-        { id: 'proposal', name: 'Gửi báo giá', color: '#8b5cf6' },
-        { id: 'won', name: 'Đã chốt — Thành công', color: '#10b981' },
-        { id: 'lost', name: 'Đã chốt — Thất bại', color: '#ef4444' },
+        { id: 1, name: 'Giai đoạn mới', color: '#3b82f6' },
+        { id: 2, name: 'Đã liên hệ', color: '#6366f1' },
+        { id: 3, name: 'Đang thương lượng', color: '#f59e0b' },
+        { id: 4, name: 'Gửi báo giá', color: '#8b5cf6' },
+        { id: 5, name: 'Chốt thành công', color: '#10b981' },
+        { id: 6, name: 'Thất bại', color: '#ef4444' },
       ];
       setPipelineFunnel(funnelStages.map(s => {
-        let count = deals.filter((d: any) => d.stage === s.id).length;
-        if (s.id === 'lead') {
-          const contactsWithDeals = new Set(deals.map((d: any) => d.contact_id));
-          const orphanContacts = contacts.filter((c: any) => !contactsWithDeals.has(c.id)).length;
-          count += orphanContacts;
-        }
+        const contactCount = contacts.filter((c: any) => Number(c.stage_id) === s.id).length;
+        const companyCount = companies.filter((c: any) => Number(c.stage_id) === s.id).length;
+        const contactValue = contacts.filter((c: any) => Number(c.stage_id) === s.id).reduce((sum, c) => sum + (c.expected_revenue || 0), 0);
+        const companyValue = companies.filter((c: any) => Number(c.stage_id) === s.id).reduce((sum, c) => sum + (c.expected_revenue || 0), 0);
+        
         return {
           ...s,
-          deal_count: count,
-          total_value: deals.filter((d: any) => d.stage === s.id).reduce((sum, d) => sum + d.value, 0)
+          deal_count: contactCount + companyCount,
+          total_value: contactValue + companyValue
         };
       }));
       setLeadSources([

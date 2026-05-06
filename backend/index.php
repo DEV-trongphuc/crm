@@ -116,6 +116,11 @@ $subResource   = $segments[2] ?? null;
 
 $db = Database::getInstance();
 
+if ($resource === 'check') {
+    require_once __DIR__ . '/check_data.php';
+    exit;
+}
+
 // ── Route dispatch ────────────────────────────────────────────
 switch ($resource) {
     // AUTH

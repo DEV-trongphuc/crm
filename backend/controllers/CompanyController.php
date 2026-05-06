@@ -30,13 +30,11 @@ class CompanyController {
 
         $stmt = $this->db->prepare("
             SELECT c.*, u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color,
-                   COUNT(DISTINCT ct.id) as contact_count,
-                   COUNT(DISTINCT d.id) as deal_count
+                   COUNT(DISTINCT ct.id) as contact_count
             FROM companies c 
             LEFT JOIN users u ON c.owner_id=u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id=ps.id
             LEFT JOIN contacts ct ON ct.company_id=c.id AND ct.deleted_at IS NULL
-            LEFT JOIN deals d ON d.company_id=c.id AND d.deleted_at IS NULL
             WHERE $w 
             GROUP BY c.id
             ORDER BY c.created_at DESC 
@@ -76,13 +74,11 @@ class CompanyController {
     public function show(array $auth, int $id): void {
         $sql = "
             SELECT c.*, u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color,
-                   COUNT(DISTINCT ct.id) as contact_count,
-                   COUNT(DISTINCT d.id) as deal_count
+                   COUNT(DISTINCT ct.id) as contact_count
             FROM companies c 
             LEFT JOIN users u ON c.owner_id=u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id=ps.id
             LEFT JOIN contacts ct ON ct.company_id=c.id AND ct.deleted_at IS NULL
-            LEFT JOIN deals d ON d.company_id=c.id AND d.deleted_at IS NULL
             WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
         
         $p = [$id, $auth['tenant_id']];
