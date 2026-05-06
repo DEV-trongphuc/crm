@@ -76,8 +76,8 @@ class ContactController {
             $id = $stmt->fetchColumn();
             if ($id) return (int)$id;
             
-            $stmt = $this->db->prepare("INSERT INTO companies (tenant_id, name, created_by) VALUES (?, ?, ?)");
-            $stmt->execute([$auth['tenant_id'], $name, $auth['user_id']]);
+            $stmt = $this->db->prepare("INSERT INTO companies (tenant_id, name, owner_id, created_by) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$auth['tenant_id'], $name, $auth['user_id'], $auth['user_id']]);
             return (int)$this->db->lastInsertId();
         }
         if (!empty($b['company_id'])) return (int)$b['company_id'];

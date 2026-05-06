@@ -376,6 +376,24 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     });
   };
 
+  const deleteDeal = async (id: number) => {
+    showConfirm({
+      title: 'Xóa cơ hội bán hàng',
+      message: 'Bạn có chắc chắn muốn xóa cơ hội này?',
+      isDanger: true,
+      confirmText: 'Xóa',
+      onConfirm: async () => {
+        try {
+          await api.delete(`/deals/${id}`);
+          fetchData();
+          addToast('Đã xóa cơ hội thành công', 'success');
+        } catch {
+          addToast('Lỗi khi xóa cơ hội', 'error');
+        }
+      }
+    });
+  };
+
   const handleCreateDeal = async () => {
     if (!dealForm.title.trim()) return;
     try {
@@ -1116,8 +1134,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>{d.title}</h4>
                                 <span className="badge" style={{ background: `${d.stage_color}15`, color: d.stage_color, fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '8px' }}>{d.stage}</span>
                               </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</span>
+                              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</span>
+                                  <button 
+                                    className="btn-icon sm text-danger" 
+                                    style={{ opacity: 0.4, transition: 'opacity 0.2s', padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                    onClick={(e) => { e.stopPropagation(); deleteDeal(d.id); }}
+                                    onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                    onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
                               </div>
                             </div>
                             <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(to right, var(--color-bg), var(--color-surface))', borderTop: '1px solid var(--color-border-light)' }}>

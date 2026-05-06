@@ -11,6 +11,7 @@ interface Product {
   category_id?: number;
   stock_quantity: number;
   track_inventory: number;
+  sku?: string;
 }
 
 interface Contact {
