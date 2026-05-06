@@ -9,6 +9,8 @@ import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { CalendarView } from '../components/CalendarView';
+import { LayoutList } from 'lucide-react';
 
 const PAGE_SIZE = 50;
 import { useMockStore } from '../store/mockStore';
@@ -52,6 +54,7 @@ export const ActivitiesPage: React.FC = () => {
   const [form, setForm] = useState<any>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   const fetchActivities = useCallback(async () => {
     setLoading(true);
@@ -158,7 +161,21 @@ export const ActivitiesPage: React.FC = () => {
           <p className="page-subtitle">{loading ? '...' : `${doneCount}/${total} đã hoàn thành`}</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn outline sm" onClick={fetchActivities}><RefreshCw size={14} /></button>
+          <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px', marginRight: '0.5rem', height: 44 }}>
+            <button 
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 12px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 600, background: viewMode === 'list' ? 'var(--color-primary-light)' : 'transparent', color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer', height: 36 }}
+              onClick={() => setViewMode('list')}
+            >
+              <LayoutList size={16} /> Danh sách
+            </button>
+            <button 
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '0 12px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 600, background: viewMode === 'calendar' ? 'var(--color-primary-light)' : 'transparent', color: viewMode === 'calendar' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer', height: 36 }}
+              onClick={() => setViewMode('calendar')}
+            >
+              <Calendar size={16} /> Lịch biểu
+            </button>
+          </div>
+          <button className="btn-icon" onClick={fetchActivities} title="Làm mới"><RefreshCw size={18} /></button>
           <button className="btn primary" onClick={openCreate}><Plus size={16} /> Thêm hoạt động</button>
         </div>
       </div>
@@ -186,7 +203,7 @@ export const ActivitiesPage: React.FC = () => {
         </div>
 
         {/* Quick filter chips */}
-        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px' }}>
+        <div className="no-scrollbar" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px' }}>
           {TYPES.map(t => (
             <button key={t} onClick={() => setFilterType(filterType === t ? '' : t)}
               style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: filterType === t ? T_COLOR[t] : 'var(--color-surface)', color: filterType === t ? 'white' : 'var(--color-text)', border: `1px solid ${filterType === t ? T_COLOR[t] : 'var(--color-border)'}`, borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', transition: 'all 0.2s', cursor: 'pointer' }}>
@@ -248,111 +265,124 @@ export const ActivitiesPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Activities list with Grouping */}
+      {/* Activities list or Calendar */}
       {!loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          {(() => {
-            const filtered = items.filter(act => !search || act.subject.toLowerCase().includes(search.toLowerCase()));
-            if (filtered.length === 0) return (
-              <div className="empty-state card">
-                <Calendar size={40} />
-                <h3>Không có hoạt động</h3>
-                <p>Thêm hoạt động mới để bắt đầu theo dõi công việc</p>
-                <button className="btn primary" style={{ marginTop: '1rem' }} onClick={openCreate}><Plus size={16} /> Thêm hoạt động</button>
-              </div>
-            );
-
-            const now = new Date();
-            
-            // Deduplicate logic for Overdue items if they are identical
-            const overdueItems = filtered.filter(a => a.status === 'planned' && a.due_date && new Date(a.due_date) < now);
-            const dedupedOverdue = overdueItems.reduce((acc: any[], curr) => {
-              const isDuplicate = acc.find(item => 
-                item.subject === curr.subject && 
-                item.type === curr.type && 
-                new Date(item.due_date).getTime() === new Date(curr.due_date).getTime()
-              );
-              if (!isDuplicate) acc.push(curr);
-              return acc;
-            }, []);
-
-            const groups: Record<string, any[]> = {
-              'Quá hạn': dedupedOverdue,
-              'Hôm nay': filtered.filter(a => a.status === 'planned' && a.due_date && new Date(a.due_date).toDateString() === now.toDateString()),
-              'Sắp tới': filtered.filter(a => a.status === 'planned' && (!a.due_date || (new Date(a.due_date) > now && new Date(a.due_date).toDateString() !== now.toDateString()))),
-              'Đã hoàn thành': filtered.filter(a => a.status === 'done'),
-            };
-
-            return Object.entries(groups).map(([label, groupItems]) => {
-              if (groupItems.length === 0) return null;
-              return (
-                <div key={label}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                    <h4 style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: label === 'Quá hạn' ? 'var(--color-danger)' : 'var(--color-text-muted)', letterSpacing: '0.05em' }}>{label}</h4>
-                    <div style={{ flex: 1, height: 1, background: 'var(--color-border-light)' }} />
-                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{groupItems.length}</span>
+        <div style={{ height: viewMode === 'calendar' ? 'calc(100vh - 280px)' : 'auto' }}>
+          {viewMode === 'calendar' ? (
+            <CalendarView 
+              onEventClick={openEdit} 
+              onDateClick={(dateStr) => {
+                setEditItem(null);
+                setForm({ ...EMPTY, due_date: `${dateStr}T09:00` });
+                setShowModal(true);
+              }}
+            />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {(() => {
+                const filtered = items.filter(act => !search || act.subject.toLowerCase().includes(search.toLowerCase()));
+                if (filtered.length === 0) return (
+                  <div className="empty-state card">
+                    <Calendar size={40} />
+                    <h3>Không có hoạt động</h3>
+                    <p>Thêm hoạt động mới để bắt đầu theo dõi công việc</p>
+                    <button className="btn primary" style={{ marginTop: '1rem' }} onClick={openCreate}><Plus size={16} /> Thêm hoạt động</button>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
-                    <AnimatePresence>
-                      {groupItems.map(act => (
-                        <motion.div key={act.id} className="card hover-lift"
-                          initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} layout
-                          style={{ padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: `4px solid ${act.status === 'done' ? 'var(--color-success)' : T_COLOR[act.type]}` }}>
-                          
-                          <div style={{ width: 32, height: 32, borderRadius: '8px', background: T_COLOR[act.type] + '12', color: T_COLOR[act.type], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {T_ICON[act.type]}
-                          </div>
+                );
 
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <p style={{ fontWeight: 600, fontSize: '0.875rem', textDecoration: act.status === 'done' ? 'line-through' : 'none', color: act.status === 'done' ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
-                                {act.subject}
-                              </p>
-                              {act.status !== 'done' && new Date(act.due_date) < now && (
-                                <span style={{ fontSize: '0.65rem', background: 'var(--color-danger)', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>QUÁ HẠN</span>
-                              )}
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '2px', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <Avatar name={act.user_name || 'Bạn'} size="sm" />
-                                {act.user_name || 'Bạn'}
-                              </span>
-                              {act.due_date && (
-                                <span style={{ fontSize: '0.75rem', color: new Date(act.due_date) < now && act.status !== 'done' ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                  <Clock size={11} />{fmtDate(act.due_date)}
-                                </span>
-                              )}
-                              <span className={`badge ${act.priority === 'high' ? 'danger' : act.priority === 'medium' ? 'warning' : 'info'}`} style={{ fontSize: '0.65rem' }}>
-                                {act.priority === 'high' ? 'Quan trọng' : act.priority === 'medium' ? 'Bình thường' : 'Thấp'}
-                              </span>
-                              {act.related_type && (
-                                <button onClick={e => navigateToRelated(act, e)}
-                                  style={{ fontSize: '0.75rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '3px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                                  <Link2 size={11} />
-                                  {act.related_type === 'contact' ? act.contact_name : 
-                                   act.related_type === 'company' ? act.company_name : 
-                                   act.related_type === 'deal' ? act.deal_name : act.related_id}
+                const now = new Date();
+                
+                // Deduplicate logic for Overdue items if they are identical
+                const overdueItems = filtered.filter(a => a.status === 'planned' && a.due_date && new Date(a.due_date) < now);
+                const dedupedOverdue = overdueItems.reduce((acc: any[], curr) => {
+                  const isDuplicate = acc.find(item => 
+                    item.subject === curr.subject && 
+                    item.type === curr.type && 
+                    new Date(item.due_date).getTime() === new Date(curr.due_date).getTime()
+                  );
+                  if (!isDuplicate) acc.push(curr);
+                  return acc;
+                }, []);
+
+                const groups: Record<string, any[]> = {
+                  'Quá hạn': dedupedOverdue,
+                  'Hôm nay': filtered.filter(a => a.status === 'planned' && a.due_date && new Date(a.due_date).toDateString() === now.toDateString()),
+                  'Sắp tới': filtered.filter(a => a.status === 'planned' && (!a.due_date || (new Date(a.due_date) > now && new Date(a.due_date).toDateString() !== now.toDateString()))),
+                  'Đã hoàn thành': filtered.filter(a => a.status === 'done'),
+                };
+
+                return Object.entries(groups).map(([label, groupItems]) => {
+                  if (groupItems.length === 0) return null;
+                  return (
+                    <div key={label}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                        <h4 style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: label === 'Quá hạn' ? 'var(--color-danger)' : 'var(--color-text-muted)', letterSpacing: '0.05em' }}>{label}</h4>
+                        <div style={{ flex: 1, height: 1, background: 'var(--color-border-light)' }} />
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{groupItems.length}</span>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+                        <AnimatePresence>
+                          {groupItems.map(act => (
+                            <motion.div key={act.id} className="card hover-lift"
+                              initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} layout
+                              style={{ padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: `4px solid ${act.status === 'done' ? 'var(--color-success)' : T_COLOR[act.type]}` }}>
+                              
+                              <div style={{ width: 32, height: 32, borderRadius: '8px', background: T_COLOR[act.type] + '12', color: T_COLOR[act.type], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                {T_ICON[act.type]}
+                              </div>
+
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <p style={{ fontWeight: 600, fontSize: '0.875rem', textDecoration: act.status === 'done' ? 'line-through' : 'none', color: act.status === 'done' ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
+                                    {act.subject}
+                                  </p>
+                                  {act.status !== 'done' && new Date(act.due_date) < now && (
+                                    <span style={{ fontSize: '0.65rem', background: 'var(--color-danger)', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>QUÁ HẠN</span>
+                                  )}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '2px', flexWrap: 'wrap' }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Avatar name={act.user_name || 'Bạn'} size="sm" />
+                                    {act.user_name || 'Bạn'}
+                                  </span>
+                                  {act.due_date && (
+                                    <span style={{ fontSize: '0.75rem', color: new Date(act.due_date) < now && act.status !== 'done' ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                      <Clock size={11} />{fmtDate(act.due_date)}
+                                    </span>
+                                  )}
+                                  <span className={`badge ${act.priority === 'high' ? 'danger' : act.priority === 'medium' ? 'warning' : 'info'}`} style={{ fontSize: '0.65rem' }}>
+                                    {act.priority === 'high' ? 'Quan trọng' : act.priority === 'medium' ? 'Bình thường' : 'Thấp'}
+                                  </span>
+                                  {act.related_type && (
+                                    <button onClick={e => navigateToRelated(act, e)}
+                                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '3px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                                      <Link2 size={11} />
+                                      {act.related_type === 'contact' ? act.contact_name : 
+                                       act.related_type === 'company' ? act.company_name : 
+                                       act.related_type === 'deal' ? act.deal_name : act.related_id}
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                                <button onClick={() => toggleDone(act)}
+                                  style={{ width: 28, height: 28, borderRadius: '8px', border: `2px solid ${act.status === 'done' ? 'var(--color-success)' : 'var(--color-border)'}`, background: act.status === 'done' ? 'var(--color-success)' : 'transparent', color: act.status === 'done' ? 'white' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', marginRight: '0.25rem' }}>
+                                  <CheckCircle2 size={14} />
                                 </button>
-                              )}
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
-                            <button onClick={() => toggleDone(act)}
-                              style={{ width: 28, height: 28, borderRadius: '8px', border: `2px solid ${act.status === 'done' ? 'var(--color-success)' : 'var(--color-border)'}`, background: act.status === 'done' ? 'var(--color-success)' : 'transparent', color: act.status === 'done' ? 'white' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', marginRight: '0.25rem' }}>
-                              <CheckCircle2 size={14} />
-                            </button>
-                            <button className="btn-icon sm hover-bg" onClick={() => openEdit(act)}><Pencil size={13} /></button>
-                            <button className="btn-icon sm hover-bg" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(act)}><Trash2 size={13} /></button>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                </div>
-              );
-            });
-          })()}
+                                <button className="btn-icon sm hover-bg" onClick={() => openEdit(act)}><Pencil size={13} /></button>
+                                <button className="btn-icon sm hover-bg" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(act)}><Trash2 size={13} /></button>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          )}
         </div>
       )}
 

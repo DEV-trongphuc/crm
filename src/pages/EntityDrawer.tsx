@@ -218,17 +218,12 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                       </div>
 
                       <div className="card-panel">
-                        <h4 className="panel-title">Địa chỉ (Tự động từ JSON)</h4>
+                        <h4 className="panel-title">Địa chỉ</h4>
                         <AddressSelect
-                          city={formData?.city || ''}
-                          ward={formData?.ward || ''}
-                          onCityChange={city => setFormData(prev => ({ ...prev, city }))}
-                          onWardChange={ward => setFormData(prev => ({ ...prev, ward }))}
+                          value={formData?.address || ''}
+                          onChange={addr => setFormData((prev: any) => ({ ...prev, address: addr }))}
+                          placeholder="Chọn địa chỉ liên hệ..."
                         />
-                        <div className="form-group" style={{ marginTop: '0.75rem' }}>
-                          <label className="form-label" style={{ fontSize: '0.8rem' }}>Địa chỉ chi tiết</label>
-                          <input className="form-input" placeholder="Số nhà, đường..." value={formData?.address_detail || ''} onChange={e => setFormData(prev => ({ ...prev, address_detail: e.target.value }))} />
-                        </div>
                       </div>
                     </div>
                   )}

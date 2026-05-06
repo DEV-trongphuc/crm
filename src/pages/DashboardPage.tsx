@@ -41,6 +41,7 @@ export const DashboardPage: React.FC = () => {
   const [leadSources, setLeadSources] = useState<any[]>([]);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [tagStats, setTagStats] = useState<any[]>([]);
+  const [inventoryStats, setInventoryStats] = useState<any>(null);
   const [period, setPeriod] = useState<Period>('this_month');
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_month'));
   const [loadingStats, setLoadingStats] = useState(true);
@@ -105,13 +106,14 @@ export const DashboardPage: React.FC = () => {
     }
 
     try {
-      const [s, rev, pipe, src, lead, tags] = await Promise.all([
+      const [s, rev, pipe, src, lead, tags, inventory] = await Promise.all([
         api.get('/dashboard/stats', { params: { from: dateRange.from, to: dateRange.to } }),
         api.get('/dashboard/chart-revenue', { params: { months: 8 } }),
         api.get('/dashboard/pipeline-funnel'),
         api.get('/dashboard/lead-sources', { params: { from: dateRange.from, to: dateRange.to } }),
         api.get('/dashboard/sales-leaderboard', { params: { from: dateRange.from, to: dateRange.to } }),
         api.get('/tags/stats', { params: { from: dateRange.from, to: dateRange.to } }),
+        api.get('/reports/inventory'),
       ]);
       setStats(s.data.data || MOCK_STATS);
       setRevenueChart(rev.data.data || []);
@@ -121,6 +123,7 @@ export const DashboardPage: React.FC = () => {
       setLeadSources(srcData);
       setLeaderboard(lead.data.data || []);
       setTagStats((tags.data.data || []).slice(0, 12));
+      setInventoryStats(inventory.data.data);
     } catch {
       setStats(null);
       setRevenueChart([]);
@@ -138,6 +141,15 @@ export const DashboardPage: React.FC = () => {
   const margin = stats?.won_value > 0 ? (stats?.profit / stats?.won_value) * 100 : 0;
 
   const kpiCards = [
+    {
+      id: 'leads',
+      label: 'Khách hàng mới',
+      value: (stats?.new_contacts ?? 0).toString(),
+      icon: Users,
+      color: '#3b82f6',
+      change: stats?.contacts_change,
+      up: (stats?.contacts_change || '').startsWith('+')
+    },
     {
       id: 'revenue',
       label: 'Doanh thu',
@@ -172,18 +184,9 @@ export const DashboardPage: React.FC = () => {
       )
     },
     {
-      id: 'leads',
-      label: 'Lead mới',
-      value: `${stats?.new_contacts ?? 0} lead`,
-      icon: ShoppingCart,
-      color: '#3b82f6',
-      change: stats?.leads_change,
-      up: (stats?.leads_change || '').startsWith('+')
-    },
-    {
       id: 'expenses',
-      label: 'Tổng chi phí & Giá vốn',
-      value: FMT_VND(stats?.expenses ?? 0),
+      label: 'Chi phí & Thất thoát',
+      value: FMT_VND((stats?.expenses ?? 0) + (stats?.inventory_loss ?? 0)),
       icon: AlertTriangle,
       color: '#ef4444',
       change: stats?.expenses_change,
@@ -191,16 +194,16 @@ export const DashboardPage: React.FC = () => {
       extra: (
         <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
-            <span>Giá vốn (COGS):</span>
-            <span style={{ fontWeight: 700 }}>{FMT_VND(stats?.cogs ?? 0)}</span>
+            <span>Chi phí vận hành:</span>
+            <span style={{ fontWeight: 700 }}>{FMT_VND(stats?.expenses ?? 0)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
-            <span>Phí ship shop trả:</span>
-            <span style={{ fontWeight: 700 }}>{FMT_VND(stats?.shop_paid_shipping ?? 0)}</span>
+            <span>Thất thoát kho:</span>
+            <span style={{ fontWeight: 700, color: 'var(--color-danger)' }}>{FMT_VND(stats?.inventory_loss ?? 0)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)', paddingTop: '4px', marginTop: '2px' }}>
-            <span>Chi phí vận hành:</span>
-            <span style={{ fontWeight: 700 }}>{FMT_VND((stats?.expenses ?? 0) - (stats?.cogs ?? 0) - (stats?.shop_paid_shipping ?? 0))}</span>
+            <span>Giá trị hàng tồn:</span>
+            <span style={{ fontWeight: 700, color: 'var(--color-primary)' }}>{FMT_VND(inventoryStats?.total_value ?? 0)}</span>
           </div>
         </div>
       )
@@ -225,12 +228,11 @@ export const DashboardPage: React.FC = () => {
             onClick={fetchAll}
             disabled={loadingStats}
             title="Làm mới dữ liệu"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.625rem 1.25rem', fontSize: '0.9375rem', borderRadius: 'var(--radius-xl)' }}
           >
             <RefreshCw size={16} style={{ animation: loadingStats ? 'spin 1s linear infinite' : 'none' }} />
             Làm mới
           </button>
-          <button className="btn outline" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0.625rem 1.25rem', fontSize: '0.9375rem', borderRadius: 'var(--radius-xl)' }}><Download size={18} /> Xuất PDF</button>
+          <button className="btn outline"><Download size={18} /> Xuất PDF</button>
         </div>
       </div>
 
@@ -259,7 +261,7 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             {tasksToday.length > 0 && (
-              <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
+              <div className="no-scrollbar" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
                 {tasksToday.map((task: any) => (
                   <motion.div
                     key={task.id}

@@ -13,6 +13,9 @@ import { ExpensesPage } from './pages/ExpensesPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { TicketsPage } from './pages/TicketsPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { SuppliersPage } from './pages/SuppliersPage.tsx';
+import { FilesPage } from './pages/FilesPage.tsx';
+import InventoryPage from './pages/InventoryPage.tsx';
 import { useAuthStore } from './store/authStore';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -36,6 +39,9 @@ function App() {
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="tickets" element={<TicketsPage />} />
+        <Route path="suppliers" element={<SuppliersPage />} />
+        <Route path="files" element={<FilesPage />} />
+        <Route path="inventory" element={<InventoryPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

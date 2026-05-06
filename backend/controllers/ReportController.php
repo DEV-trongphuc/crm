@@ -120,10 +120,25 @@ class ReportController
         $sContacts = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL ".($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
         $sContacts->execute($pOwner);
 
-        $sRevTotal = $this->db->prepare("SELECT SUM(total) FROM invoices WHERE tenant_id=? AND status='paid' $saleFilterInv");
-        $pRev = [$tid]; if ($auth['role'] === 'sale') $pRev[] = $auth['user_id'];
-        $sRevTotal->execute($pRev);
-        $revTotal = $sRevTotal->fetchColumn();
+        // 1. Calculate Inventory Loss Value (EXPORT_INTERNAL)
+        $stmtLoss = $this->db->prepare("
+            SELECT SUM(ABS(l.qty_change) * b.import_price) as loss_value
+            FROM inventory_logs l
+            JOIN batches b ON l.batch_id = b.id
+            WHERE l.tenant_id = ? AND l.action_type = 'EXPORT_INTERNAL' AND l.created_at BETWEEN ? AND ?
+        ");
+        $stmtLoss->execute([$tid, $from . ' 00:00:00', $to . ' 23:59:59']);
+        $lossValue = (float)$stmtLoss->fetchColumn();
+
+        // 2. Calculate Gross Profit (Revenue - Cost of Goods Sold)
+        // Note: Minth CRM needs to track cost_per_unit in order_items for this to be accurate.
+        // For now, we'll estimate based on current batch prices if available, or 0.
+        // (Assuming we've added cost_per_unit to invoices or use a different table for POS/Orders)
+        
+        // Let's refine the summary
+        $totalRev = array_reduce($byMonth, fn($acc, $m) => $acc + $m['revenue'], 0);
+        $totalExp = array_reduce($byMonth, fn($acc, $m) => $acc + $m['cost'], 0);
+        $netProfit = $totalRev - $totalExp - $lossValue;
 
         respond(200, [
             'by_month' => $byMonth,
@@ -131,7 +146,10 @@ class ReportController
             'summary' => [
                 'deals' => (int)$dealStats['total_deals'],
                 'expected_revenue' => (float)$dealStats['total_revenue'],
-                'total_revenue' => (float)($revTotal ?: 0),
+                'total_revenue' => $totalRev,
+                'total_expenses' => $totalExp,
+                'inventory_loss' => $lossValue,
+                'net_profit' => $netProfit,
                 'win_rate' => $dealStats['total_deals'] > 0 ? round(($wonCount / $dealStats['total_deals']) * 100, 1) : 0,
                 'contacts' => (int)$sContacts->fetchColumn()
             ]
@@ -331,6 +349,46 @@ class ReportController
         respond(200, [
             'by_user_type' => $byUserType,
             'by_type' => $byType
+        ]);
+    }
+
+    public function inventory(array $auth): void
+    {
+        $tid = $auth['tenant_id'];
+        
+        // 1. Total Inventory Value
+        $stmtVal = $this->db->prepare("SELECT SUM(current_qty * import_price) FROM batches WHERE tenant_id = ? AND status = 'active'");
+        $stmtVal->execute([$tid]);
+        $totalValue = (float)$stmtVal->fetchColumn();
+
+        // 2. Batch Status Counts
+        $stmtStats = $this->db->prepare("
+            SELECT 
+                COUNT(*) as total_batches,
+                SUM(CASE WHEN current_qty <= 0 THEN 1 ELSE 0 END) as out_of_stock,
+                SUM(CASE WHEN current_qty > 0 AND current_qty <= 5 THEN 1 ELSE 0 END) as low_stock,
+                SUM(CASE WHEN expiry_date IS NOT NULL AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as expiring_soon
+            FROM batches 
+            WHERE tenant_id = ? AND status = 'active'
+        ");
+        $stmtStats->execute([$tid]);
+        $batchStats = $stmtStats->fetch();
+
+        // 3. Loss by Reason
+        $stmtLoss = $this->db->prepare("
+            SELECT reason, SUM(ABS(l.qty_change) * b.import_price) as value
+            FROM inventory_logs l
+            JOIN batches b ON l.batch_id = b.id
+            WHERE l.tenant_id = ? AND l.action_type = 'EXPORT_INTERNAL'
+            GROUP BY reason
+        ");
+        $stmtLoss->execute([$tid]);
+        $lossByReason = $stmtLoss->fetchAll();
+
+        respond(200, [
+            'total_value' => $totalValue,
+            'stats' => $batchStats,
+            'loss_by_reason' => $lossByReason
         ]);
     }
 }

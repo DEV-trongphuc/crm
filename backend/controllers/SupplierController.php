@@ -1,0 +1,60 @@
+<?php
+class SupplierController {
+    private PDO $db;
+    public function __construct(PDO $db) { $this->db = $db; }
+
+    public function index(array $auth): void {
+        $tid = $auth['tenant_id'];
+        $stmt = $this->db->prepare("SELECT * FROM suppliers WHERE tenant_id = ? AND deleted_at IS NULL ORDER BY name ASC");
+        $stmt->execute([$tid]);
+        respond(200, $stmt->fetchAll());
+    }
+
+    public function store(array $auth): void {
+        $b = getBody();
+        if (empty($b['name'])) respond(422, null, 'Tên nhà cung cấp là bắt buộc', false);
+
+        $stmt = $this->db->prepare("
+            INSERT INTO suppliers (tenant_id, created_by, name, contact_name, email, phone, address, tax_code, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $auth['tenant_id'], $auth['user_id'], $b['name'],
+            $b['contact_name'] ?? null, $b['email'] ?? null, $b['phone'] ?? null,
+            $b['address'] ?? null, $b['tax_code'] ?? null, $b['notes'] ?? null
+        ]);
+        $this->show($auth, (int)$this->db->lastInsertId());
+    }
+
+    public function show(array $auth, int $id): void {
+        $stmt = $this->db->prepare("SELECT * FROM suppliers WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL");
+        $stmt->execute([$id, $auth['tenant_id']]);
+        $s = $stmt->fetch();
+        if (!$s) respond(404, null, 'Không tìm thấy nhà cung cấp', false);
+        respond(200, $s);
+    }
+
+    public function update(array $auth, int $id): void {
+        $b = getBody();
+        $fields = ['name', 'contact_name', 'email', 'phone', 'address', 'tax_code', 'notes'];
+        $sets = []; $params = [];
+        foreach ($fields as $f) {
+            if (array_key_exists($f, $b)) {
+                $sets[] = "$f = ?";
+                $params[] = $b[$f];
+            }
+        }
+        if (!$sets) respond(422, null, 'Không có dữ liệu cập nhật', false);
+
+        $params[] = $id; $params[] = $auth['tenant_id'];
+        $stmt = $this->db->prepare("UPDATE suppliers SET " . implode(',', $sets) . " WHERE id = ? AND tenant_id = ?");
+        $stmt->execute($params);
+        $this->show($auth, $id);
+    }
+
+    public function destroy(array $auth, int $id): void {
+        $stmt = $this->db->prepare("UPDATE suppliers SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$id, $auth['tenant_id']]);
+        respond(200, null, 'Đã xóa nhà cung cấp');
+    }
+}

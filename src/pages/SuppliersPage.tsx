@@ -1,0 +1,286 @@
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Truck, Plus, Search, MoreHorizontal, Mail, Phone, MapPin, 
+  Trash2, Pencil, ExternalLink, Filter, Download, User, Hash,
+  ArrowUpRight
+} from 'lucide-react';
+import api from '../api/axios';
+import { useUIStore } from '../store/uiStore';
+import { EmptyCard } from '../components/ui/EmptyCard';
+import { AddressSelect } from '../components/ui/AddressSelect';
+
+export const SuppliersPage: React.FC = () => {
+  const { addToast, showConfirm } = useUIStore();
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showModal, setShowModal] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<any>(null);
+  const [formData, setFormData] = useState({
+    name: '', contact_name: '', email: '', phone: '', address: '', tax_code: '', notes: ''
+  });
+
+  const fetchSuppliers = async () => {
+    try {
+      const res = await api.get('/suppliers');
+      setSuppliers(res.data.data || []);
+    } catch (err) {
+      addToast('Lỗi khi tải danh sách nhà cung cấp', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchSuppliers(); }, []);
+
+  const handleOpenModal = (s: any = null) => {
+    setSelectedSupplier(s);
+    setFormData(s || { name: '', contact_name: '', email: '', phone: '', address: '', tax_code: '', notes: '' });
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (selectedSupplier) {
+        await api.put(`/suppliers/${selectedSupplier.id}`, formData);
+        addToast('Đã cập nhật nhà cung cấp', 'success');
+      } else {
+        await api.post('/suppliers', formData);
+        addToast('Đã thêm nhà cung cấp mới', 'success');
+      }
+      setShowModal(false);
+      fetchSuppliers();
+    } catch (err: any) {
+      addToast(err.response?.data?.message || 'Lỗi khi lưu dữ liệu', 'error');
+    }
+  };
+
+  const handleDelete = (id: number) => {
+    showConfirm({
+      title: 'Xóa nhà cung cấp',
+      message: 'Bạn có chắc chắn muốn xóa nhà cung cấp này?',
+      isDanger: true,
+      onConfirm: async () => {
+        try {
+          await api.delete(`/suppliers/${id}`);
+          addToast('Đã xóa nhà cung cấp', 'success');
+          fetchSuppliers();
+        } catch {
+          addToast('Lỗi khi xóa nhà cung cấp', 'error');
+        }
+      }
+    });
+  };
+
+  const filtered = suppliers.filter(s => 
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    s.contact_name?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const VIETNAM_PROVINCES = [
+    "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"
+  ];
+
+  return (
+    <div className="page-container">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Quản lý Nhà cung cấp</h1>
+          <p className="page-subtitle">Quản lý danh sách đối tác và thông tin nhập hàng</p>
+        </div>
+        <div className="flex gap-3">
+          <button className="btn outline" onClick={() => addToast('Tính năng đang phát triển', 'info')}>
+            <Download size={18} /> Xuất Excel
+          </button>
+          <button className="btn primary" onClick={() => handleOpenModal()}>
+            <Plus size={18} /> Thêm nhà cung cấp
+          </button>
+        </div>
+      </div>
+
+      <div className="card-panel mb-6">
+        <div className="flex items-center gap-4">
+          <div className="filter-search flex-1">
+            <Search size={18} className="text-muted" />
+            <input 
+              type="text"
+              placeholder="Tìm kiếm theo tên nhà cung cấp hoặc người liên hệ..." 
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <button className="btn secondary">
+            <Filter size={16} /> Bộ lọc nâng cao
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="spinner sm"></div>
+        </div>
+      ) : filtered.length === 0 ? (
+        <EmptyCard 
+          icon={<Truck size={48} />}
+          title="Chưa có nhà cung cấp nào"
+          description="Bắt đầu thêm các đối tác cung cấp hàng hóa để quản lý nhập kho."
+          actionText="Thêm ngay"
+          onAction={() => handleOpenModal()}
+        />
+      ) : (
+        <div className="grid grid-3">
+          {filtered.map(s => (
+            <motion.div 
+              key={s.id} 
+              className="card hover-lift p-5 relative overflow-hidden"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="avatar-placeholder" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                    <Truck size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg leading-tight">{s.name}</h3>
+                    <p className="text-xs text-light flex items-center gap-1 mt-1"><User size={12} /> {s.contact_name || 'Chưa có thông tin'}</p>
+                  </div>
+                </div>
+                <button className="btn-icon sm"><MoreHorizontal size={16} /></button>
+              </div>
+
+              <div className="space-y-2.5 mb-5">
+                <div className="flex items-center gap-2 text-sm text-light">
+                  <Phone size={14} className="opacity-50" /> <span>{s.phone || '—'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-light">
+                  <Mail size={14} className="opacity-50" /> <span className="truncate">{s.email || '—'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-light">
+                  <MapPin size={14} className="opacity-50" /> <span className="truncate">{s.address || '—'}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                <div>
+                   <p className="text-[10px] text-muted font-black uppercase tracking-wider">Tổng giá trị mua</p>
+                   <p className="font-black text-primary text-lg">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(s.total_ordered)}</p>
+                </div>
+                <div className="flex gap-2">
+                   <button className="btn-icon sm" onClick={() => handleOpenModal(s)}><Pencil size={14} /></button>
+                   <button className="btn-icon sm text-danger" onClick={() => handleDelete(s.id)}><Trash2 size={14} /></button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal Cải tiến */}
+      <AnimatePresence>
+        {showModal && (
+          <div className="overlay-backdrop flex items-center justify-center p-4" style={{ zIndex: 1000 }}>
+            <motion.div 
+              className="modal-sheet w-full max-w-lg shadow-2xl"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3>{selectedSupplier ? 'Cập nhật đối tác' : 'Thêm nhà cung cấp mới'}</h3>
+                <button className="btn-icon sm" onClick={() => setShowModal(false)}><ArrowUpRight size={18} style={{ transform: 'rotate(45deg)' }} /></button>
+              </div>
+
+              <form onSubmit={handleSubmit}>
+                <div className="modal-body">
+                  <div className="form-group">
+                    <label className="form-label">Tên doanh nghiệp / Nhà cung cấp <span className="text-danger">*</span></label>
+                    <input 
+                      className="form-input" 
+                      placeholder="Ví dụ: Công ty TNHH Giải pháp Công nghệ"
+                      required 
+                      value={formData.name}
+                      onChange={e => setFormData({...formData, name: e.target.value})}
+                    />
+                  </div>
+
+                  <div className="grid grid-2">
+                    <div className="form-group">
+                      <label className="form-label">Người liên hệ</label>
+                      <input 
+                        className="form-input" 
+                        placeholder="Họ và tên"
+                        value={formData.contact_name}
+                        onChange={e => setFormData({...formData, contact_name: e.target.value})}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Mã số thuế</label>
+                      <input 
+                        className="form-input" 
+                        placeholder="MST doanh nghiệp"
+                        value={formData.tax_code}
+                        onChange={e => setFormData({...formData, tax_code: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-2">
+                    <div className="form-group">
+                      <label className="form-label">Số điện thoại</label>
+                      <input 
+                        className="form-input" 
+                        placeholder="09xx..."
+                        value={formData.phone}
+                        onChange={e => setFormData({...formData, phone: e.target.value})}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Email</label>
+                      <input 
+                        className="form-input" 
+                        type="email"
+                        placeholder="supplier@email.com"
+                        value={formData.email}
+                        onChange={e => setFormData({...formData, email: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <AddressSelect
+                      label="Địa chỉ"
+                      value={formData.address}
+                      onChange={val => setFormData({...formData, address: val})}
+                      placeholder="Chọn địa chỉ nhà cung cấp..."
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Ghi chú thêm</label>
+                    <textarea 
+                      className="form-textarea" 
+                      placeholder="Thông tin thêm về nhà cung cấp..."
+                      value={formData.notes}
+                      onChange={e => setFormData({...formData, notes: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="modal-footer">
+                  <button type="button" className="btn secondary" onClick={() => setShowModal(false)}>Hủy bỏ</button>
+                  <button type="submit" className="btn primary">
+                    {selectedSupplier ? 'Lưu thay đổi' : 'Tạo nhà cung cấp'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};

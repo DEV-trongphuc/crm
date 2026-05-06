@@ -120,15 +120,15 @@ export const ReportsPage: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <PeriodFilter value={period} onChange={(p, r) => { setPeriod(p); setDateRange(r); }} />
-          <button className="btn secondary sm" onClick={() => {
+          <button className="btn secondary" onClick={() => {
             addToast('Đang tạo báo cáo PDF...', 'info');
             setTimeout(() => window.print(), 1000);
-          }}><Download size={14} /> Xuất PDF</button>
+          }}><Download size={16} /> Xuất PDF</button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--color-border)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
+      <div className="no-scrollbar" style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--color-border)', overflowX: 'auto', whiteSpace: 'nowrap' }}>
         {[
           ['sales', 'Doanh thu'], 
           ['pipeline', 'Pipeline'], 
@@ -312,13 +312,13 @@ export const ReportsPage: React.FC = () => {
                <div style={{ height: 300 }}>
                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={pipelineData} dataKey="count" nameKey="stage" cx="50%" cy="50%" outerRadius={80} label>
+                      <Pie data={pipelineData} dataKey="count" nameKey="stage" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4}>
                         {pipelineData.map((s: any, i: number) => (
                           <Cell key={`cell-${i}`} fill={s.color || COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip />
-                      <Legend />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                      <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
                     </PieChart>
                  </ResponsiveContainer>
                </div>
@@ -350,13 +350,13 @@ export const ReportsPage: React.FC = () => {
               <div style={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={customerData?.by_source || []} dataKey="count" nameKey="source" cx="50%" cy="50%" outerRadius={80} label>
+                    <Pie data={customerData?.by_source || []} dataKey="count" nameKey="source" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4}>
                       {(customerData?.by_source || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
-                    <Legend />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -365,13 +365,13 @@ export const ReportsPage: React.FC = () => {
               <h3 style={{ fontWeight: 700, marginBottom: '1.5rem' }}>Tăng trưởng khách hàng mới</h3>
               <div style={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={customerData?.trend || []}>
+                  <BarChart data={customerData?.trend || []}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip />
-                    <Area type="monotone" dataKey="count" stroke="var(--color-primary)" fill="var(--color-primary)" fillOpacity={0.1} />
-                  </AreaChart>
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                    <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -384,8 +384,8 @@ export const ReportsPage: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
                   <XAxis dataKey="bucket" label={{ value: 'Điểm tiềm năng', position: 'insideBottom', offset: -5 }} />
                   <YAxis label={{ value: 'Số lượng', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                  <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={60} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -401,13 +401,13 @@ export const ReportsPage: React.FC = () => {
               <div style={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={companyData?.by_industry || []} dataKey="count" nameKey="industry" cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={5} label>
+                    <Pie data={companyData?.by_industry || []} dataKey="count" nameKey="industry" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4}>
                       {(companyData?.by_industry || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
-                    <Legend />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -417,13 +417,13 @@ export const ReportsPage: React.FC = () => {
               <div style={{ height: 300 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={companyData?.by_size || []} dataKey="count" nameKey="size" cx="50%" cy="50%" outerRadius={100} label>
+                    <Pie data={companyData?.by_size || []} dataKey="count" nameKey="size" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4}>
                       {(companyData?.by_size || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
-                    <Legend />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -437,8 +437,8 @@ export const ReportsPage: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border-light)" />
                   <XAxis type="number" hide />
                   <YAxis dataKey="city" type="category" tick={{ fontSize: 11 }} width={80} />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="var(--color-primary)" radius={[0, 4, 4, 0]} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                  <Bar dataKey="count" fill="var(--color-primary)" radius={[0, 4, 4, 0]} maxBarSize={40} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -460,14 +460,16 @@ export const ReportsPage: React.FC = () => {
                       nameKey="category" 
                       cx="50%" 
                       cy="50%" 
+                      innerRadius={70}
                       outerRadius={100} 
-                      label={(props: any) => `${props.category}: ${FMT(props.total)}`}
+                      paddingAngle={4}
                     >
                       {(expenseData?.by_category || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v: any) => FMT_VND(Number(v))} />
+                    <Tooltip formatter={(v: any) => FMT_VND(Number(v))} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -502,9 +504,9 @@ export const ReportsPage: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={FMT} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(v: any) => FMT_VND(Number(v))} />
-                  <Legend />
-                  <Bar dataKey="revenue" name="Doanh thu" fill="#7c3aed" radius={[4, 4, 0, 0]} />
+                  <Tooltip formatter={(v: any) => FMT_VND(Number(v))} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
+                  <Bar dataKey="revenue" name="Doanh thu" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={50} />
                   <Line type="monotone" dataKey="cost" name="Chi phí" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -527,14 +529,16 @@ export const ReportsPage: React.FC = () => {
                       nameKey="type" 
                       cx="50%" 
                       cy="50%" 
-                      outerRadius={80} 
-                      label={(props: any) => `${T_LABEL[props.type] || props.type}: ${props.total}`}
+                      innerRadius={60}
+                      outerRadius={85} 
+                      paddingAngle={4}
                     >
                       {(activityData?.by_type || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} formatter={(v) => T_LABEL[v as string] || v} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>

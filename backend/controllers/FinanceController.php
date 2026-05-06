@@ -102,6 +102,11 @@ class FinanceController {
                 $sItem = $this->db->prepare("INSERT INTO invoice_items (invoice_id,product_id,name,quantity,unit_price,subtotal) VALUES (?,?,?,?,?,?)");
                 foreach ($data['items'] as $item) {
                     $sItem->execute([$invId, $item['product_id']??null, $item['name'], $item['quantity']??1, $item['unit_price']??0, $item['subtotal']??0]);
+                    
+                    // Deduct stock if already paid
+                    if (($data['status']??'pending') === 'paid' && !empty($item['product_id'])) {
+                        $this->deductStockFIFO($tid, $uid, (int)$item['product_id'], (int)$item['quantity'], $data['invoice_number']);
+                    }
                 }
             }
             $this->db->commit();
@@ -158,6 +163,11 @@ class FinanceController {
             $stmt->execute($p);
             
             if ($stmt->rowCount()) {
+                // Get invoice number and items
+                $invInfo = $this->db->prepare("SELECT invoice_number FROM invoices WHERE id=?");
+                $invInfo->execute([$id]);
+                $invNum = $invInfo->fetchColumn();
+
                 // Deduct stock for items in this invoice
                 $items = $this->db->prepare("
                     SELECT ii.product_id, ii.quantity, p.track_inventory 
@@ -168,8 +178,7 @@ class FinanceController {
                 $items->execute([$id]);
                 while ($item = $items->fetch()) {
                     if ($item['track_inventory'] && !empty($item['product_id'])) {
-                        $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id=? AND tenant_id=?")
-                             ->execute([$item['quantity'], $item['product_id'], $auth['tenant_id']]);
+                        $this->deductStockFIFO($auth['tenant_id'], $auth['user_id'], (int)$item['product_id'], (int)$item['quantity'], $invNum);
                     }
                 }
                 
@@ -440,5 +449,43 @@ class FinanceController {
         $exp = $sExp->fetch();
 
         respond(200, array_merge($inv, $exp));
+    }
+    private function deductStockFIFO(int $tid, int $uid, int $productId, int $qty, string $invNum): void {
+        // 1. Get batches sorted by import date (FIFO)
+        $stmtBatches = $this->db->prepare("
+            SELECT id, current_qty 
+            FROM batches 
+            WHERE product_id = ? AND tenant_id = ? AND current_qty > 0 AND status = 'active'
+            ORDER BY import_date ASC, id ASC 
+            FOR UPDATE
+        ");
+        $stmtBatches->execute([$productId, $tid]);
+        $batches = $stmtBatches->fetchAll();
+
+        $remainingToDeduct = $qty;
+
+        foreach ($batches as $batch) {
+            if ($remainingToDeduct <= 0) break;
+
+            $deductFromThisBatch = min($batch['current_qty'], $remainingToDeduct);
+            
+            // Update batch quantity
+            $this->db->prepare("UPDATE batches SET current_qty = current_qty - ? WHERE id = ?")
+                 ->execute([$deductFromThisBatch, $batch['id']]);
+            
+            // Create inventory log
+            $this->db->prepare("
+                INSERT INTO inventory_logs (tenant_id, batch_id, action_type, qty_change, reason, created_by)
+                VALUES (?, ?, 'SALE', ?, ?, ?)
+            ")->execute([
+                $tid, $batch['id'], -$deductFromThisBatch, "Bán hàng - Hóa đơn #$invNum", $uid
+            ]);
+
+            $remainingToDeduct -= $deductFromThisBatch;
+        }
+
+        // Update overall product stock
+        $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id=? AND tenant_id=?")
+             ->execute([$qty, $productId, $tid]);
     }
 }

@@ -327,33 +327,33 @@ export const DealsPage: React.FC = () => {
         <div style={{ flex: 1 }} />
 
         {/* Kanban vs List Toggle */}
-        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', marginRight: '1rem' }}>
+        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', marginRight: '1rem', height: 44 }}>
           <button 
-            className={`btn ${viewMode === 'kanban' ? 'primary' : 'ghost'} sm`} 
-            style={{ borderRadius: 'var(--radius-md)', padding: '6px 10px' }}
+            className={`btn ${viewMode === 'kanban' ? 'primary' : 'ghost'}`} 
+            style={{ borderRadius: 'var(--radius-md)', padding: '0 12px', height: 36 }}
             onClick={() => setViewMode('kanban')}
             title="Dạng bảng (Kanban)"
           ><LayoutGrid size={18}/></button>
           <button 
-            className={`btn ${viewMode === 'list' ? 'primary' : 'ghost'} sm`} 
-            style={{ borderRadius: 'var(--radius-md)', padding: '6px 10px' }}
+            className={`btn ${viewMode === 'list' ? 'primary' : 'ghost'}`} 
+            style={{ borderRadius: 'var(--radius-md)', padding: '0 12px', height: 36 }}
             onClick={() => setViewMode('list')}
             title="Dạng danh sách"
           ><List size={18}/></button>
         </div>
 
         {/* Toggle View */}
-        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)' }}>
+        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', height: 44 }}>
           <button 
-            className={`btn ${pipelineView === 'contacts' ? 'primary' : 'ghost'} sm`} 
-            style={{ borderRadius: 'var(--radius-md)' }}
+            className={`btn ${pipelineView === 'contacts' ? 'primary' : 'ghost'}`} 
+            style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
             onClick={() => setPipelineView('contacts')}
           >
             <User size={16} /> Khách hàng
           </button>
           <button 
-            className={`btn ${pipelineView === 'companies' ? 'primary' : 'ghost'} sm`} 
-            style={{ borderRadius: 'var(--radius-md)' }}
+            className={`btn ${pipelineView === 'companies' ? 'primary' : 'ghost'}`} 
+            style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
             onClick={() => setPipelineView('companies')}
           >
             <Building2 size={16} /> Doanh nghiệp
@@ -423,7 +423,7 @@ export const DealsPage: React.FC = () => {
                 
                 <div style={{ flex: 1 }} />
 
-                <button className={`btn sm ${showFilterPanel ? 'primary' : 'outline'}`} onClick={() => setShowFilterPanel(!showFilterPanel)} style={{ borderRadius: 'var(--radius-lg)', padding: '8px 16px' }}>
+                <button className={`btn ${showFilterPanel ? 'primary' : 'outline'}`} onClick={() => setShowFilterPanel(!showFilterPanel)} style={{ borderRadius: 'var(--radius-lg)', padding: '0 1.25rem', height: 44 }}>
                   <Filter size={14} /> {showFilterPanel ? 'Đóng bộ lọc' : 'Bộ lọc nâng cao'}
                 </button>
               </div>
@@ -482,7 +482,7 @@ export const DealsPage: React.FC = () => {
               )}
 
               {/* Quick Filter Pills */}
-              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px', marginTop: '0.25rem' }}>
+              <div className="no-scrollbar" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px', marginTop: '0.25rem' }}>
                 {filterPills.map(pill => (
                   <button key={pill.id} onClick={() => handlePillClick(pill.id)}
                     style={{ 
@@ -502,7 +502,7 @@ export const DealsPage: React.FC = () => {
       </div>
 
       {viewMode === 'list' && (
-        <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'none', alignItems: 'center' }}>
+        <div className="no-scrollbar" style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingBottom: '1rem', scrollbarWidth: 'none', alignItems: 'center' }}>
           <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', marginRight: '0.5rem' }}>Giai đoạn:</span>
           <button
             onClick={() => setActiveStageFilter('all')}

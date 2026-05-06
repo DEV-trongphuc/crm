@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 06, 2026 lúc 11:59 AM
+-- Thời gian đã tạo: Th5 06, 2026 lúc 05:35 PM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.20
 
@@ -67,6 +67,51 @@ CREATE TABLE `audit_logs` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `batches`
+--
+
+CREATE TABLE `batches` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `supplier_id` int(11) DEFAULT NULL,
+  `po_id` int(11) DEFAULT NULL,
+  `batch_code` varchar(50) NOT NULL,
+  `import_date` date NOT NULL,
+  `expiry_date` date DEFAULT NULL,
+  `import_price` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `initial_qty` int(11) NOT NULL DEFAULT 0,
+  `current_qty` int(11) NOT NULL DEFAULT 0,
+  `notes` text DEFAULT NULL,
+  `status` enum('active','archived') DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `cloud_files`
+--
+
+CREATE TABLE `cloud_files` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `uploaded_by` int(11) NOT NULL,
+  `updated_by` int(11) DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `mime_type` varchar(100) DEFAULT NULL,
+  `file_size` bigint(20) UNSIGNED DEFAULT 0,
+  `category` varchar(100) DEFAULT 'general',
+  `visibility` enum('shared','personal') NOT NULL DEFAULT 'shared',
+  `is_public` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `companies`
 --
 
@@ -122,6 +167,9 @@ CREATE TABLE `contacts` (
   `status` enum('lead','qualified','customer','churned') NOT NULL DEFAULT 'lead',
   `tags` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`tags`)),
   `notes` text DEFAULT NULL,
+  `total_spent` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `order_count` int(11) NOT NULL DEFAULT 0,
+  `last_order_at` datetime DEFAULT NULL,
   `address` text DEFAULT NULL,
   `city` varchar(100) DEFAULT NULL,
   `ward` varchar(100) DEFAULT NULL,
@@ -399,6 +447,25 @@ CREATE TABLE `import_jobs` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `inventory_logs`
+--
+
+CREATE TABLE `inventory_logs` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `batch_id` int(11) NOT NULL,
+  `action_type` enum('IMPORT','SALE','EXPORT_INTERNAL','ADJUST','RETURN') NOT NULL,
+  `qty_change` int(11) NOT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `receiver_id` int(11) DEFAULT NULL,
+  `receiver_type` enum('contact','company','user') DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `invoices`
 --
 
@@ -529,11 +596,12 @@ CREATE TABLE `products` (
   `currency` char(3) NOT NULL DEFAULT 'VND',
   `unit` varchar(50) DEFAULT 'cái',
   `stock_quantity` int(11) NOT NULL DEFAULT 0,
-  `track_inventory` tinyint(1) NOT NULL DEFAULT 1,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `deleted_at` datetime DEFAULT NULL
+  `deleted_at` datetime DEFAULT NULL,
+  `track_inventory` tinyint(1) DEFAULT 1,
+  `track_cost` tinyint(1) DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -546,7 +614,50 @@ CREATE TABLE `product_categories` (
   `id` int(11) NOT NULL,
   `tenant_id` int(11) NOT NULL,
   `name` varchar(100) NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `track_inventory` tinyint(1) DEFAULT 1,
+  `has_cost` tinyint(1) DEFAULT 1,
+  `track_batches` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `purchase_orders`
+--
+
+CREATE TABLE `purchase_orders` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `supplier_id` int(11) NOT NULL,
+  `created_by` int(11) NOT NULL,
+  `po_number` varchar(50) NOT NULL,
+  `order_date` date NOT NULL,
+  `status` enum('draft','ordered','received','cancelled') NOT NULL DEFAULT 'draft',
+  `subtotal` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `tax` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `total` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `notes` text DEFAULT NULL,
+  `payment_status` enum('unpaid','partial','paid') NOT NULL DEFAULT 'unpaid',
+  `paid_amount` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `purchase_order_items`
+--
+
+CREATE TABLE `purchase_order_items` (
+  `id` int(11) NOT NULL,
+  `po_id` int(11) NOT NULL,
+  `product_id` int(11) DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `unit_cost` decimal(15,2) NOT NULL,
+  `subtotal` decimal(15,2) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -628,6 +739,29 @@ CREATE TABLE `segments` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `suppliers`
+--
+
+CREATE TABLE `suppliers` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `created_by` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `contact_name` varchar(255) DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `phone` varchar(50) DEFAULT NULL,
+  `address` text DEFAULT NULL,
+  `tax_code` varchar(50) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `total_ordered` decimal(15,2) DEFAULT 0.00,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `tags`
 --
 
@@ -677,12 +811,12 @@ CREATE TABLE `tickets` (
   `description` text DEFAULT NULL,
   `status` enum('open','in_progress','resolved','closed') NOT NULL DEFAULT 'open',
   `priority` enum('low','medium','high','urgent') NOT NULL DEFAULT 'medium',
-  `related_contacts` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`related_contacts`)),
-  `related_users` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`related_users`)),
   `due_date` datetime DEFAULT NULL,
   `resolved_at` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `related_contacts` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`related_contacts`)),
+  `related_users` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`related_users`))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -717,7 +851,8 @@ CREATE TABLE `users` (
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `last_login_at` timestamp NULL DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `bio` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -766,6 +901,25 @@ ALTER TABLE `audit_logs`
   ADD KEY `idx_audit_resource` (`resource`,`resource_id`),
   ADD KEY `idx_audit_created` (`created_at`),
   ADD KEY `idx_audit_tenant_created` (`tenant_id`,`created_at`);
+
+--
+-- Chỉ mục cho bảng `batches`
+--
+ALTER TABLE `batches`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `tenant_id` (`tenant_id`),
+  ADD KEY `product_id` (`product_id`),
+  ADD KEY `batch_code` (`batch_code`);
+
+--
+-- Chỉ mục cho bảng `cloud_files`
+--
+ALTER TABLE `cloud_files`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `tenant_id` (`tenant_id`),
+  ADD KEY `uploaded_by` (`uploaded_by`),
+  ADD KEY `visibility` (`visibility`),
+  ADD KEY `fk_cf_editor` (`updated_by`);
 
 --
 -- Chỉ mục cho bảng `companies`
@@ -917,6 +1071,15 @@ ALTER TABLE `import_jobs`
   ADD KEY `user_id` (`user_id`);
 
 --
+-- Chỉ mục cho bảng `inventory_logs`
+--
+ALTER TABLE `inventory_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `tenant_id` (`tenant_id`),
+  ADD KEY `batch_id` (`batch_id`),
+  ADD KEY `idx_inv_logs_receiver` (`receiver_type`,`receiver_id`);
+
+--
 -- Chỉ mục cho bảng `invoices`
 --
 ALTER TABLE `invoices`
@@ -989,6 +1152,23 @@ ALTER TABLE `product_categories`
   ADD UNIQUE KEY `unique_category` (`tenant_id`,`name`);
 
 --
+-- Chỉ mục cho bảng `purchase_orders`
+--
+ALTER TABLE `purchase_orders`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_po_number_tenant` (`tenant_id`,`po_number`),
+  ADD KEY `idx_po_supplier` (`supplier_id`),
+  ADD KEY `idx_po_created` (`created_by`);
+
+--
+-- Chỉ mục cho bảng `purchase_order_items`
+--
+ALTER TABLE `purchase_order_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_po_item_po` (`po_id`),
+  ADD KEY `idx_po_item_product` (`product_id`);
+
+--
 -- Chỉ mục cho bảng `quotes`
 --
 ALTER TABLE `quotes`
@@ -1023,6 +1203,14 @@ ALTER TABLE `segments`
   ADD PRIMARY KEY (`id`),
   ADD KEY `created_by` (`created_by`),
   ADD KEY `idx_seg_tenant` (`tenant_id`,`entity_type`);
+
+--
+-- Chỉ mục cho bảng `suppliers`
+--
+ALTER TABLE `suppliers`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_supplier_tenant` (`tenant_id`),
+  ADD KEY `idx_supplier_created` (`created_by`);
 
 --
 -- Chỉ mục cho bảng `tags`
@@ -1091,6 +1279,18 @@ ALTER TABLE `activities`
 --
 ALTER TABLE `audit_logs`
   MODIFY `id` bigint(20) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `batches`
+--
+ALTER TABLE `batches`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `cloud_files`
+--
+ALTER TABLE `cloud_files`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT cho bảng `companies`
@@ -1183,6 +1383,12 @@ ALTER TABLE `import_jobs`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT cho bảng `inventory_logs`
+--
+ALTER TABLE `inventory_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT cho bảng `invoices`
 --
 ALTER TABLE `invoices`
@@ -1231,6 +1437,18 @@ ALTER TABLE `product_categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT cho bảng `purchase_orders`
+--
+ALTER TABLE `purchase_orders`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `purchase_order_items`
+--
+ALTER TABLE `purchase_order_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT cho bảng `quotes`
 --
 ALTER TABLE `quotes`
@@ -1252,6 +1470,12 @@ ALTER TABLE `refresh_tokens`
 -- AUTO_INCREMENT cho bảng `segments`
 --
 ALTER TABLE `segments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `suppliers`
+--
+ALTER TABLE `suppliers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -1300,6 +1524,20 @@ ALTER TABLE `workflows`
 ALTER TABLE `activities`
   ADD CONSTRAINT `activities_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `activities_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Ràng buộc cho bảng `batches`
+--
+ALTER TABLE `batches`
+  ADD CONSTRAINT `fk_batch_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `cloud_files`
+--
+ALTER TABLE `cloud_files`
+  ADD CONSTRAINT `fk_cf_editor` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_cf_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cf_uploader` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Ràng buộc cho bảng `companies`
@@ -1415,6 +1653,12 @@ ALTER TABLE `import_jobs`
   ADD CONSTRAINT `import_jobs_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
 
 --
+-- Ràng buộc cho bảng `inventory_logs`
+--
+ALTER TABLE `inventory_logs`
+  ADD CONSTRAINT `fk_log_batch` FOREIGN KEY (`batch_id`) REFERENCES `batches` (`id`) ON DELETE CASCADE;
+
+--
 -- Ràng buộc cho bảng `invoices`
 --
 ALTER TABLE `invoices`
@@ -1473,6 +1717,21 @@ ALTER TABLE `product_categories`
   ADD CONSTRAINT `product_categories_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
 
 --
+-- Ràng buộc cho bảng `purchase_orders`
+--
+ALTER TABLE `purchase_orders`
+  ADD CONSTRAINT `fk_po_created` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `fk_po_supplier` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`),
+  ADD CONSTRAINT `fk_po_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `purchase_order_items`
+--
+ALTER TABLE `purchase_order_items`
+  ADD CONSTRAINT `fk_po_item_po` FOREIGN KEY (`po_id`) REFERENCES `purchase_orders` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_po_item_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE SET NULL;
+
+--
 -- Ràng buộc cho bảng `quotes`
 --
 ALTER TABLE `quotes`
@@ -1500,6 +1759,13 @@ ALTER TABLE `refresh_tokens`
 ALTER TABLE `segments`
   ADD CONSTRAINT `segments_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `segments_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Ràng buộc cho bảng `suppliers`
+--
+ALTER TABLE `suppliers`
+  ADD CONSTRAINT `fk_supp_created` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
+  ADD CONSTRAINT `fk_supp_tenant` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
 
 --
 -- Ràng buộc cho bảng `tags`

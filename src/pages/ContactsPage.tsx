@@ -14,6 +14,7 @@ import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { PhoneLink } from '../components/ui/PhoneLink';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
+import { AddressSelect } from '../components/ui/AddressSelect';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
@@ -60,7 +61,7 @@ export const ContactsPage: React.FC = () => {
   const [profileContact, setProfileContact] = useState<any>(null);
   const [showImportExport, setShowImportExport] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '' });
+  const [createForm, setCreateForm] = useState({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '', city: '', ward: '', address: '' });
   const [creating, setCreating] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
 
@@ -218,7 +219,7 @@ export const ContactsPage: React.FC = () => {
         useMockStore.getState().addContact(newContact);
         setContacts([...useMockStore.getState().contacts]);
         setShowCreateModal(false);
-        setCreateForm({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '' });
+        setCreateForm({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '', city: '', ward: '', address: '' });
         addToast('Đã thêm liên hệ thành công', 'success');
         return;
       }
@@ -227,7 +228,7 @@ export const ContactsPage: React.FC = () => {
       const newContact = r.data.data;
       setContacts(prev => [newContact, ...prev]);
       setShowCreateModal(false);
-      setCreateForm({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '' });
+      setCreateForm({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '', city: '', ward: '', address: '' });
       addToast('Đã thêm liên hệ mới thành công', 'success');
     } catch (e: any) {
       addToast(e.response?.data?.message || 'Không thể tạo liên hệ', 'error');
@@ -259,7 +260,7 @@ export const ContactsPage: React.FC = () => {
           <p className="page-subtitle">{loading ? '...' : `${filtered.length} liên hệ`}</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn outline sm" onClick={() => setShowImportExport(true)}><Download size={14}/> Nhập/Xuất Dữ liệu</button>
+          <button className="btn outline" onClick={() => setShowImportExport(true)}><Download size={14}/> Nhập/Xuất Dữ liệu</button>
           <button className="btn primary" onClick={() => setShowCreateModal(true)}>
             <Plus size={15}/> Thêm liên hệ
           </button>
@@ -358,10 +359,10 @@ export const ContactsPage: React.FC = () => {
           </button>
           
           <button 
-            className="btn outline sm" 
+            className="btn outline" 
             onClick={() => setShowColumns(true)} 
             title="Tùy chỉnh cột"
-            style={{ padding: '0.5rem' }}
+            style={{ padding: '0 0.75rem' }}
           >
             <Columns size={16} />
           </button>
@@ -801,6 +802,14 @@ export const ContactsPage: React.FC = () => {
                     value={createForm.source} 
                     onChange={val => setCreateForm(f => ({ ...f, source: val.toString() }))} 
                   />
+                <div className="form-group">
+                  <AddressSelect 
+                    label="Địa chỉ khách hàng"
+                    value={createForm.address || ''}
+                    onChange={addr => setCreateForm(f => ({ ...f, address: addr }))}
+                    placeholder="Chọn địa chỉ..."
+                  />
+                </div>
                 </div>
               </div>
 

@@ -50,6 +50,40 @@ class POSController {
                 
                 // Deduct stock if product_id is present and tracking is enabled
                 if (!empty($item['id'])) {
+                    // 1. Get batches sorted by import date (FIFO)
+                    $stmtBatches = $this->db->prepare("
+                        SELECT id, current_qty 
+                        FROM batches 
+                        WHERE product_id = ? AND tenant_id = ? AND current_qty > 0 AND status = 'active'
+                        ORDER BY import_date ASC, id ASC 
+                        FOR UPDATE
+                    ");
+                    $stmtBatches->execute([$item['id'], $tid]);
+                    $batches = $stmtBatches->fetchAll();
+
+                    $remainingToDeduct = (int)$item['quantity'];
+
+                    foreach ($batches as $batch) {
+                        if ($remainingToDeduct <= 0) break;
+
+                        $deductFromThisBatch = min($batch['current_qty'], $remainingToDeduct);
+                        
+                        // Update batch quantity
+                        $this->db->prepare("UPDATE batches SET current_qty = current_qty - ? WHERE id = ?")
+                             ->execute([$deductFromThisBatch, $batch['id']]);
+                        
+                        // Create inventory log
+                        $this->db->prepare("
+                            INSERT INTO inventory_logs (tenant_id, batch_id, action_type, qty_change, reason, created_by)
+                            VALUES (?, ?, 'SALE', ?, ?, ?)
+                        ")->execute([
+                            $tid, $batch['id'], -$deductFromThisBatch, "Bán hàng qua POS - Đơn #$invNum", $uid
+                        ]);
+
+                        $remainingToDeduct -= $deductFromThisBatch;
+                    }
+
+                    // Update overall product stock
                     $sStock = $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND tenant_id = ? AND track_inventory = 1"); 
                     $sStock->execute([$item['quantity'], $item['id'], $tid]);
                 }

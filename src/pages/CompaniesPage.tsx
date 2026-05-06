@@ -116,11 +116,11 @@ export const CompaniesPage: React.FC = () => {
           <p className="page-subtitle">{loading ? '...' : `${total} công ty khách hàng`}</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn outline sm" onClick={fetchCompanies} title="Làm mới">
-            <RefreshCw size={14} />
+          <button className="btn-icon" onClick={fetchCompanies} title="Làm mới">
+            <RefreshCw size={16} />
           </button>
-          <button className="btn outline sm" onClick={() => setShowImportExport(true)}>
-            <Download size={14} /> Nhập/Xuất
+          <button className="btn outline" onClick={() => setShowImportExport(true)}>
+            <Download size={16} /> Nhập/Xuất
           </button>
           <button className="btn primary" onClick={openCreate}><Plus size={16} /> Thêm công ty</button>
         </div>

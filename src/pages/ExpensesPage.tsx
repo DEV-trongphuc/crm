@@ -247,8 +247,8 @@ export const ExpensesPage: React.FC = () => {
             value={period}
             onChange={(p, r) => { setPeriod(p); setDateRange(r); }}
           />
-          <button className="btn secondary sm" onClick={() => addToast('Đang xuất bảng kê...', 'info')}>
-            <Download size={14} /> Xuất
+          <button className="btn secondary" onClick={() => addToast('Đang xuất bảng kê...', 'info')}>
+            <Download size={16} /> Xuất
           </button>
           <button className="btn primary" onClick={openCreate}><Plus size={16} /> Nhập chi phí</button>
         </div>

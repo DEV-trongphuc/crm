@@ -3,7 +3,8 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Users, Building2, Briefcase, CalendarCheck,
   Package, BarChart3, Settings, LogOut, Menu, Search,
-  ChevronLeft, Moon, Sun, Command, Plus, FileSpreadsheet, Wallet, LifeBuoy
+  ChevronLeft, Moon, Sun, Command, Plus, FileSpreadsheet, Wallet, LifeBuoy,
+  Truck, ShoppingCart, Folder, Calendar, Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
@@ -25,9 +26,12 @@ const NAV_ITEMS = [
   { to: '/companies', icon: Building2, label: 'Công ty' },
   { to: '/deals', icon: Briefcase, label: 'Pipeline' },
   { to: '/activities', icon: CalendarCheck, label: 'Hoạt động' },
-  { to: '/products', icon: Package, label: 'Sản phẩm' },
+  { to: '/products', icon: Layers, label: 'Sản phẩm' },
+  { to: '/suppliers', icon: Truck, label: 'Nhà cung cấp' },
+  { to: '/inventory', icon: Package, label: 'Kho & Lô hàng' },
   { to: '/invoices', icon: FileSpreadsheet, label: 'Invoices' },
   { to: '/expenses', icon: Wallet, label: 'Chi phí' },
+  { to: '/files', icon: Folder, label: 'Tài liệu' },
   { to: '/tickets', icon: LifeBuoy, label: 'Hỗ trợ' },
   { to: '/reports', icon: BarChart3, label: 'Báo cáo' },
 ];
@@ -92,43 +96,44 @@ export const AppLayout: React.FC = () => {
             <ChevronLeft size={16} style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
           </button>
         </div>
-        {/* Nav Groups */}
-        <div className={styles.navSection}>
-          {!collapsed && <span className={styles.navGroupLabel}>CHỨC NĂNG CHÍNH</span>}
-          {NAV_ITEMS.map(({ to, icon: Icon, label, end }) => {
-            // Role-based visibility for nav items
-            if (user?.role === 'sale' && ['/reports'].includes(to)) return null;
+        {/* Nav Groups Scrollable */}
+        <div className={styles.navScrollArea}>
+          <div className={styles.navSection}>
+            {!collapsed && <span className={styles.navGroupLabel}>CHỨC NĂNG CHÍNH</span>}
+            {NAV_ITEMS.map(({ to, icon: Icon, label, end }) => {
+              // Role-based visibility for nav items
+              if (user?.role === 'sale' && ['/reports', '/suppliers'].includes(to)) return null;
+              if (user?.role === 'accountant' && !['/', '/invoices', '/expenses', '/reports', '/files'].includes(to)) return null;
 
-            return (
-              <NavLink key={to} to={to} end={end}
-                className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
-                title={collapsed ? label : undefined}
-                onClick={() => setMobileOpen(false)}>
-                <div className={styles.navIconBox}>
-                  <Icon size={18} className={styles.navIcon} />
-                </div>
-                {!collapsed && <span className={styles.navLabel}>{label}</span>}
-              </NavLink>
-            );
-          })}
+              return (
+                <NavLink key={to} to={to} end={end}
+                  className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
+                  title={collapsed ? label : undefined}
+                  onClick={() => setMobileOpen(false)}>
+                  <div className={styles.navIconBox}>
+                    <Icon size={18} className={styles.navIcon} />
+                  </div>
+                  {!collapsed && <span className={styles.navLabel}>{label}</span>}
+                </NavLink>
+              );
+            })}
+          </div>
         </div>
 
-        {!collapsed && <div className={styles.navDivider} />}
-
-        {user?.role !== 'sale' && (
-          <div className={styles.navSection}>
-            {!collapsed && <span className={styles.navGroupLabel}>HỆ THỐNG</span>}
+        {/* FIXED FOOTER */}
+        <div className={styles.sidebarFooter}>
+          {user?.role !== 'sale' && (
             <NavLink to="/settings"
               className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
+              title={collapsed ? 'Cài đặt' : undefined}
               onClick={() => setMobileOpen(false)}>
               <div className={styles.navIconBox}>
                 <Settings size={18} className={styles.navIcon} />
               </div>
               {!collapsed && <span className={styles.navLabel}>Cài đặt</span>}
             </NavLink>
-          </div>
-        )}
-
+          )}
+        </div>
       </aside>
 
       {/* MAIN CONTENT */}

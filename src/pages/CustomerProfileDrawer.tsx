@@ -704,7 +704,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '1rem', zIndex: 10, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
                   <ChevronLeft size={16} />
                 </button>
-                <div id="pipeline-scroll-container" style={{ display: 'flex', padding: '1.25rem 3.5rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: '1.25rem 3.5rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                   <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
                   {pipelineStages.map((st, i) => {
                     // contacts.status is always an enum string (lead/qualified/customer/churned)
@@ -939,19 +939,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
 
                       <div className="card-panel">
-                        <h4 className="panel-title">Địa chỉ (Tự động từ JSON)</h4>
+                        <h4 className="panel-title">Địa chỉ</h4>
                         <AddressSelect
-                          city={formData.city || ''}
-                          ward={formData.ward || ''}
-                          onCityChange={city => setFormData(prev => ({ ...prev, city }))}
-                          onWardChange={ward => setFormData(prev => ({ ...prev, ward }))}
+                          value={formData.address || ''}
+                          onChange={addr => setFormData((prev: any) => ({ ...prev, address: addr }))}
+                          placeholder="Chọn địa chỉ liên hệ..."
                         />
-                        <div className="form-group" style={{ marginTop: '0.75rem' }}>
-                          <input className="form-input" placeholder="Số nhà, đường phố..." value={formData.address || ''} onChange={e => {
-                            const val = e.target.value;
-                            setFormData(prev => ({ ...prev, address: val }));
-                          }} />
-                        </div>
                       </div>
                     </div>
                   )}

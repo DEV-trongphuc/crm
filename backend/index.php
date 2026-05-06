@@ -101,6 +101,10 @@ require_once __DIR__ . '/controllers/FinanceController.php';
 require_once __DIR__ . '/controllers/POSController.php';
 require_once __DIR__ . '/controllers/TicketController.php';
 require_once __DIR__ . '/controllers/TagController.php';
+require_once __DIR__ . '/controllers/SupplierController.php';
+require_once __DIR__ . '/controllers/InventoryController.php';
+require_once __DIR__ . '/controllers/PurchaseOrderController.php';
+require_once __DIR__ . '/controllers/CloudFileController.php';
 
 // ── Parse route ───────────────────────────────────────────────
 $requestUri = strtok($_SERVER['REQUEST_URI'], '?');
@@ -285,6 +289,7 @@ switch ($resource) {
         elseif ($resourceId === 'customers')  $ctrl->customers($auth);
         elseif ($resourceId === 'companies')  $ctrl->companies($auth);
         elseif ($resourceId === 'expenses')   $ctrl->expenses($auth);
+        elseif ($resourceId === 'inventory')  $ctrl->inventory($auth);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
@@ -375,6 +380,73 @@ switch ($resource) {
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    case 'inventory':
+        $auth = requireAuth();
+        $ctrl = new InventoryController($db);
+        if     ($resourceId === 'export' && $method === 'POST') $ctrl->internalExport($auth);
+        elseif ($resourceId === 'logs' && $method === 'GET') $ctrl->getLogs($auth, (int)($segments[2] ?? 0));
+        elseif ($resourceId === 'global-logs' && $method === 'GET') $ctrl->globalLogs($auth);
+        elseif ($resourceId === 'adjust' && $method === 'POST') $ctrl->adjust($auth);
+        elseif ($resourceId === 'archive' && $method === 'POST') $ctrl->archive($auth, (int)($segments[2] ?? 0));
+        elseif (!$resourceId && $method === 'GET') $ctrl->index($auth);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    case 'suppliers':
+        $auth = requireAuth();
+        $ctrl = new SupplierController($db);
+        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    case 'purchase-orders':
+        $auth = requireAuth();
+        $ctrl = new PurchaseOrderController($db);
+        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
+        elseif ($subResource === 'receive' && $method === 'POST') $ctrl->receive($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    case 'cloud-files':
+        $auth = requireAuth();
+        $ctrl = new CloudFileController($db);
+        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    case 'system':
+        if ($resourceId === 'patch' && $method === 'POST') {
+            $sqlFiles = ['migrate_2026_05_06_v3_files.sql'];
+            $results = [];
+            foreach ($sqlFiles as $file) {
+                $path = __DIR__ . '/' . $file;
+                if (file_exists($path)) {
+                    $sql = file_get_contents($path);
+                    $stmts = array_filter(array_map('trim', explode(';', $sql)));
+                    foreach ($stmts as $s) {
+                        try {
+                            $db->exec($s);
+                            $results[] = "SUCCESS: " . substr($s, 0, 50);
+                        } catch (Exception $e) {
+                            $results[] = "INFO/ERROR: " . $e->getMessage();
+                        }
+                    }
+                }
+            }
+            respond(200, $results, 'Migration check completed');
+        }
         break;
 
     default:
