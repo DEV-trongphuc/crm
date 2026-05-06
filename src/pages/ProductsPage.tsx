@@ -13,7 +13,7 @@ const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style:'currency', cu
 
 const DEFAULT_CATEGORIES = ['Phần mềm', 'Dịch vụ', 'Phần cứng', 'Khác'];
 
-const EMPTY = { name:'', sku:'', category:'Phần mềm', price:'', cost:'', unit:'cái', description:'', is_active:true, stock_quantity: 0 };
+const EMPTY = { name:'', sku:'', category:'Phần mềm', price:'', cost:'', unit:'cái', description:'', is_active:true, stock_quantity: 0, track_inventory: true };
 
 export const ProductsPage: React.FC = () => {
   const { addToast, showConfirm } = useUIStore();
@@ -220,7 +220,7 @@ export const ProductsPage: React.FC = () => {
                   <td><span className={`badge ${p.is_active ? 'success' : 'danger'}`}>{p.is_active ? 'Đang bán' : 'Ngừng bán'}</span></td>
                   <td>
                     <div className="flex gap-2">
-                      <button className="btn ghost sm" onClick={() => { setEditItem(p); setForm({...p, price:String(p.price), cost: String(p.cost || '')}); setShowModal(true); }}><Pencil size={14} /></button>
+                      <button className="btn ghost sm" onClick={() => { setEditItem(p); setForm({...p, price:String(p.price), cost: String(p.cost || ''), track_inventory: !!p.track_inventory}); setShowModal(true); }}><Pencil size={14} /></button>
                       <button className="btn ghost sm" style={{ color:'var(--color-danger)' }} onClick={() => { 
                         showConfirm(
                           'Xóa sản phẩm?',
@@ -250,27 +250,27 @@ export const ProductsPage: React.FC = () => {
         {showModal && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onClick={() => setShowModal(false)} />
-            <motion.div className="modal-sheet" style={{ position:'fixed', top:'50%', left:'50%', width:'500px', maxWidth:'calc(100vw - 2rem)', zIndex:300 }}
+            <motion.div className="modal-sheet" style={{ position:'fixed', top:'50%', left:'50%', width:'540px', maxWidth:'calc(100vw - 2rem)', zIndex:300 }}
               initial={{ opacity:0, scale:0.96, x: '-50%', y: '-45%' }} animate={{ opacity:1, scale:1, x: '-50%', y: '-50%' }} exit={{ opacity:0, scale:0.96, x: '-50%', y: '-45%' }}>
               
-              <div className="modal-header">
-                <h3 style={{ fontWeight:800, fontSize: '1.15rem' }}>{editItem ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm mới'}</h3>
-                <button className="btn-icon-bare" onClick={() => setShowModal(false)}><X size={20} /></button>
+              <div className="modal-header" style={{ padding: '1.25rem 1.75rem' }}>
+                <h3 style={{ fontWeight:800, fontSize: '1.25rem', letterSpacing: '-0.02em' }}>{editItem ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm mới'}</h3>
+                <button className="btn-icon-bare" onClick={() => setShowModal(false)}><X size={22} /></button>
               </div>
 
-              <div className="modal-body" style={{ display:'flex', flexDirection:'column', gap:'1.25rem' }}>
+              <div className="modal-body" style={{ padding: '1.75rem', gap: '1.5rem' }}>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Tên sản phẩm *</label>
-                  <input className="form-input" value={form.name} onChange={e => setForm({...form, name:e.target.value})} placeholder="VD: Phần mềm quản lý bán hàng..." autoFocus />
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: '0.9rem' }}>Tên sản phẩm *</label>
+                  <input className="form-input" style={{ padding: '0.75rem 1rem' }} value={form.name} onChange={e => setForm({...form, name:e.target.value})} placeholder="VD: Phần mềm quản lý bán hàng..." autoFocus />
                 </div>
                 
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.25rem' }}>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem' }}>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>Mã SKU</label>
-                    <input className="form-input" value={form.sku} onChange={e => setForm({...form, sku:e.target.value})} placeholder="VD: SW-CRM-01" />
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.9rem' }}>Mã SKU</label>
+                    <input className="form-input" style={{ padding: '0.75rem 1rem' }} value={form.sku} onChange={e => setForm({...form, sku:e.target.value})} placeholder="VD: SW-CRM-01" />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>Nhóm danh mục</label>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.9rem' }}>Nhóm danh mục</label>
                     <CustomSelect 
                       options={categories.map(c => ({ value: c, label: c }))} 
                       value={form.category} 
@@ -279,32 +279,48 @@ export const ProductsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>Đơn giá (đ)</label>
-                    <input className="form-input" type="number" value={form.price} onChange={e => setForm({...form, price:e.target.value})} />
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.9rem' }}>Giá bán lẻ (đ)</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input" style={{ padding: '0.75rem 1rem', paddingRight: '2.5rem' }} type="number" value={form.price} onChange={e => setForm({...form, price:e.target.value})} />
+                      <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>đ</span>
+                    </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>Giá vốn (đ)</label>
-                    <input className="form-input" type="number" value={form.cost} onChange={e => setForm({...form, cost:e.target.value})} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>Đơn vị</label>
-                    <input className="form-input" value={form.unit} onChange={e => setForm({...form, unit:e.target.value})} />
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.9rem' }}>Giá vốn nhập (đ)</label>
+                    <div style={{ position: 'relative' }}>
+                      <input className="form-input" style={{ padding: '0.75rem 1rem', paddingRight: '2.5rem' }} type="number" value={form.cost} onChange={e => setForm({...form, cost:e.target.value})} />
+                      <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>đ</span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Tồn kho hiện có</label>
-                  <input className="form-input" type="number" value={form.stock_quantity} onChange={e => setForm({...form, stock_quantity: Number(e.target.value)})} />
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: '0.9rem' }}>Đơn vị tính</label>
+                  <input className="form-input" style={{ padding: '0.75rem 1rem' }} value={form.unit} onChange={e => setForm({...form, unit:e.target.value})} placeholder="VD: Cái, Bộ, Giờ..." />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1.5rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.9rem' }}>Tồn kho hiện có</label>
+                    <input className="form-input" style={{ padding: '0.75rem 1rem' }} type="number" value={form.stock_quantity} onChange={e => setForm({...form, stock_quantity: Number(e.target.value)})} disabled={!form.track_inventory} />
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', height: '100%', paddingTop: '1.75rem' }}>
+                    <CustomCheckbox 
+                      checked={form.track_inventory} 
+                      onChange={e => setForm({...form, track_inventory: e.target.checked})} 
+                      label="Quản lý tồn kho"
+                    />
+                  </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Mô tả sản phẩm</label>
-                  <textarea className="form-input" rows={2} value={form.description} onChange={e => setForm({...form, description:e.target.value})} placeholder="Mô tả ngắn gọn về sản phẩm..." style={{ resize: 'none' }} />
+                  <label className="form-label" style={{ fontWeight: 700, fontSize: '0.9rem' }}>Mô tả sản phẩm</label>
+                  <textarea className="form-input" rows={3} style={{ padding: '0.75rem 1rem', resize: 'none' }} value={form.description} onChange={e => setForm({...form, description:e.target.value})} placeholder="Mô tả ngắn gọn về sản phẩm..." />
                 </div>
 
-                <div style={{ padding: '0.5rem 0' }}>
+                <div style={{ padding: '0.25rem 0' }}>
                   <CustomCheckbox 
                     checked={form.is_active} 
                     onChange={e => setForm({...form, is_active:e.target.checked})} 
@@ -313,11 +329,11 @@ export const ProductsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="modal-footer">
-                <button className="btn secondary" onClick={() => setShowModal(false)} disabled={saving}>Hủy bỏ</button>
-                <button className="btn primary" onClick={handleSave} disabled={saving} style={{ minWidth: 120 }}>
+              <div className="modal-footer" style={{ padding: '1.25rem 1.75rem', background: '#fcfcfd' }}>
+                <button className="btn outline" onClick={() => setShowModal(false)} disabled={saving} style={{ minWidth: '100px' }}>Hủy bỏ</button>
+                <button className="btn primary" onClick={handleSave} disabled={saving} style={{ minWidth: '160px', padding: '0.75rem' }}>
                   {saving && <Loader2 size={16} className="spin" />}
-                  {editItem ? 'Cập nhật' : 'Thêm sản phẩm'}
+                  {editItem ? 'Cập nhật sản phẩm' : 'Thêm sản phẩm'}
                 </button>
               </div>
             </motion.div>

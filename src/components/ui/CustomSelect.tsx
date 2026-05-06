@@ -48,7 +48,10 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   }, []);
 
   const selectedOption = options.find(opt => opt.value == value);
-  const filtered = searchable ? options.filter(o => o.label.toLowerCase().includes(search.toLowerCase())) : options;
+  const filtered = searchable ? options.filter(o => 
+    o.label.toLowerCase().includes(search.toLowerCase()) || 
+    (o.sublabel && o.sublabel.toLowerCase().includes(search.toLowerCase()))
+  ) : options;
 
   return (
     <div className={styles.wrapper} ref={containerRef} style={{ width }}>

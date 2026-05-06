@@ -65,7 +65,26 @@ class ActivityController {
             $b['subject'], $b['body']??null, $b['status']??'planned', $b['priority']??'medium',
             $b['due_date']??null, $b['related_type']??null, $b['related_id']??null,
         ]);
-        $this->show($auth,(int)$this->db->lastInsertId());
+        $actId = (int)$this->db->lastInsertId();
+
+        // Update last_contact for the contact
+        if (!empty($b['related_type']) && !empty($b['related_id'])) {
+            if ($b['related_type'] === 'contact') {
+                $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
+                     ->execute([(int)$b['related_id'], $auth['tenant_id']]);
+            } else if ($b['related_type'] === 'deal') {
+                // Find contact linked to this deal
+                $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
+                $sDeal->execute([(int)$b['related_id'], $auth['tenant_id']]);
+                $cid = $sDeal->fetchColumn();
+                if ($cid) {
+                    $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
+                         ->execute([(int)$cid, $auth['tenant_id']]);
+                }
+            }
+        }
+
+        $this->show($auth,$actId);
     }
 
     public function show(array $auth,int $id): void {
@@ -114,6 +133,28 @@ class ActivityController {
         $params[]=$id;$params[]=$auth['tenant_id'];
         $stmt = $this->db->prepare("UPDATE activities SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
         $stmt->execute($params);
+
+        // If status changed to done, update contact's last_contact
+        if (isset($b['status']) && $b['status'] === 'done') {
+            $checkRel = $this->db->prepare("SELECT related_type, related_id FROM activities WHERE id=?");
+            $checkRel->execute([$id]);
+            $rel = $checkRel->fetch();
+            if ($rel && !empty($rel['related_id'])) {
+                if ($rel['related_type'] === 'contact') {
+                    $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
+                         ->execute([(int)$rel['related_id'], $auth['tenant_id']]);
+                } else if ($rel['related_type'] === 'deal') {
+                    $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
+                    $sDeal->execute([(int)$rel['related_id'], $auth['tenant_id']]);
+                    $cid = $sDeal->fetchColumn();
+                    if ($cid) {
+                        $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
+                             ->execute([(int)$cid, $auth['tenant_id']]);
+                    }
+                }
+            }
+        }
+
         $this->show($auth,$id);
     }
 

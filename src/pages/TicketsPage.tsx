@@ -38,8 +38,17 @@ export const TicketsPage: React.FC = () => {
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [createForm, setCreateForm] = useState({ subject: '', priority: 'medium', customer_name: '', description: '' });
   const [loading, setLoading] = useState(true);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [createForm, setCreateForm] = useState({ 
+    subject: '', 
+    priority: 'medium', 
+    customer_name: '', 
+    description: '',
+    related_contacts: [] as string[],
+    related_users: [] as string[]
+  });
 
   const [now] = useState(() => Date.now());
 
@@ -62,6 +71,19 @@ export const TicketsPage: React.FC = () => {
     }
   };
 
+  const fetchRelatedData = async () => {
+    try {
+      const [cRes, uRes] = await Promise.all([
+        api.get('/contacts?limit=1000'),
+        api.get('/users')
+      ]);
+      setContacts(cRes.data.data?.items || cRes.data.data || []);
+      setUsers(uRes.data.data || []);
+    } catch (e) {
+      console.error('Failed to fetch related data', e);
+    }
+  };
+
   React.useEffect(() => {
     if (DEV_MODE) {
       setTickets(useMockStore.getState().tickets);
@@ -69,6 +91,7 @@ export const TicketsPage: React.FC = () => {
       return;
     }
     fetchTickets();
+    fetchRelatedData();
   }, []);
 
   useEffect(() => {
@@ -109,7 +132,9 @@ export const TicketsPage: React.FC = () => {
       status: 'open',
       priority: createForm.priority,
       customer_name: createForm.customer_name,
-      description: createForm.description
+      description: createForm.description,
+      related_contacts: createForm.related_contacts,
+      related_users: createForm.related_users
     };
     setSaving(true);
     try {
@@ -117,7 +142,7 @@ export const TicketsPage: React.FC = () => {
       const newTicket = r.data.data || { ...payload, id: Date.now(), assignee_name: 'Admin', created_at: new Date().toISOString(), due_date: new Date(Date.now() + 86400000).toISOString() };
       setTickets([newTicket, ...tickets]);
       setShowCreateModal(false);
-      setCreateForm({ subject: '', priority: 'medium', customer_name: '', description: '' });
+      setCreateForm({ subject: '', priority: 'medium', customer_name: '', description: '', related_contacts: [], related_users: [] });
       addToast('Đã tạo Ticket thành công', 'success');
     } catch (e: any) {
       addToast(e.response?.data?.message || 'Không thể tạo Ticket do lỗi mạng', 'error');
@@ -267,12 +292,6 @@ export const TicketsPage: React.FC = () => {
         </div>
       )}
 
-      <TicketDrawer
-        isOpen={!!selectedTicket}
-        onClose={() => setSelectedTicket(null)}
-        ticket={selectedTicket}
-        onUpdate={handleUpdate}
-      />
 
       <AnimatePresence>
         {showCreateModal && (
@@ -287,7 +306,25 @@ export const TicketsPage: React.FC = () => {
               <div className="modal-body" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label">Tên khách hàng *</label>
-                  <input className="form-input" placeholder="VD: Công ty TNHH ABC..." value={createForm.customer_name} onChange={e => setCreateForm({...createForm, customer_name: e.target.value})} autoFocus />
+                  <CustomSelect 
+                    searchable 
+                    options={contacts.map(c => ({ 
+                      value: `${c.first_name} ${c.last_name || ''}`.trim(), 
+                      label: `${c.first_name} ${c.last_name || ''}`.trim(),
+                      sublabel: c.phone || c.email,
+                      avatar: c.avatar_url
+                    }))}
+                    value={createForm.customer_name} 
+                    onChange={val => setCreateForm({...createForm, customer_name: val.toString()})} 
+                  />
+                  {!createForm.customer_name && (
+                    <input 
+                      className="form-input" 
+                      style={{ marginTop: '0.5rem' }}
+                      placeholder="Hoặc nhập tên khách hàng mới..." 
+                      onChange={e => setCreateForm({...createForm, customer_name: e.target.value})} 
+                    />
+                  )}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Tiêu đề vấn đề (Subject) *</label>
@@ -299,6 +336,60 @@ export const TicketsPage: React.FC = () => {
                       options={PRIORITIES.map(p => ({ value: p.id, label: p.label }))} 
                       value={createForm.priority} 
                       onChange={val => setCreateForm({...createForm, priority: val.toString()})} 
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label className="form-label">Khách hàng liên quan (Tag)</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      {createForm.related_contacts.map(cid => {
+                        const c = contacts.find(x => String(x.id) === cid);
+                        return (
+                          <div key={cid} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', background: 'var(--color-bg-subtle)', borderRadius: '4px', fontSize: '0.75rem' }}>
+                            <span>{c ? `${c.first_name} ${c.last_name || ''}` : cid}</span>
+                            <X size={12} style={{ cursor: 'pointer' }} onClick={() => setCreateForm({...createForm, related_contacts: createForm.related_contacts.filter(id => id !== cid)})} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <CustomSelect 
+                      searchable 
+                      placeholder="Chọn khách hàng để tag..."
+                      options={contacts.filter(c => !createForm.related_contacts.includes(String(c.id))).map(c => ({ 
+                        value: String(c.id), 
+                        label: `${c.first_name} ${c.last_name || ''}`.trim(),
+                        sublabel: c.phone || c.email,
+                        avatar: c.avatar_url
+                      }))}
+                      value="" 
+                      onChange={val => setCreateForm({...createForm, related_contacts: [...createForm.related_contacts, val.toString()]})} 
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Nhân viên liên quan (Tag)</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      {createForm.related_users.map(uid => {
+                        const u = users.find(x => String(x.id) === uid);
+                        return (
+                          <div key={uid} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', background: 'var(--color-bg-subtle)', borderRadius: '4px', fontSize: '0.75rem' }}>
+                            <span>{u?.full_name || uid}</span>
+                            <X size={12} style={{ cursor: 'pointer' }} onClick={() => setCreateForm({...createForm, related_users: createForm.related_users.filter(id => id !== uid)})} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <CustomSelect 
+                      searchable 
+                      showAvatars
+                      placeholder="Chọn nhân viên để tag..."
+                      options={users.filter(u => !createForm.related_users.includes(String(u.id))).map(u => ({ 
+                        value: String(u.id), 
+                        label: u.full_name,
+                        avatar: u.avatar_url
+                      }))}
+                      value="" 
+                      onChange={val => setCreateForm({...createForm, related_users: [...createForm.related_users, val.toString()]})} 
                     />
                   </div>
                 <div className="form-group">
@@ -314,6 +405,14 @@ export const TicketsPage: React.FC = () => {
           </>
         )}
       </AnimatePresence>
+      <TicketDrawer 
+        isOpen={!!selectedTicket} 
+        onClose={() => setSelectedTicket(null)} 
+        ticket={selectedTicket} 
+        onUpdate={handleUpdate}
+        contacts={contacts}
+        users={users}
+      />
     </div>
   );
 };

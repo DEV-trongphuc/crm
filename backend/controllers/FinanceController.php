@@ -145,16 +145,53 @@ class FinanceController {
     }
 
     public function markPaid(array $auth, int $id): void {
-        $sql = "UPDATE invoices SET status='paid', paid_at=NOW() WHERE id=? AND tenant_id=?";
-        $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND created_by=?";
-            $p[] = $auth['user_id'];
+        try {
+            $this->db->beginTransaction();
+            
+            $sql = "UPDATE invoices SET status='paid', paid_at=NOW() WHERE id=? AND tenant_id=?";
+            $p = [$id, $auth['tenant_id']];
+            if ($auth['role'] === 'sale') {
+                $sql .= " AND created_by=?";
+                $p[] = $auth['user_id'];
+            }
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($p);
+            
+            if ($stmt->rowCount()) {
+                // Deduct stock for items in this invoice
+                $items = $this->db->prepare("
+                    SELECT ii.product_id, ii.quantity, p.track_inventory 
+                    FROM invoice_items ii 
+                    JOIN products p ON ii.product_id = p.id 
+                    WHERE ii.invoice_id = ?
+                ");
+                $items->execute([$id]);
+                while ($item = $items->fetch()) {
+                    if ($item['track_inventory'] && !empty($item['product_id'])) {
+                        $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id=? AND tenant_id=?")
+                             ->execute([$item['quantity'], $item['product_id'], $auth['tenant_id']]);
+                    }
+                }
+                
+                // Update contact's last_contact
+                $invData = $this->db->prepare("SELECT contact_id FROM invoices WHERE id=?");
+                $invData->execute([$id]);
+                $cId = $invData->fetchColumn();
+                if ($cId) {
+                    $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
+                         ->execute([(int)$cId, $auth['tenant_id']]);
+                }
+                
+                $this->db->commit();
+                respond(200, null, 'Hóa đơn đã được thanh toán và tồn kho đã được cập nhật');
+            } else {
+                $this->db->rollBack();
+                respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+            }
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            respond(500, null, 'Lỗi hệ thống: ' . $e->getMessage(), false);
         }
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($p);
-        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
-        respond(200, null, 'Đã đánh dấu đã thanh toán');
     }
 
     // ─────────────────────── EXPENSES ───────────────────────────

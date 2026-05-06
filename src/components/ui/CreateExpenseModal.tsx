@@ -192,6 +192,7 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
                   options={contacts.filter(c => !selectedContacts.find(sc => sc.id === c.id)).map(c => ({ 
                     value: String(c.id), 
                     label: `${c.first_name} ${c.last_name || ''}`.trim(),
+                    sublabel: c.phone || c.email,
                     avatar: c.avatar_url 
                   }))}
                   value=""

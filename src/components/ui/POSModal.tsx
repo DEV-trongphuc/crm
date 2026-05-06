@@ -9,6 +9,8 @@ interface Product {
   name: string;
   price: number;
   category_id?: number;
+  stock_quantity: number;
+  track_inventory: number;
 }
 
 interface Contact {
@@ -50,6 +52,14 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
   const addToCart = (p: Product) => {
     setCart(prev => {
       const existing = prev.find(item => item.id === p.id);
+      const currentQty = existing ? existing.quantity : 0;
+      
+      // Check stock if tracking is enabled
+      if (p.track_inventory && currentQty >= p.stock_quantity) {
+        addToast(`Sản phẩm ${p.name} đã hết hàng trong kho`, 'warning');
+        return prev;
+      }
+
       if (existing) {
         return prev.map(item => item.id === p.id ? { ...item, quantity: item.quantity + 1 } : item);
       }
@@ -137,7 +147,9 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                           <div style={{ width: 40, height: 40, background: 'var(--color-bg)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={18} className="text-light" /></div>
                           <div>
                             <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{p.name}</p>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>Mã: {p.id}</p>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>
+                              Mã: {p.id} {p.track_inventory ? `• Kho: ${p.stock_quantity}` : ''}
+                            </p>
                           </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
@@ -174,6 +186,11 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                         <Package size={18} color="var(--color-text-muted)" />
                       </div>
                       <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', minHeight: '2.8rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.4 }}>{p.name}</p>
+                      {p.track_inventory === 1 && (
+                        <p style={{ fontSize: '0.7rem', color: p.stock_quantity <= 5 ? 'var(--color-danger)' : 'var(--color-text-light)', fontWeight: 700, marginTop: '4px' }}>
+                          Tồn kho: {p.stock_quantity}
+                        </p>
+                      )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '1rem', borderTop: '1px solid var(--color-border-light)', marginTop: '0.5rem' }}>
                        <p style={{ color: 'var(--color-text)', fontWeight: 800, fontSize: '1.05rem' }}>{FMT_PRICE(p.price)}</p>
@@ -271,6 +288,10 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                         }}>-</button>
                         <span style={{ fontSize: '0.8125rem', fontWeight: 900, width: '20px', textAlign: 'center' }}>{item.quantity}</span>
                         <button className="btn ghost sm" style={{ padding: 0, width: 26, height: 26, borderRadius: '8px', minWidth: 26, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
+                          if (item.track_inventory && item.quantity >= item.stock_quantity) {
+                            addToast('Không thể vượt quá số lượng trong kho', 'warning');
+                            return;
+                          }
                           setCart(prev => prev.map(x => x.id === item.id ? { ...x, quantity: x.quantity + 1 } : x));
                         }}>+</button>
                       </div>

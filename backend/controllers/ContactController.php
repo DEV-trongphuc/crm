@@ -26,8 +26,11 @@ class ContactController {
         }
 
         if ($search) {
-            $where[]  = 'MATCH(c.first_name, c.last_name, c.email) AGAINST(? IN BOOLEAN MODE)';
+            $where[]  = '(MATCH(c.first_name, c.last_name, c.email) AGAINST(? IN BOOLEAN MODE) OR c.phone LIKE ? OR c.mobile LIKE ? OR c.email LIKE ?)';
             $params[] = "$search*";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
         }
         if ($status) { $where[] = 'c.status = ?'; $params[] = $status; }
         if ($source) { $where[] = 'c.source = ?'; $params[] = $source; }

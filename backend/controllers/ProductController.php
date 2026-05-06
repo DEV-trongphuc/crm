@@ -12,8 +12,8 @@ class ProductController {
         $b=getBody();
         if(empty($b['name'])) respond(422,null,'Tên sản phẩm là bắt buộc',false);
         
-        $sql = "INSERT INTO products (tenant_id, created_by, category_id, name, sku, category, description, price, cost, unit, stock_quantity, is_active) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO products (tenant_id, created_by, category_id, name, sku, category, description, price, cost, unit, stock_quantity, track_inventory, is_active) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $params = [
             $auth['tenant_id'],
@@ -27,6 +27,7 @@ class ProductController {
             (float)($b['cost'] ?? 0),
             $b['unit'] ?? 'cái',
             (int)($b['stock_quantity'] ?? 0),
+            (int)($b['track_inventory'] ?? 1),
             (int)($b['is_active'] ?? 1)
         ];
 
@@ -46,7 +47,7 @@ class ProductController {
         respond(200,$row);
     }
     public function update(array $auth,int $id): void {
-        $b=getBody(); $fields=['name','sku','category','category_id','description','price','cost','unit','stock_quantity','is_active'];
+        $b=getBody(); $fields=['name','sku','category','category_id','description','price','cost','unit','stock_quantity','track_inventory','is_active'];
         $sets=[];$params=[];
         foreach($fields as $f){
             if(array_key_exists($f,$b)){

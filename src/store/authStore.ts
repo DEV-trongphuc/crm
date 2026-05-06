@@ -7,6 +7,7 @@ export interface AuthUser {
   full_name: string;
   role: string;
   avatar_url: string | null;
+  bio?: string | null;
   tenant_id: number;
   tenant_name: string;
   tenant_slug: string;
@@ -18,6 +19,7 @@ interface AuthStore {
   refreshToken: string | null;
   isAuthenticated: boolean;
   setAuth: (user: AuthUser, access: string, refresh: string) => void;
+  setUser: (user: AuthUser) => void;
   clearAuth: () => void;
 }
 
@@ -33,6 +35,7 @@ export const useAuthStore = create<AuthStore>()(
         localStorage.setItem('refresh_token', refreshToken);
         set({ user, accessToken, refreshToken, isAuthenticated: true });
       },
+      setUser: (user) => set({ user }),
       clearAuth: () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');

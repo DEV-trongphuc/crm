@@ -46,7 +46,7 @@ class ReportController
             SELECT DATE_FORMAT(date,'%Y-%m') as month,
                    SUM(amount) as cost
             FROM expenses
-            WHERE tenant_id=? AND date BETWEEN ? AND ? $saleFilterExp
+            WHERE tenant_id=? AND status='approved' AND date BETWEEN ? AND ? $saleFilterExp
             GROUP BY month
         ");
         $stmtE->execute($pExp);
@@ -274,14 +274,14 @@ class ReportController
         }
 
         // By Category
-        $s1 = $this->db->prepare("SELECT COALESCE(NULLIF(category,''), 'Khác') as category, SUM(amount) as total FROM expenses WHERE tenant_id=? AND date BETWEEN ? AND ? $saleFilter GROUP BY category");
+        $s1 = $this->db->prepare("SELECT COALESCE(NULLIF(category,''), 'Khác') as category, SUM(amount) as total FROM expenses WHERE tenant_id=? AND status='approved' AND date BETWEEN ? AND ? $saleFilter GROUP BY category");
         $s1->execute($params);
 
         // Daily trend
         $s2 = $this->db->prepare("
             SELECT date, SUM(amount) as total 
             FROM expenses 
-            WHERE tenant_id=? AND date BETWEEN ? AND ? $saleFilter
+            WHERE tenant_id=? AND status='approved' AND date BETWEEN ? AND ? $saleFilter
             GROUP BY date ORDER BY date ASC
         ");
         $s2->execute($params);

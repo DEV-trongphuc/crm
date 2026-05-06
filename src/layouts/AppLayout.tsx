@@ -16,6 +16,7 @@ import { GlobalConfirmModal } from '../components/ui/GlobalConfirmModal';
 import { CommandPalette } from '../components/ui/CommandPalette';
 import { DemoIndicator } from '../components/ui/DemoIndicator';
 import { QRCodeCallModal } from '../components/ui/QRCodeCallModal';
+import { AdminProfileModal } from '../components/ui/AdminProfileModal';
 import styles from './AppLayout.module.css';
 
 const NAV_ITEMS = [
@@ -39,6 +40,7 @@ export const AppLayout: React.FC = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.getAttribute('data-theme') === 'dark');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Keyboard shortcut Ctrl+K
@@ -127,21 +129,6 @@ export const AppLayout: React.FC = () => {
           </div>
         )}
 
-        {/* User Profile */}
-        <div className={styles.sidebarFooter}>
-          <div className={styles.userCard}>
-            <div className={`avatar-placeholder sm`} style={{ background: '#7c3aed', fontSize: '0.7rem' }}>{initials}</div>
-            {!collapsed && (
-              <div className={styles.userInfo}>
-                <span className={styles.userName}>{user?.full_name || 'Admin'}</span>
-                <span className={styles.userRole}>{user?.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}</span>
-              </div>
-            )}
-          </div>
-          <button className={styles.logoutBtn} onClick={handleLogout} title="Đăng xuất">
-            <LogOut size={18} />
-          </button>
-        </div>
       </aside>
 
       {/* MAIN CONTENT */}
@@ -166,11 +153,11 @@ export const AppLayout: React.FC = () => {
               {dark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <NotificationsDropdown />
-            <div className={styles.userAvatar}>
+            <div className={styles.userAvatar} onClick={() => setProfileModalOpen(true)} style={{ cursor: 'pointer' }}>
               <div className="avatar-placeholder sm" style={{ background: '#7c3aed', fontSize: '0.7rem' }}>{initials}</div>
               <div className={styles.userMeta}>
                 <span className={styles.topUserName}>{user?.full_name}</span>
-                <span className={styles.topUserTenant}>{user?.tenant_name}</span>
+                <span className={styles.topUserTenant}>{user?.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}</span>
               </div>
             </div>
           </div>
@@ -201,6 +188,7 @@ export const AppLayout: React.FC = () => {
       </AnimatePresence>
       <CommandPalette />
       <QRCodeCallModal />
+      <AdminProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
     </div>
   );
 };

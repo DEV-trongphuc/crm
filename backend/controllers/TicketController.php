@@ -32,6 +32,10 @@ class TicketController {
         ");
         $stmt->execute($params);
         $tickets = $stmt->fetchAll();
+        foreach ($tickets as &$t) {
+            $t['related_contacts'] = json_decode($t['related_contacts'] ?? '[]');
+            $t['related_users'] = json_decode($t['related_users'] ?? '[]');
+        }
         
         respond(200, ['items' => $tickets]);
     }
@@ -46,6 +50,8 @@ class TicketController {
         $stmt->execute([$id, $auth['tenant_id']]);
         $ticket = $stmt->fetch();
         if (!$ticket) respond(404, null, 'Không tìm thấy ticket', false);
+        $ticket['related_contacts'] = json_decode($ticket['related_contacts'] ?? '[]');
+        $ticket['related_users'] = json_decode($ticket['related_users'] ?? '[]');
         respond(200, $ticket);
     }
 
@@ -56,8 +62,8 @@ class TicketController {
         }
 
         $stmt = $this->db->prepare("
-            INSERT INTO tickets (tenant_id, created_by, assignee_id, subject, customer_name, description, status, priority, due_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO tickets (tenant_id, created_by, assignee_id, subject, customer_name, description, status, priority, due_date, related_contacts, related_users)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         $stmt->execute([
             $auth['tenant_id'],
@@ -68,7 +74,9 @@ class TicketController {
             $data['description'] ?? null,
             $data['status'] ?? 'open',
             $data['priority'] ?? 'medium',
-            $data['due_date'] ?? date('Y-m-d H:i:s', strtotime('+1 day'))
+            $data['due_date'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
+            isset($data['related_contacts']) ? json_encode($data['related_contacts']) : null,
+            isset($data['related_users']) ? json_encode($data['related_users']) : null
         ]);
         $id = $this->db->lastInsertId();
         $this->show($auth, (int)$id);
@@ -86,6 +94,8 @@ class TicketController {
                 $params[] = $data[$f]; 
             } 
         }
+        if (isset($data['related_contacts'])) { $sets[] = 'related_contacts=?'; $params[] = json_encode($data['related_contacts']); }
+        if (isset($data['related_users'])) { $sets[] = 'related_users=?'; $params[] = json_encode($data['related_users']); }
         
         if (isset($data['status']) && $data['status'] === 'resolved') {
             $sets[] = "resolved_at=NOW()";

@@ -11,6 +11,8 @@ interface Props {
   onClose: () => void;
   ticket: any;
   onUpdate?: (data: any) => void;
+  contacts?: any[];
+  users?: any[];
 }
 
 const TICKET_STATUSES = [
@@ -28,7 +30,7 @@ const PRIORITIES = [
   { id: 'urgent', label: 'Khẩn cấp', color: '#ef4444' },
 ];
 
-export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdate }) => {
+export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdate, contacts = [], users = [] }) => {
   const { addToast } = useUIStore();
   const [formData, setFormData] = useState<any>({});
   const [comments, setComments] = useState<any[]>([]);
@@ -198,15 +200,52 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                     <Avatar name={formData.customer_name} size={40} />
                     <div>
                       <p style={{ fontWeight: 700, fontSize: '0.9rem' }}>{formData.customer_name}</p>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách hàng VIP</p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Khách hàng chính</p>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8rem' }}>
-                    <p><strong style={{ color: 'var(--color-text-light)' }}>SĐT:</strong> 0901234567</p>
-                    <p><strong style={{ color: 'var(--color-text-light)' }}>Email:</strong> contact@company.com</p>
-                    <p><strong style={{ color: 'var(--color-text-light)' }}>Đã chi:</strong> <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>45.000.000 đ</span></p>
-                  </div>
                 </div>
+
+                {formData.related_contacts?.length > 0 && (
+                  <>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginTop: '1.5rem', marginBottom: '1rem' }}>Khách hàng liên quan</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {formData.related_contacts.map((cid: any) => {
+                        const c = (contacts || []).find(x => String(x.id) === String(cid));
+                        if (!c) return null;
+                        return (
+                          <div key={cid} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Avatar src={c.avatar_url} name={`${c.first_name} ${c.last_name}`} size={28} />
+                            <div style={{ fontSize: '0.8125rem' }}>
+                              <p style={{ fontWeight: 600 }}>{c.first_name} {c.last_name}</p>
+                              <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.phone}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {formData.related_users?.length > 0 && (
+                  <>
+                    <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginTop: '1.5rem', marginBottom: '1rem' }}>Nhân viên liên quan</h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {formData.related_users.map((uid: any) => {
+                        const u = (users || []).find(x => String(x.id) === String(uid));
+                        if (!u) return null;
+                        return (
+                          <div key={uid} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Avatar src={u.avatar_url} name={u.full_name} size={28} />
+                            <div style={{ fontSize: '0.8125rem' }}>
+                              <p style={{ fontWeight: 600 }}>{u.full_name}</p>
+                              <p style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{u.role}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
 
             </div>

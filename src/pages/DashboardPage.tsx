@@ -182,19 +182,25 @@ export const DashboardPage: React.FC = () => {
     },
     {
       id: 'expenses',
-      label: 'Chi phí & Hao hụt',
+      label: 'Tổng chi phí & Giá vốn',
       value: FMT_VND(stats?.expenses ?? 0),
       icon: AlertTriangle,
       color: '#ef4444',
       change: stats?.expenses_change,
-      up: (stats?.expenses_change || '').startsWith('+'),
+      up: !(stats?.expenses_change || '').startsWith('+'),
       extra: (
-        <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'var(--color-bg)', borderRadius: '8px', border: '1px dashed var(--color-border)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Lợi nhuận ròng còn lại:</span>
-            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: (stats?.profit ?? 0) >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-              {FMT_VND(stats?.profit ?? 0)}
-            </span>
+        <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
+            <span>Giá vốn (COGS):</span>
+            <span style={{ fontWeight: 700 }}>{FMT_VND(stats?.cogs ?? 0)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
+            <span>Phí ship shop trả:</span>
+            <span style={{ fontWeight: 700 }}>{FMT_VND(stats?.shop_paid_shipping ?? 0)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: 'var(--color-text-muted)', borderTop: '1px solid var(--color-border)', paddingTop: '4px', marginTop: '2px' }}>
+            <span>Chi phí vận hành:</span>
+            <span style={{ fontWeight: 700 }}>{FMT_VND((stats?.expenses ?? 0) - (stats?.cogs ?? 0) - (stats?.shop_paid_shipping ?? 0))}</span>
           </div>
         </div>
       )

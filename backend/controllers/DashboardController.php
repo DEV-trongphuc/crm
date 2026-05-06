@@ -36,17 +36,22 @@ class DashboardController {
                 (SELECT COUNT(*) FROM activities WHERE tenant_id=:tid10 AND status='planned' AND due_date < CURDATE() $uidF) as overdue_tasks,
                 (SELECT COUNT(*) FROM contacts d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid6 AND d.deleted_at IS NULL AND ps.is_won=1 AND d.created_at BETWEEN :f4 AND :t4 $saleFilter) as won_count,
                 (SELECT COALESCE(SUM(d.expected_revenue),0) FROM contacts d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid7 AND d.deleted_at IS NULL AND ps.is_won=1 AND d.created_at BETWEEN :f5 AND :t5 $saleFilter) as won_value,
-                (SELECT COALESCE(SUM(shipping_fee),0) FROM invoices WHERE tenant_id=:tid8 AND status='paid' AND shipping_customer_pay=1 AND paid_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "").") as shipping_collected
+                (SELECT COALESCE(SUM(shipping_fee),0) FROM invoices WHERE tenant_id=:tid8 AND status='paid' AND shipping_customer_pay=1 AND paid_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "").") as shipping_collected,
+                (SELECT COALESCE(SUM(ii.quantity * p.cost), 0) FROM invoice_items ii JOIN products p ON ii.product_id = p.id JOIN invoices i ON ii.invoice_id = i.id WHERE i.tenant_id = :tid11 AND i.status = 'paid' AND i.paid_at BETWEEN :f7 AND :t7 ".(($auth['role'] === 'sale') ? " AND i.created_by = :uid" : "").") as total_cogs,
+                (SELECT COALESCE(SUM(shipping_fee), 0) FROM invoices WHERE tenant_id = :tid12 AND status = 'paid' AND shipping_customer_pay = 0 AND paid_at BETWEEN :f8 AND :t8 ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "").") as shop_paid_shipping
         ");
         
         $p = [
             'tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid, 'tid5' => $tid, 'tid6' => $tid, 'tid7' => $tid, 'tid8' => $tid, 'tid9' => $tid, 'tid10' => $tid,
+            'tid11' => $tid, 'tid12' => $tid,
             'f1' => $fromTs, 't1' => $toTs,
             'f2' => $fromTs, 't2' => $toTs,
             'f3' => $fromTs, 't3' => $toTs,
             'f4' => $fromTs, 't4' => $toTs,
             'f5' => $fromTs, 't5' => $toTs,
             'f6' => $fromTs, 't6' => $toTs,
+            'f7' => $fromTs, 't7' => $toTs,
+            'f8' => $fromTs, 't8' => $toTs,
             'f_date' => $from, 't_date' => $to
         ];
         if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
@@ -63,12 +68,15 @@ class DashboardController {
 
         $pPrev = [
             'tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid, 'tid5' => $tid, 'tid6' => $tid, 'tid7' => $tid, 'tid8' => $tid, 'tid9' => $tid, 'tid10' => $tid,
+            'tid11' => $tid, 'tid12' => $tid,
             'f1' => $prevFromTs, 't1' => $prevToTs,
             'f2' => $prevFromTs, 't2' => $prevToTs,
             'f3' => $prevFromTs, 't3' => $prevToTs,
             'f4' => $prevFromTs, 't4' => $prevToTs,
             'f5' => $prevFromTs, 't5' => $prevToTs,
             'f6' => $prevFromTs, 't6' => $prevToTs,
+            'f7' => $prevFromTs, 't7' => $prevToTs,
+            'f8' => $prevFromTs, 't8' => $prevToTs,
             'f_date' => $prevFrom, 't_date' => $prevTo
         ];
         if ($auth['role'] === 'sale') $pPrev['uid'] = $auth['user_id'];
@@ -102,16 +110,21 @@ class DashboardController {
         $pRevVal = $prevRev > 0 ? $prevRev : $prevWonVal;
 
         $exp = (float)$res['total_expenses'];
+        $cogs = (float)$res['total_cogs'];
+        $shopShipping = (float)$res['shop_paid_shipping'];
+        
         $pExpVal = (float)$resPrev['total_expenses'];
+        $pCogs = (float)$resPrev['total_cogs'];
+        $pShopShipping = (float)$resPrev['shop_paid_shipping'];
 
-        $profit = $currRev - $exp;
-        $prevProfit = $pRevVal - $pExpVal;
+        $profit = $currRev - $exp - $cogs - $shopShipping;
+        $prevProfit = $pRevVal - $pExpVal - $pCogs - $pShopShipping;
 
         respond(200, [
             'total_value'       => (float)$res['total_value'],
             'won_value'         => $currRev,
             'won_count'         => (int)$res['won_count'],
-            'expenses'          => $exp,
+            'expenses'          => $exp + $cogs + $shopShipping,
             'profit'            => $profit,
             'new_contacts'      => (int)$res['new_contacts'],
             'tasks_due_today'   => (int)$res['tasks_due_today'],
@@ -119,11 +132,13 @@ class DashboardController {
             'overdue_tasks'     => (int)$res['overdue_tasks'],
             'shipping_collected'=> (float)$res['shipping_collected'],
             'today_tasks'       => $todayTasks,
+            'cogs'              => $cogs,
+            'shop_paid_shipping'=> $shopShipping,
             // Changes
             'revenue_change'    => $calcChange($currRev, $pRevVal),
             'profit_change'     => $calcChange($profit, $prevProfit),
             'leads_change'      => $calcChange((int)$res['new_contacts'], (int)$resPrev['new_contacts']),
-            'expenses_change'   => $calcChange($exp, $pExpVal)
+            'expenses_change'   => $calcChange($exp + $cogs + $shopShipping, $pExpVal + $pCogs + $pShopShipping)
         ]);
     }
 
@@ -144,12 +159,30 @@ class DashboardController {
                       ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "")."
                 ) as revenue,
                 (
-                    SELECT COALESCE(SUM(amount), 0) 
-                    FROM expenses 
-                    WHERE tenant_id = :tid2 
-                      AND status = 'approved' 
-                      AND DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
-                      ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "")."
+                    (SELECT COALESCE(SUM(amount), 0) 
+                     FROM expenses 
+                     WHERE tenant_id = :tid2 
+                       AND status = 'approved' 
+                       AND DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
+                       ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "")."
+                    ) +
+                    (SELECT COALESCE(SUM(ii.quantity * p.cost), 0)
+                     FROM invoice_items ii 
+                     JOIN products p ON ii.product_id = p.id 
+                     JOIN invoices i ON ii.invoice_id = i.id
+                     WHERE i.tenant_id = :tid3
+                       AND i.status = 'paid'
+                       AND DATE_FORMAT(i.paid_at, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
+                       ".(($auth['role'] === 'sale') ? " AND i.created_by = :uid" : "")."
+                    ) +
+                    (SELECT COALESCE(SUM(shipping_fee), 0)
+                     FROM invoices
+                     WHERE tenant_id = :tid4
+                       AND status = 'paid'
+                       AND shipping_customer_pay = 0
+                       AND DATE_FORMAT(paid_at, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
+                       ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "")."
+                    )
                 ) as cost
             FROM (
                 SELECT LAST_DAY(CURRENT_DATE) - INTERVAL (a.a + (10 * b.a)) MONTH as date
@@ -162,7 +195,7 @@ class DashboardController {
             ORDER BY dates.date ASC
         ";
         
-        $p = ['tid1' => $tid, 'tid2' => $tid];
+        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid];
         if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
         
         $stmt = $this->db->prepare($sql);

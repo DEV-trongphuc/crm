@@ -48,9 +48,9 @@ class POSController {
                     $item['price'] * $item['quantity']
                 ]);
                 
-                // Deduct stock if product_id is present
+                // Deduct stock if product_id is present and tracking is enabled
                 if (!empty($item['id'])) {
-                    $sStock = $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND tenant_id = ?"); 
+                    $sStock = $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND tenant_id = ? AND track_inventory = 1"); 
                     $sStock->execute([$item['quantity'], $item['id'], $tid]);
                 }
             }
@@ -61,6 +61,7 @@ class POSController {
                 SET total_spent = total_spent + ?, 
                     order_count = order_count + 1, 
                     last_order_at = NOW(),
+                    last_contact = CURRENT_DATE,
                     status = 'customer'
                 WHERE id = ? AND tenant_id = ?
             ");
