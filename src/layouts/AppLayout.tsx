@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, Briefcase, CalendarCheck,
   Package, BarChart3, Settings, LogOut, Menu, Search,
   ChevronLeft, Moon, Sun, Command, Plus, FileSpreadsheet, Wallet, LifeBuoy,
-  Truck, ShoppingCart, Folder, Calendar, Layers
+  Truck, ShoppingCart, Folder, Calendar, Layers, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { to: '/contacts', icon: Users, label: 'Khách hàng' },
   { to: '/companies', icon: Building2, label: 'Công ty' },
   { to: '/deals', icon: Briefcase, label: 'Pipeline' },
+  { to: '/quotes', icon: FileText, label: 'Báo giá' },
   { to: '/activities', icon: CalendarCheck, label: 'Hoạt động' },
   { to: '/products', icon: Layers, label: 'Sản phẩm' },
   { to: '/suppliers', icon: Truck, label: 'Nhà cung cấp' },

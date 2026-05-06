@@ -278,6 +278,14 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                           />
                         </div>
                         <div className="form-group">
+                          <label className="form-label">Mã số thuế</label>
+                          <input className="form-input" placeholder="MST..." value={formData?.tax_id || ''} onChange={e => setFormData(prev => ({ ...prev, tax_id: e.target.value }))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Lĩnh vực kinh doanh</label>
+                          <input className="form-input" placeholder="VD: Công nghệ, Xây dựng..." value={formData?.industry || ''} onChange={e => setFormData(prev => ({ ...prev, industry: e.target.value }))} />
+                        </div>
+                        <div className="form-group">
                           <label className="form-label">Doanh thu dự kiến (VND)</label>
                           <input 
                             className="form-input" 
@@ -332,11 +340,11 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                             Đại diện pháp luật
                             <button className="btn-icon-bare" onClick={() => setHelpModal({ title: 'Đại diện pháp luật', content: 'Tên người đại diện pháp lý theo Giấy phép kinh doanh.' })}><HelpCircle size={14} color="var(--color-text-muted)" /></button>
                           </label>
-                          <input className="form-input" placeholder="Tên người đại diện..." />
+                          <input className="form-input" placeholder="Tên người đại diện..." value={formData?.legal_representative || ''} onChange={e => setFormData(prev => ({ ...prev, legal_representative: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label" style={{ color: 'var(--color-primary)' }}>Mã khách hàng nội bộ (ERP)</label>
-                          <input className="form-input" placeholder="Nhập mã ERP..." />
+                          <input className="form-input" placeholder="Nhập mã ERP..." value={formData?.erp_code || ''} onChange={e => setFormData(prev => ({ ...prev, erp_code: e.target.value }))} />
                         </div>
                       </div>
                     </div>

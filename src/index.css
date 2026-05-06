@@ -358,6 +358,10 @@ tbody tr:hover .row-actions { opacity: 1 !important; }
   background: rgba(0,0,0,0.5);
   backdrop-filter: blur(4px);
   z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
 /* Avatar */
@@ -735,4 +739,9 @@ td.col-check, th.col-check { width: 48px; padding-right: 0; }
 /* Utilities */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.scroll-mask-h {
+  mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 20px, black calc(100% - 20px), transparent);
+}
 

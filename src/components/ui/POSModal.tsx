@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShoppingCart, Search, Trash2, CheckCircle2, Package, Plus, X, User, DollarSign, Loader2 } from 'lucide-react';
+import { ShoppingCart, Search, Trash2, CheckCircle2, Package, Plus, X, User, DollarSign, Loader2, Truck } from 'lucide-react';
 import api from '../../api/axios';
 import { useUIStore } from '../../store/uiStore';
 
@@ -69,7 +69,11 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
     setSearchProduct('');
   };
 
+  const [shippingFee, setShippingFee] = useState(0);
+  const [shippingCustomerPay, setShippingCustomerPay] = useState(true);
+
   const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const finalTotal = totalAmount + (shippingCustomerPay ? shippingFee : 0);
 
   const FMT_PRICE = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 
@@ -100,7 +104,9 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
       await api.post('/pos', {
         customer_id: selectedContact.id,
         cart,
-        total_amount: totalAmount
+        total_amount: finalTotal,
+        shipping_fee: shippingFee,
+        shipping_customer_pay: shippingCustomerPay ? 1 : 0
       });
       addToast('Tạo đơn hàng thành công!', 'success');
       onClose();
@@ -115,7 +121,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
     <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)', backgroundColor: 'rgba(0,0,0,0.4)' }}>
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        style={{ maxWidth: '1200px', width: '95vw', height: '85vh', maxHeight: '850px', background: 'var(--color-surface)', display: 'flex', overflow: 'hidden', borderRadius: '32px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-2xl)' }} 
+        style={{ maxWidth: '1200px', width: '95vw', height: '85vh', maxHeight: '850px', background: 'var(--color-surface)', display: 'flex', overflow: 'hidden', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-2xl)' }} 
         onClick={e => e.stopPropagation()}
       >
           {/* Left: Product Selection */}
@@ -312,10 +318,32 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
             </div>
 
             <div style={{ padding: '2rem', background: 'white', borderTop: '1px solid var(--color-border)', borderRadius: '0 0 32px 0' }}>
+              {/* Shipping Section */}
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--color-bg)', borderRadius: '20px', border: '1px solid var(--color-border-light)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-light)' }}>PHÍ VẬN CHUYỂN</span>
+                  <div style={{ display: 'flex', background: 'white', padding: '2px', borderRadius: '10px', border: '1px solid var(--color-border)' }}>
+                    <button className={`btn sm ${shippingCustomerPay ? 'primary' : 'ghost'}`} onClick={() => setShippingCustomerPay(true)} style={{ fontSize: '0.7rem', padding: '2px 8px', height: '24px' }}>Khách trả</button>
+                    <button className={`btn sm ${!shippingCustomerPay ? 'primary' : 'ghost'}`} onClick={() => setShippingCustomerPay(false)} style={{ fontSize: '0.7rem', padding: '2px 8px', height: '24px' }}>Shop trả</button>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', borderRadius: '12px', padding: '8px 12px', background: 'white', border: '1px solid var(--color-border)' }}>
+                  <Truck size={16} style={{ color: 'var(--color-primary)', marginRight: '8px' }} />
+                  <input 
+                    type="number" 
+                    style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }} 
+                    placeholder="0" 
+                    value={shippingFee || ''} 
+                    onChange={e => setShippingFee(Number(e.target.value))} 
+                  />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>VND</span>
+                </div>
+              </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
                 <div>
                   <span style={{ fontSize: '0.75rem', fontWeight: 900, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Tổng tiền thanh toán</span>
-                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.04em', lineHeight: 1, marginTop: '4px' }}>{FMT_PRICE(totalAmount)}</div>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.04em', lineHeight: 1, marginTop: '4px' }}>{FMT_PRICE(finalTotal)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-success)', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}><CheckCircle2 size={14} /> Đã bao gồm VAT</span>

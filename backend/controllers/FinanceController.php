@@ -293,14 +293,14 @@ class FinanceController {
         $this->db->beginTransaction();
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO expenses (tenant_id,created_by,title,category,amount,date,status,notes,
+                INSERT INTO expenses (tenant_id,created_by,title,category,amount,vat_amount,date,status,notes,
                     vendor_name,has_vat_invoice,is_vat_inclusive)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
             ");
             $stmt->execute([
                 $auth['tenant_id'], $auth['user_id'],
                 $data['title'], $data['category']??'Khác',
-                $totalAmount, $data['date']??date('Y-m-d'),
+                $totalAmount, $data['vat_amount']??0, $data['date']??date('Y-m-d'),
                 $data['status']??'pending', $data['notes']??null,
                 $data['vendor_name']??null,
                 $data['has_vat_invoice']??0,
@@ -331,7 +331,7 @@ class FinanceController {
 
     public function updateExpense(array $auth, int $id): void {
         $data = getBody();
-        $fields = ['title','category','amount','date','status','notes',
+        $fields = ['title','category','amount','vat_amount','date','status','notes',
                    'vendor_name','has_vat_invoice','is_vat_inclusive'];
         $sets = []; $params = [];
         foreach ($fields as $f) { if (array_key_exists($f, $data)) { $sets[] = "$f=?"; $params[] = $data[$f]; } }

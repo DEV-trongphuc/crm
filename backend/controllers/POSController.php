@@ -30,10 +30,19 @@ class POSController {
             $today = date('Ymd');
             $invNum = 'POS-' . $today . '-' . strtoupper(bin2hex(random_bytes(3)));
             $sInv = $this->db->prepare("
-                INSERT INTO invoices (tenant_id, contact_id, created_by, invoice_number, title, status, issue_date, due_date, paid_at, total)
-                VALUES (?, ?, ?, ?, ?, 'paid', CURDATE(), CURDATE(), NOW(), ?)
+                INSERT INTO invoices (tenant_id, contact_id, created_by, invoice_number, title, status, issue_date, due_date, paid_at, total, shipping_fee, shipping_customer_pay)
+                VALUES (?, ?, ?, ?, ?, 'paid', CURDATE(), CURDATE(), NOW(), ?, ?, ?)
             ");
-            $sInv->execute([$tid, $data['customer_id'], $uid, $invNum, $title, $data['total_amount']]);
+            $sInv->execute([
+                $tid, 
+                $data['customer_id'], 
+                $uid, 
+                $invNum, 
+                $title, 
+                $data['total_amount'],
+                $data['shipping_fee'] ?? 0,
+                $data['shipping_customer_pay'] ?? 0
+            ]);
             $invId = $this->db->lastInsertId();
 
             // 2. Add Invoice Items and Deduct Stock

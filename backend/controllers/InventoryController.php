@@ -68,8 +68,8 @@ class InventoryController {
                 $pName = $productNameStmt->fetchColumn();
 
                 $expStmt = $this->db->prepare("
-                    INSERT INTO expenses (tenant_id, created_by, title, category, amount, date, status, notes)
-                    VALUES (?, ?, ?, 'Quà tặng khách hàng', ?, CURRENT_DATE, 'approved', ?)
+                    INSERT INTO expenses (tenant_id, created_by, title, category, amount, vat_amount, date, status, notes, has_vat_invoice, is_vat_inclusive)
+                    VALUES (?, ?, ?, 'Quà tặng khách hàng', ?, 0, CURRENT_DATE, 'approved', ?, 0, 1)
                 ");
                 $expTitle = "Tặng phẩm: $pName (x" . $b['qty'] . ")";
                 $expNotes = "Xuất từ lô #" . $b['batch_id'] . ". Lý do: " . $b['reason'];

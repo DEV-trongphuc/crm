@@ -4,8 +4,26 @@ class QuoteController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function index(array $auth): void {
-        $sql = "SELECT q.*,u.full_name as created_by_name,CONCAT(c.first_name,' ',c.last_name) as contact_name FROM quotes q LEFT JOIN users u ON q.created_by=u.id LEFT JOIN contacts c ON q.contact_id=c.id WHERE q.tenant_id=?";
+        $sql = "SELECT q.*, u.full_name as created_by_name, CONCAT(c.first_name,' ',c.last_name) as contact_name 
+                FROM quotes q 
+                LEFT JOIN users u ON q.created_by=u.id 
+                LEFT JOIN contacts c ON q.contact_id=c.id 
+                WHERE q.tenant_id=?";
         $p = [$auth['tenant_id']];
+
+        if (!empty($_GET['contact_id'])) {
+            $sql .= " AND q.contact_id = ?";
+            $p[] = (int)$_GET['contact_id'];
+        }
+        if (!empty($_GET['from'])) {
+            $sql .= " AND q.created_at >= ?";
+            $p[] = $_GET['from'] . " 00:00:00";
+        }
+        if (!empty($_GET['to'])) {
+            $sql .= " AND q.created_at <= ?";
+            $p[] = $_GET['to'] . " 23:59:59";
+        }
+
         if ($auth['role'] === 'sale') {
             $sql .= " AND q.created_by=?";
             $p[] = $auth['user_id'];

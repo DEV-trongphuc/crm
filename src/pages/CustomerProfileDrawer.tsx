@@ -10,6 +10,7 @@ import { PhoneLink } from '../components/ui/PhoneLink';
 import { ActivityModal } from '../components/ui/ActivityModal';
 import { MentionInput } from '../components/ui/MentionInput';
 import { CreateExpenseModal } from '../components/ui/CreateExpenseModal';
+import { QuoteEditorModal } from '../components/ui/QuoteEditorModal.tsx';
 import { Avatar } from '../components/ui/Avatar';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { useUIStore } from '../store/uiStore';
@@ -64,6 +65,7 @@ const TABS = [
   { id: 'notes', label: 'Ghi chú nội bộ', icon: <FileText size={16} /> },
   { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <FileText size={16} /> },
   { id: 'invoices', label: 'Invoices', icon: <DollarSign size={16} /> },
+  { id: 'quotes', label: 'Báo giá (Quotes)', icon: <FileText size={16} /> },
   { id: 'expenses', label: 'Chi phí', icon: <DollarSign size={16} /> },
   { id: 'tickets', label: 'Hỗ trợ/Khiếu nại', icon: <LifeBuoy size={16} /> },
 ];
@@ -95,9 +97,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [docs, setDocs] = useState<any[]>([]);
   const [deals, setDeals] = useState<any[]>([]);
   const [drawerInvoices, setDrawerInvoices] = useState<any[]>([]);
+  const [drawerQuotes, setDrawerQuotes] = useState<any[]>([]);
   const [drawerExpenses, setDrawerExpenses] = useState<any[]>([]);
   const [drawerTickets, setDrawerTickets] = useState<any[]>([]);
   const [drawerActivities, setDrawerActivities] = useState<any[]>([]);
+  const [showQuoteEditor, setShowQuoteEditor] = useState(false);
+  const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [loadingRelated, setLoadingRelated] = useState(false);
   const [quickUserCard, setQuickUserCard] = useState<{ id: number; name: string; role: string; email?: string; visible: boolean; x: number; y: number } | null>(null);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
@@ -197,6 +202,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const invoicesRes = await api.get(`/invoices?contact_id=${contact.id}`);
       setDrawerInvoices(invoicesRes.data.data.items || []);
 
+      // Fetch Quotes
+      const quotesRes = await api.get(`/quotes?contact_id=${contact.id}`);
+      setDrawerQuotes(quotesRes.data.data || []);
+
       // Fetch Expenses
       const expensesRes = await api.get(`/expenses/entity/contact/${contact.id}`);
       setDrawerExpenses(expensesRes.data.data || []);
@@ -220,6 +229,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setTasks([]);
       setDeals([]);
       setDrawerInvoices([]);
+      setDrawerQuotes([]);
       setDrawerExpenses([]);
       setDrawerTickets([]);
       setActiveTab('info');
@@ -668,6 +678,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </div>
                   </div>
 
+                  {/* Stats Section */}
+                  <div style={{ display: 'flex', gap: '1.5rem', padding: '0 1.5rem', borderLeft: '1px solid var(--color-border-light)', height: 'fit-content' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', textTransform: 'uppercase' }}>Tổng chi tiêu</p>
+                      <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-primary)' }}>{FMT(formData.total_spent)}</p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', textTransform: 'uppercase' }}>Số đơn hàng</p>
+                      <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{formData.order_count || 0}</p>
+                    </div>
+                  </div>
+
                   {/* Actions Section */}
                   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -797,9 +819,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           </span>
                         </div>
                         <div className="card-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' }}>
-                          <span className="text-xs text-light" style={{ fontWeight: 600 }}>TƯƠNG TÁC</span>
-                          <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginTop: '0.25rem' }}>{timeline.length} lần</span>
-                          <span className="text-xs text-light mt-1">Gọi điện, Email, Gặp mặt</span>
+                          <span className="text-xs text-light" style={{ fontWeight: 600 }}>TỔNG CHI TIÊU</span>
+                          <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#10b981', marginTop: '0.25rem' }}>{FMT(formData.total_spent || 0)}</span>
+                          <span className="text-xs text-light mt-1">
+                            {formData.order_count || 0} đơn hàng • Mua cuối: {formData.last_order_at ? new Date(formData.last_order_at).toLocaleDateString('vi-VN') : '—'}
+                          </span>
                         </div>
                       </div>
 
@@ -836,10 +860,31 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             }} />
                           </div>
                           <div className="form-group">
+                            <label className="form-label">Số di động</label>
+                            <input className="form-input" type="tel" placeholder="08xx xxx xxx" value={formData.mobile || ''} onChange={e => {
+                              const val = e.target.value;
+                              setFormData(prev => ({ ...prev, mobile: val }));
+                            }} />
+                          </div>
+                          <div className="form-group">
                             <label className="form-label">Ngày sinh</label>
                             <input className="form-input" type="date" value={formData.birthday || ''} onChange={e => {
                               const val = e.target.value;
                               setFormData(prev => ({ ...prev, birthday: val }));
+                            }} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Chức danh</label>
+                            <input className="form-input" placeholder="ví dụ: Giám đốc" value={formData.job_title || ''} onChange={e => {
+                              const val = e.target.value;
+                              setFormData(prev => ({ ...prev, job_title: val }));
+                            }} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Phòng ban</label>
+                            <input className="form-input" placeholder="ví dụ: Kinh doanh" value={formData.department || ''} onChange={e => {
+                              const val = e.target.value;
+                              setFormData(prev => ({ ...prev, department: val }));
                             }} />
                           </div>
                         </div>
@@ -1424,6 +1469,75 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </div>
                   )}
 
+                  {/* QUOTES TAB */}
+                  {activeTab === 'quotes' && (
+                    <div className="animate-fade">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <div>
+                          <h3 style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--color-text)' }}>Danh sách Báo giá</h3>
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>Theo dõi các đề xuất giá gửi cho khách hàng này</p>
+                        </div>
+                        <button 
+                          className="btn primary sm" 
+                          style={{ boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)' }}
+                          onClick={() => {
+                            setSelectedQuote(null);
+                            setShowQuoteEditor(true);
+                          }}
+                        >
+                          <Plus size={14} /> Tạo Báo giá
+                        </button>
+                      </div>
+
+                      {drawerQuotes.length === 0 ? (
+                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
+                          <FileText size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
+                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có báo giá</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Bắt đầu bằng việc tạo một báo giá chuyên nghiệp để chốt deal nhanh hơn.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {drawerQuotes.map((q: any) => (
+                            <div 
+                              key={q.id} 
+                              className="card-panel table-row-hover" 
+                              onClick={() => {
+                                setSelectedQuote(q);
+                                setShowQuoteEditor(true);
+                              }}
+                              style={{ 
+                                padding: '1.25rem', 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                border: '1px solid var(--color-border-light)',
+                                borderRadius: '16px'
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <div style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', width: 40, height: 40, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <FileText size={20} />
+                                </div>
+                                <div>
+                                  <h4 style={{ fontWeight: 800, fontSize: '0.9375rem', color: 'var(--color-text)', marginBottom: '2px' }}>{q.title}</h4>
+                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', fontWeight: 600 }}>{q.quote_number} • {new Date(q.created_at).toLocaleDateString('vi-VN')}</p>
+                                </div>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '1rem', fontWeight: 900, color: 'var(--color-text)', marginBottom: '4px' }}>
+                                  {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(q.total)}
+                                </div>
+                                <span className={`badge ${q.status === 'accepted' ? 'success' : q.status === 'rejected' ? 'danger' : q.status === 'sent' ? 'warning' : 'info'}`} style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                  {q.status === 'accepted' ? 'Đã duyệt' : q.status === 'rejected' ? 'Từ chối' : q.status === 'sent' ? 'Đã gửi' : 'Bản nháp'}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* EXPENSES TAB */}
                   {activeTab === 'expenses' && (
                     <div className="animate-fade">
@@ -1803,6 +1917,16 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         onClose={() => setShowExpenseModal(false)}
         initialEntity={{ type: 'contact', id: contact?.id, name: `${contact?.first_name} ${contact?.last_name || ''}`.trim() }}
         onSuccess={fetchData}
+      />
+      <QuoteEditorModal
+        isOpen={showQuoteEditor}
+        onClose={() => setShowQuoteEditor(false)}
+        quote={selectedQuote}
+        initialContact={contact}
+        onSuccess={() => {
+          setShowQuoteEditor(false);
+          fetchData();
+        }}
       />
     </>
   );

@@ -319,7 +319,7 @@ export const InvoicesPage: React.FC = () => {
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setPreviewItem(null)} style={{ zIndex: 300 }} />
             <motion.div
               className="modal"
-              style={{ position: 'fixed', top: '50%', left: '50%', width: '90%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto', zIndex: 310, padding: 0, borderRadius: '24px' }}
+              style={{ position: 'fixed', top: '50%', left: '50%', width: '90%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto', zIndex: 310, padding: 0, borderRadius: 'var(--radius-2xl)' }}
               initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}
             >
               <div style={{ padding: '2rem', background: '#fff' }}>
@@ -334,7 +334,7 @@ export const InvoicesPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem', padding: '1.5rem', background: 'var(--color-bg)', borderRadius: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem', padding: '1.5rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)' }}>
                   <div>
                     <p className="text-xs text-light mb-1 uppercase tracking-wider font-bold">Khách hàng</p>
                     <p style={{ fontWeight: 700 }}>{previewItem.contact_name}</p>
@@ -365,6 +365,10 @@ export const InvoicesPage: React.FC = () => {
                   </tbody>
                   <tfoot>
                     <tr style={{ borderTop: '2px solid var(--color-border)' }}>
+                       <td style={{ padding: '8px 0', fontSize: '0.875rem' }}>Phí vận chuyển ({previewItem.shipping_customer_pay ? 'Khách trả' : 'Shop trả'})</td>
+                       <td style={{ textAlign: 'right', fontWeight: 600 }}>{FMT(previewItem.shipping_fee || 0)}</td>
+                    </tr>
+                    <tr>
                       <td style={{ padding: '16px 0', fontWeight: 700, fontSize: '1.1rem' }}>TỔNG CỘNG</td>
                       <td style={{ textAlign: 'right', fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-primary)' }}>{FMT(previewItem.total)}</td>
                     </tr>

@@ -15,6 +15,7 @@ import { TicketsPage } from './pages/TicketsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SuppliersPage } from './pages/SuppliersPage.tsx';
 import { FilesPage } from './pages/FilesPage.tsx';
+import { QuotesPage } from './pages/QuotesPage.tsx';
 import InventoryPage from './pages/InventoryPage.tsx';
 import { useAuthStore } from './store/authStore';
 
@@ -33,6 +34,7 @@ function App() {
         <Route path="contacts" element={<ContactsPage />} />
         <Route path="companies" element={<CompaniesPage />} />
         <Route path="deals" element={<DealsPage />} />
+        <Route path="quotes" element={<QuotesPage />} />
         <Route path="activities" element={<ActivitiesPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="invoices" element={<InvoicesPage />} />

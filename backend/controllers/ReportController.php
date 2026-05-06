@@ -67,54 +67,33 @@ class ReportController
 
         // Performance by Owner
         $stmt2 = $this->db->prepare("
-            SELECT name, SUM(deals) as deals, SUM(revenue) as revenue
-            FROM (
-                SELECT u.full_name as name, 
-                       COUNT(d.id) as deals, 
-                       COALESCE(SUM(d.expected_revenue),0) as revenue
-                FROM users u
-                LEFT JOIN contacts d ON u.id = d.owner_id AND d.tenant_id = u.tenant_id AND d.deleted_at IS NULL
-                WHERE u.tenant_id = ? ".($auth['role'] === 'sale' ? " AND u.id=?" : "")."
-                GROUP BY u.id
-                UNION ALL
-                SELECT u.full_name as name, 
-                       COUNT(co.id) as deals, 
-                       COALESCE(SUM(co.expected_revenue),0) as revenue
-                FROM users u
-                LEFT JOIN companies co ON u.id = co.owner_id AND co.tenant_id = u.tenant_id AND co.deleted_at IS NULL
-                WHERE u.tenant_id = ? ".($auth['role'] === 'sale' ? " AND u.id=?" : "")."
-                GROUP BY u.id
-            ) combined
-            GROUP BY name ORDER BY revenue DESC
+            SELECT u.full_name as name, 
+                   COUNT(d.id) as deals, 
+                   COALESCE(SUM(d.value),0) as revenue
+            FROM users u
+            LEFT JOIN deals d ON u.id = d.owner_id AND d.tenant_id = u.tenant_id AND d.deleted_at IS NULL
+            WHERE u.tenant_id = ? ".($auth['role'] === 'sale' ? " AND u.id=?" : "")."
+            GROUP BY u.id
+            ORDER BY revenue DESC
         ");
-        $pOwner2 = array_merge($pOwner, $pOwner);
-        $stmt2->execute($pOwner2);
+        $stmt2->execute($pOwner);
 
         $sDeals = $this->db->prepare("
-            SELECT 
-                (SELECT COUNT(*) FROM contacts WHERE tenant_id=:tid1 AND deleted_at IS NULL ".($auth['role'] === 'sale' ? " AND owner_id=:uid1" : "").") +
-                (SELECT COUNT(*) FROM companies WHERE tenant_id=:tid2 AND deleted_at IS NULL ".($auth['role'] === 'sale' ? " AND owner_id=:uid2" : "").") as total_deals,
-                (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts WHERE tenant_id=:tid3 AND deleted_at IS NULL ".($auth['role'] === 'sale' ? " AND owner_id=:uid3" : "").") +
-                (SELECT COALESCE(SUM(expected_revenue),0) FROM companies WHERE tenant_id=:tid4 AND deleted_at IS NULL ".($auth['role'] === 'sale' ? " AND owner_id=:uid4" : "").") as total_revenue
+            SELECT COUNT(*) as total_deals,
+                   COALESCE(SUM(value),0) as total_revenue
+            FROM deals
+            WHERE tenant_id=? AND deleted_at IS NULL ".($auth['role'] === 'sale' ? " AND owner_id=?" : "")."
         ");
-        $pDeals = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid];
-        if ($auth['role'] === 'sale') {
-            $pDeals['uid1'] = $auth['user_id']; $pDeals['uid2'] = $auth['user_id'];
-            $pDeals['uid3'] = $auth['user_id']; $pDeals['uid4'] = $auth['user_id'];
-        }
-        $sDeals->execute($pDeals);
+        $sDeals->execute($pOwner);
         $dealStats = $sDeals->fetch(PDO::FETCH_ASSOC);
 
         $sWon = $this->db->prepare("
-            SELECT 
-                (SELECT COUNT(*) FROM contacts d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid1 AND d.deleted_at IS NULL AND ps.is_won=1 ".($auth['role'] === 'sale' ? " AND d.owner_id=:uid1" : "").") +
-                (SELECT COUNT(*) FROM companies co JOIN pipeline_stages ps ON co.stage_id=ps.id WHERE co.tenant_id=:tid2 AND co.deleted_at IS NULL AND ps.is_won=1 ".($auth['role'] === 'sale' ? " AND co.owner_id=:uid2" : "").") as won_count
+            SELECT COUNT(*) 
+            FROM deals d 
+            JOIN pipeline_stages ps ON d.stage_id=ps.id 
+            WHERE d.tenant_id=? AND d.deleted_at IS NULL AND ps.is_won=1 ".($auth['role'] === 'sale' ? " AND d.owner_id=?" : "")."
         ");
-        $pWon = ['tid1' => $tid, 'tid2' => $tid];
-        if ($auth['role'] === 'sale') {
-            $pWon['uid1'] = $auth['user_id']; $pWon['uid2'] = $auth['user_id'];
-        }
-        $sWon->execute($pWon);
+        $sWon->execute($pOwner);
         $wonCount = (int)$sWon->fetchColumn();
 
         $sContacts = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL ".($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
@@ -171,19 +150,13 @@ class ReportController
 
         $stmt = $this->db->prepare("
             SELECT ps.name as stage, ps.color, 
-                   (
-                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid1 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid" : "").") +
-                     (SELECT COUNT(*) FROM companies comp WHERE comp.stage_id = ps.id AND comp.deleted_at IS NULL AND comp.tenant_id = :tid2 ".(($auth['role'] === 'sale') ? " AND comp.owner_id = :uid" : "").")
-                   ) as count,
-                    (
-                      (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid3 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid" : "").") +
-                      (SELECT COALESCE(SUM(expected_revenue),0) FROM companies comp WHERE comp.stage_id = ps.id AND comp.deleted_at IS NULL AND comp.tenant_id = :tid5 ".(($auth['role'] === 'sale') ? " AND comp.owner_id = :uid" : "").")
-                    ) as total_value
+                   (SELECT COUNT(*) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid1 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid" : "").") as count,
+                   (SELECT COALESCE(SUM(value),0) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid2 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid" : "").") as total_value
             FROM pipeline_stages ps 
             WHERE ps.tenant_id = :tid4
             GROUP BY ps.id ORDER BY ps.order_index
         ");
-        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid, 'tid5' => $tid];
+        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid4' => $tid];
         if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
         $stmt->execute($p);
         respond(200, $stmt->fetchAll());

@@ -445,16 +445,16 @@ export default function InventoryPage() {
                         </td>
                         <td style={{ padding: '0.875rem 0.75rem', textAlign: 'right' }}>
                           <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{b.import_price.toLocaleString()} đ</div>
-                          <div style={{ fontSize: '10px', color: 'var(--color-text-light)', fontWeight: 500 }}>{b.unit}</div>
+                          <div className="table-wrap" style={{ border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-lg)', maxHeight: '300px' }}>{b.unit}</div>
                         </td>
                         <td style={{ padding: '0.875rem 0.75rem' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                             <div style={{ fontSize: '0.875rem', fontWeight: 700, color: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-text)' }}>
                               {b.current_qty} / {b.initial_qty}
                             </div>
-                            <div style={{ width: '64px', height: '6px', background: 'var(--color-border)', borderRadius: '999px', marginTop: '6px', overflow: 'hidden' }}>
+                            <div style={{ width: '64px', height: '6px', background: 'var(--color-border)', borderRadius: 'var(--radius-full)', marginTop: '6px', overflow: 'hidden' }}>
                               <div 
-                                style={{ height: '100%', borderRadius: '999px', background: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-primary)', width: `${Math.min((b.current_qty / b.initial_qty) * 100, 100)}%` }}
+                                style={{ height: '100%', borderRadius: 'var(--radius-full)', background: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-primary)', width: `${Math.min((b.current_qty / b.initial_qty) * 100, 100)}%` }}
                               />
                             </div>
                           </div>

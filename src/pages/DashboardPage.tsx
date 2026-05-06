@@ -173,11 +173,11 @@ export const DashboardPage: React.FC = () => {
             <span>Biên lợi nhuận</span>
             <span style={{ color: margin >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>{margin.toFixed(1)}%</span>
           </div>
-          <div style={{ height: 6, background: 'var(--color-bg)', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: 6, background: 'var(--color-bg)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${Math.min(100, Math.max(0, margin))}%` }}
-              style={{ height: '100%', background: margin >= 20 ? 'var(--color-success)' : margin > 0 ? 'var(--color-primary)' : 'var(--color-danger)', borderRadius: 3 }} 
+              style={{ height: '100%', background: margin >= 20 ? 'var(--color-success)' : margin > 0 ? 'var(--color-primary)' : 'var(--color-danger)', borderRadius: 'var(--radius-sm)' }} 
             />
           </div>
         </div>
@@ -186,7 +186,7 @@ export const DashboardPage: React.FC = () => {
     {
       id: 'expenses',
       label: 'Chi phí & Thất thoát',
-      value: FMT_VND((stats?.expenses ?? 0) + (stats?.inventory_loss ?? 0)),
+      value: FMT_VND((stats?.expenses ?? 0) + (stats?.inventory_loss ?? 0) + (stats?.shop_paid_shipping ?? 0)),
       icon: AlertTriangle,
       color: '#ef4444',
       change: stats?.expenses_change,
@@ -196,6 +196,10 @@ export const DashboardPage: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
             <span>Chi phí vận hành:</span>
             <span style={{ fontWeight: 700 }}>{FMT_VND(stats?.expenses ?? 0)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
+            <span>Phí ship shop chịu:</span>
+            <span style={{ fontWeight: 700, color: 'var(--color-danger)' }}>{FMT_VND(stats?.shop_paid_shipping ?? 0)}</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.6875rem', color: 'var(--color-text-muted)' }}>
             <span>Thất thoát kho:</span>
