@@ -11,6 +11,7 @@ import api from '../api/axios';
 import { useUIStore } from '../store/uiStore';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
+import { Pagination } from '../components/ui/Pagination';
 
 export const FilesPage: React.FC = () => {
   const { addToast, showConfirm } = useUIStore();
@@ -41,11 +42,23 @@ export const FilesPage: React.FC = () => {
   const [editingCat, setEditingCat] = useState<any>(null);
   const [catFormData, setCatFormData] = useState({ label: '' });
 
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+
   const fetchFiles = async () => {
     setLoading(true);
     try {
-      const res = await api.get('/cloud-files');
-      setFiles(res.data.data || []);
+      const res = await api.get('/cloud-files', { 
+        params: { 
+          page, 
+          limit: 15, 
+          category: category === 'all' ? '' : category,
+          search: searchTerm
+        } 
+      });
+      const data = res.data.data;
+      setFiles(data.items || []);
+      setTotal(data.total || 0);
     } catch (err) {
       addToast('Lỗi khi tải danh sách tệp tin', 'error');
     } finally {
@@ -53,7 +66,12 @@ export const FilesPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchFiles(); }, []);
+  useEffect(() => { fetchFiles(); }, [page, category, searchTerm]);
+
+  // Reset page when category or search changes
+  useEffect(() => {
+    setPage(1);
+  }, [category, searchTerm]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -69,15 +87,16 @@ export const FilesPage: React.FC = () => {
     if (!selectedFile) return;
     setLoading(true);
     try {
-      const mockData = {
-        name: uploadFormData.name + '.' + selectedFile.name.split('.').pop(),
-        file_path: 'uploads/cloud/' + Date.now() + '_' + selectedFile.name,
-        mime_type: selectedFile.type,
-        file_size: selectedFile.size,
-        category: uploadFormData.category,
-        visibility: activeTab
-      };
-      await api.post('/cloud-files', mockData);
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('name', uploadFormData.name);
+      formData.append('category', uploadFormData.category);
+      formData.append('visibility', activeTab);
+
+      await api.post('/cloud-files', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
       addToast('Đã tải tệp lên thành công', 'success');
       setShowUploadModal(false);
       setSelectedFile(null);
@@ -139,11 +158,7 @@ export const FilesPage: React.FC = () => {
     );
   };
 
-  const filtered = files.filter(f => 
-    f.visibility === activeTab &&
-    f.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
-    (category === 'all' || f.category === category)
-  );
+  const filtered = files;
 
   const getFileIcon = (mime: string) => {
     if (!mime) return <File size={24} />;
@@ -273,7 +288,7 @@ export const FilesPage: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem' }}>
                 {[1,2,3,4,5,6].map(i => <div key={i} className="skeleton" style={{ height: '192px', borderRadius: 'var(--radius-2xl)' }} />)}
               </div>
-            ) : filtered.length === 0 ? (
+            ) : total === 0 ? (
               <div style={{ flex: 1, display: 'flex', minHeight: '400px', width: '100%' }}>
                 <div style={{ flex: 1, background: 'var(--color-surface)', padding: '4rem', borderRadius: 'var(--radius-2xl)', border: '2px dashed var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
                   <div style={{ width: '96px', height: '96px', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
@@ -288,100 +303,122 @@ export const FilesPage: React.FC = () => {
                   </button>
                 </div>
               </div>
-            ) : viewMode === 'grid' ? (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem', paddingBottom: '2rem' }}>
-                {filtered.map(f => (
-                  <motion.div 
-                    key={f.id} 
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', position: 'relative' }}
-                    className="hover-shadow"
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-                      <div style={{ width: '56px', height: '56px', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-border)' }}>
-                        {getFileIcon(f.mime_type)}
-                      </div>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button className="btn-icon-bare" title="Chia sẻ"><Share2 size={16} /></button>
-                        <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={16} /></button>
-                      </div>
-                    </div>
-                    
-                    <h4 style={{ fontWeight: 900, fontSize: '0.875rem', color: 'var(--color-text)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>{f.name}</h4>
-                    <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: '1.25rem' }}>
-                      {formatSize(f.file_size)} • {f.mime_type?.split('/')[1]?.toUpperCase() || 'FILE'}
-                    </p>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)' }}>
-                      <Avatar name={f.uploader_name} size="sm" />
-                      <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-                         <span style={{ fontSize: '10px', fontWeight: 900, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.uploader_name}</span>
-                         <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                           <Clock3 size={10} /> {new Date(f.created_at).toLocaleDateString('vi-VN')}
-                         </span>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-                       <button className="btn primary" style={{ flex: 1, padding: '8px', fontSize: '0.75rem', borderRadius: 'var(--radius-lg)' }}>
-                         <Download size={14} /> Tải xuống
-                       </button>
-                       <button className="btn outline" style={{ padding: '8px 12px', borderRadius: 'var(--radius-lg)' }}>
-                         <Info size={16} />
-                       </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
             ) : (
-              <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: '2rem' }}>
-                 <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
-                   <thead>
-                      <tr>
-                         <th style={{ padding: '1.25rem 2rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Tên tài liệu</th>
-                         <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Dung lượng</th>
-                         <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Người tải lên</th>
-                         <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Ngày tải</th>
-                         <th style={{ padding: '1.25rem 2rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)', textAlign: 'right' }}>Hành động</th>
-                      </tr>
-                   </thead>
-                   <tbody>
-                      {filtered.map(f => (
-                        <tr key={f.id} className="hover-row" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
-                           <td style={{ padding: '1.25rem 2rem' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <div style={{ width: '40px', height: '40px', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  {getFileIcon(f.mime_type)}
-                                </div>
-                                <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{f.name}</span>
-                              </div>
-                           </td>
-                           <td style={{ padding: '1.25rem 1.5rem' }}>
-                             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{formatSize(f.file_size)}</span>
-                           </td>
-                           <td style={{ padding: '1.25rem 1.5rem' }}>
-                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                               <Avatar name={f.uploader_name} size="sm" />
-                               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>{f.uploader_name}</span>
-                             </div>
-                           </td>
-                           <td style={{ padding: '1.25rem 1.5rem' }}>
-                             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{new Date(f.created_at).toLocaleDateString('vi-VN')}</span>
-                           </td>
-                           <td style={{ padding: '1.25rem 2rem', textAlign: 'right' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
-                                <button className="btn-icon-bare" title="Tải xuống"><Download size={18} /></button>
-                                <button className="btn-icon-bare" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(f.id)}><Trash2 size={18} /></button>
-                                <button className="btn-icon-bare"><MoreHorizontal size={18} /></button>
-                              </div>
-                           </td>
-                        </tr>
+              <>
+                {viewMode === 'grid' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1.5rem', paddingBottom: '2rem' }}>
+                    {filtered.map(f => (
+                      <motion.div 
+                        key={f.id} 
+                        layout
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        style={{ background: 'var(--color-surface)', padding: '1.25rem', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', position: 'relative' }}
+                        className="hover-shadow"
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                          <div style={{ width: '56px', height: '56px', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-border)' }}>
+                            {getFileIcon(f.mime_type)}
+                          </div>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <button className="btn-icon-bare" title="Chia sẻ"><Share2 size={16} /></button>
+                            <button className="btn-icon-bare" title="Xóa" onClick={() => handleDelete(f.id)} style={{ color: 'var(--color-danger)' }}><Trash2 size={16} /></button>
+                          </div>
+                        </div>
+                        
+                        <h4 style={{ fontWeight: 900, fontSize: '0.875rem', color: 'var(--color-text)', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.name}>{f.name}</h4>
+                        <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700, letterSpacing: '0.02em', marginBottom: '1.25rem' }}>
+                          {formatSize(f.file_size)} • {f.mime_type?.split('/')[1]?.toUpperCase() || 'FILE'}
+                        </p>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)' }}>
+                          <Avatar name={f.uploader_name} size="sm" />
+                          <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                            <span style={{ fontSize: '10px', fontWeight: 900, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.uploader_name}</span>
+                            <span style={{ fontSize: '9px', color: 'var(--color-text-muted)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Clock3 size={10} /> {new Date(f.created_at).toLocaleDateString('vi-VN')}
+                            </span>
+                          </div>
+                        </div>
+
+                          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+                            <a 
+                              href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                              download={f.name}
+                              className="btn primary" 
+                              style={{ flex: 1, padding: '8px', fontSize: '0.75rem', borderRadius: 'var(--radius-lg)', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <Download size={14} /> Tải xuống
+                            </a>
+                            <button className="btn outline" style={{ padding: '8px 12px', borderRadius: 'var(--radius-lg)' }}>
+                              <Info size={16} />
+                            </button>
+                          </div>
+                        </motion.div>
                       ))}
-                   </tbody>
-                 </table>
-              </div>
+                    </div>
+                  ) : (
+                    <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden', marginBottom: '2rem' }}>
+                      <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>
+                              <th style={{ padding: '1.25rem 2rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Tên tài liệu</th>
+                              <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Dung lượng</th>
+                              <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Người tải lên</th>
+                              <th style={{ padding: '1.25rem 1.5rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)' }}>Ngày tải</th>
+                              <th style={{ padding: '1.25rem 2rem', fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--color-border-light)', textAlign: 'right' }}>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map(f => (
+                              <tr key={f.id} className="hover-row" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <td style={{ padding: '1.25rem 2rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                      <div style={{ width: '40px', height: '40px', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {getFileIcon(f.mime_type)}
+                                      </div>
+                                      <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{f.name}</span>
+                                    </div>
+                                </td>
+                                <td style={{ padding: '1.25rem 1.5rem' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{formatSize(f.file_size)}</span>
+                                </td>
+                                <td style={{ padding: '1.25rem 1.5rem' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <Avatar name={f.uploader_name} size="sm" />
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text)' }}>{f.uploader_name}</span>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '1.25rem 1.5rem' }}>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{new Date(f.created_at).toLocaleDateString('vi-VN')}</span>
+                                </td>
+                                <td style={{ padding: '1.25rem 2rem', textAlign: 'right' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px' }}>
+                                      <a 
+                                        href={`${import.meta.env.VITE_API_URL ?? '/backend'}/${f.file_path}`} 
+                                        download={f.name}
+                                        className="btn-icon-bare" 
+                                        title="Tải xuống"
+                                      >
+                                        <Download size={18} />
+                                      </a>
+                                      <button className="btn-icon-bare" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(f.id)}><Trash2 size={18} /></button>
+                                    <button className="btn-icon-bare"><MoreHorizontal size={18} /></button>
+                                  </div>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                
+                {total > 15 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem 0 2rem' }}>
+                    <Pagination total={total} page={page} pageSize={15} onChange={setPage} />
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

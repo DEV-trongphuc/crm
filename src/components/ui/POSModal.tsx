@@ -37,18 +37,43 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [newCust, setNewCust] = useState({ first_name: '', last_name: '', phone: '' });
 
+  const [popularProducts, setPopularProducts] = useState<Product[]>([]);
+
+  // Initial fetch for popular products
   useEffect(() => {
-    api.get('/products').then(r => setProducts(Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || []))).catch(() => {});
-    api.get('/contacts').then(r => setContacts(Array.isArray(r.data.data) ? r.data.data : (r.data.data?.items || []))).catch(() => {});
+    api.get('/products', { params: { limit: 15 } }).then(r => setPopularProducts(r.data.data?.items || [])).catch(() => {});
   }, []);
 
-  const filteredProducts = useMemo(() => {
-    return (products || []).filter(p => p?.name?.toLowerCase().includes(searchProduct.toLowerCase())).slice(0, 20);
-  }, [products, searchProduct]);
+  // Search products
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!searchProduct.trim()) {
+        setProducts([]);
+        return;
+      }
+      api.get('/products', { params: { search: searchProduct, limit: 10 } })
+        .then(r => setProducts(r.data.data?.items || []))
+        .catch(() => setProducts([]));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchProduct]);
 
-  const filteredContacts = useMemo(() => {
-    return (contacts || []).filter(c => `${c?.first_name} ${c?.last_name} ${c?.phone}`.toLowerCase().includes(searchContact.toLowerCase())).slice(0, 10);
-  }, [contacts, searchContact]);
+  // Search contacts
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!searchContact.trim()) {
+        setContacts([]);
+        return;
+      }
+      api.get('/contacts', { params: { search: searchContact, limit: 10 } })
+        .then(r => setContacts(r.data.data?.items || []))
+        .catch(() => setContacts([]));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchContact]);
+
+  const filteredProducts = products;
+  const filteredContacts = contacts;
 
   const addToCart = (p: Product) => {
     setCart(prev => {
@@ -179,7 +204,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1.25rem' }}>
-                {(searchProduct ? filteredProducts : products.slice(0, 15)).map(p => (
+                {(searchProduct ? filteredProducts : popularProducts).map(p => (
                    <motion.div 
                     whileHover={{ y: -4, boxShadow: 'var(--shadow-lg)' }}
                     whileTap={{ scale: 0.98 }}

@@ -7,17 +7,54 @@ class InventoryController {
      * Get all active batches with product info
      */
     public function index(array $auth): void {
-        $tid = $auth['tenant_id'];
+        $tid    = $auth['tenant_id'];
+        $page   = max(1, (int)($_GET['page']   ?? 1));
+        $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
+        $offset = ($page - 1) * $limit;
+        $search = $_GET['search'] ?? '';
+        $stockStatus = $_GET['stock_status'] ?? '';
+
+        $where = ["b.tenant_id = ?", "b.status = 'active'"];
+        $params = [$tid];
+
+        if ($search) {
+            $where[] = "(p.name LIKE ? OR p.sku LIKE ? OR b.batch_code LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        if ($stockStatus === 'in_stock') {
+            $where[] = "b.current_qty > 0";
+        } elseif ($stockStatus === 'out_of_stock') {
+            $where[] = "b.current_qty <= 0";
+        } elseif ($stockStatus === 'low_stock') {
+            $where[] = "b.current_qty > 0 AND b.current_qty <= 5";
+        }
+
+        $w = implode(' AND ', $where);
+
+        $cnt = $this->db->prepare("SELECT COUNT(*) FROM batches b JOIN products p ON b.product_id = p.id WHERE $w");
+        $cnt->execute($params);
+        $total = (int)$cnt->fetchColumn();
+
         $stmt = $this->db->prepare("
             SELECT b.*, p.name as product_name, p.sku, p.category, p.unit, s.name as supplier_name
             FROM batches b
             JOIN products p ON b.product_id = p.id
             LEFT JOIN suppliers s ON b.supplier_id = s.id
-            WHERE b.tenant_id = ? AND b.status = 'active'
+            WHERE $w
             ORDER BY b.import_date DESC, b.created_at DESC
+            LIMIT $limit OFFSET $offset
         ");
-        $stmt->execute([$tid]);
-        respond(200, $stmt->fetchAll());
+        $stmt->execute($params);
+        
+        respond(200, [
+            'items' => $stmt->fetchAll(),
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit
+        ]);
     }
 
     /**

@@ -9,6 +9,7 @@ import api from '../api/axios';
 import { useUIStore } from '../store/uiStore';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { AddressSelect } from '../components/ui/AddressSelect';
+import { Pagination } from '../components/ui/Pagination';
 
 export const SuppliersPage: React.FC = () => {
   const { addToast, showConfirm } = useUIStore();
@@ -20,11 +21,16 @@ export const SuppliersPage: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '', contact_name: '', email: '', phone: '', address: '', tax_code: '', notes: ''
   });
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const fetchSuppliers = async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/suppliers');
-      setSuppliers(res.data.data || []);
+      const res = await api.get('/suppliers', { params: { page, limit: 12, search: searchTerm } });
+      const data = res.data.data;
+      setSuppliers(data.items || []);
+      setTotal(data.total || 0);
     } catch (err) {
       addToast('Lỗi khi tải danh sách nhà cung cấp', 'error');
     } finally {
@@ -32,7 +38,16 @@ export const SuppliersPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchSuppliers(); }, []);
+  useEffect(() => { fetchSuppliers(); }, [page]);
+
+  // Handle search with debounce effect if needed, but for now simple trigger
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (page === 1) fetchSuppliers();
+      else setPage(1);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleOpenModal = (s: any = null) => {
     setSelectedSupplier(s);
@@ -74,14 +89,7 @@ export const SuppliersPage: React.FC = () => {
     });
   };
 
-  const filtered = suppliers.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    s.contact_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const VIETNAM_PROVINCES = [
-    "An Giang", "Bà Rịa - Vũng Tàu", "Bắc Giang", "Bắc Kạn", "Bạc Liêu", "Bắc Ninh", "Bến Tre", "Bình Định", "Bình Dương", "Bình Phước", "Bình Thuận", "Cà Mau", "Cần Thơ", "Cao Bằng", "Đà Nẵng", "Đắk Lắk", "Đắk Nông", "Điện Biên", "Đồng Nai", "Đồng Tháp", "Gia Lai", "Hà Giang", "Hà Nam", "Hà Nội", "Hà Tĩnh", "Hải Dương", "Hải Phòng", "Hậu Giang", "Hòa Bình", "Hưng Yên", "Khánh Hòa", "Kiên Giang", "Kon Tum", "Lai Châu", "Lâm Đồng", "Lạng Sơn", "Lào Cai", "Long An", "Nam Định", "Nghệ An", "Ninh Bình", "Ninh Thuận", "Phú Thọ", "Phú Yên", "Quảng Bình", "Quảng Nam", "Quảng Ngãi", "Quảng Ninh", "Quảng Trị", "Sóc Trăng", "Sơn La", "Tây Ninh", "Thái Bình", "Thái Nguyên", "Thanh Hóa", "Thừa Thiên Huế", "Tiền Giang", "TP. Hồ Chí Minh", "Trà Vinh", "Tuyên Quang", "Vĩnh Long", "Vĩnh Phúc", "Yên Bái"
-  ];
+  const filtered = suppliers;
 
   return (
     <div className="page-container">
@@ -121,7 +129,7 @@ export const SuppliersPage: React.FC = () => {
         <div className="flex items-center justify-center py-20">
           <div className="spinner sm"></div>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : total === 0 ? (
         <EmptyCard 
           icon={<Truck size={48} />}
           title="Chưa có nhà cung cấp nào"
@@ -130,60 +138,68 @@ export const SuppliersPage: React.FC = () => {
           onAction={() => handleOpenModal()}
         />
       ) : (
-        <div className="grid grid-3">
-          {filtered.map(s => (
-            <motion.div 
-              key={s.id} 
-              className="card hover-lift p-5 relative overflow-hidden"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="avatar-placeholder" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                    <Truck size={20} />
+        <>
+          <div className="grid grid-3">
+            {filtered.map(s => (
+              <motion.div 
+                key={s.id} 
+                className="card hover-lift p-5 relative overflow-hidden"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="avatar-placeholder" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
+                      <Truck size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg leading-tight">{s.name}</h3>
+                      <p className="text-xs text-light flex items-center gap-1 mt-1"><User size={12} /> {s.contact_name || 'Chưa có thông tin'}</p>
+                    </div>
                   </div>
+                  <button className="btn-icon sm"><MoreHorizontal size={16} /></button>
+                </div>
+
+                <div className="space-y-2.5 mb-5">
+                  <div className="flex items-center gap-2 text-sm text-light">
+                    <Phone size={14} className="opacity-50" /> <span>{s.phone || '—'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-light">
+                    <Mail size={14} className="opacity-50" /> <span className="truncate">{s.email || '—'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-light">
+                    <MapPin size={14} className="opacity-50" /> <span className="truncate">{s.address || '—'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
                   <div>
-                    <h3 className="font-bold text-lg leading-tight">{s.name}</h3>
-                    <p className="text-xs text-light flex items-center gap-1 mt-1"><User size={12} /> {s.contact_name || 'Chưa có thông tin'}</p>
+                    <p className="text-[10px] text-muted font-black uppercase tracking-wider">Tổng giá trị mua</p>
+                    <p className="font-black text-primary text-lg">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(s.total_ordered || 0)}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="btn-icon sm" onClick={() => handleOpenModal(s)}><Pencil size={14} /></button>
+                    <button className="btn-icon sm text-danger" onClick={() => handleDelete(s.id)}><Trash2 size={14} /></button>
                   </div>
                 </div>
-                <button className="btn-icon sm"><MoreHorizontal size={16} /></button>
-              </div>
-
-              <div className="space-y-2.5 mb-5">
-                <div className="flex items-center gap-2 text-sm text-light">
-                  <Phone size={14} className="opacity-50" /> <span>{s.phone || '—'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-light">
-                  <Mail size={14} className="opacity-50" /> <span className="truncate">{s.email || '—'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-light">
-                  <MapPin size={14} className="opacity-50" /> <span className="truncate">{s.address || '—'}</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-                <div>
-                   <p className="text-[10px] text-muted font-black uppercase tracking-wider">Tổng giá trị mua</p>
-                   <p className="font-black text-primary text-lg">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(s.total_ordered)}</p>
-                </div>
-                <div className="flex gap-2">
-                   <button className="btn-icon sm" onClick={() => handleOpenModal(s)}><Pencil size={14} /></button>
-                   <button className="btn-icon sm text-danger" onClick={() => handleDelete(s.id)}><Trash2 size={14} /></button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+          
+          {total > 12 && (
+            <div className="mt-6 flex justify-center">
+              <Pagination total={total} page={page} pageSize={12} onChange={setPage} />
+            </div>
+          )}
+        </>
       )}
 
       {/* Modal Cải tiến */}
       <AnimatePresence>
         {showModal && (
-          <div className="overlay-backdrop flex items-center justify-center p-4" style={{ zIndex: 1000 }}>
+          <div className="overlay-backdrop" onClick={() => setShowModal(false)} style={{ zIndex: 1000 }}>
             <motion.div 
-              className="modal-sheet w-full max-w-lg shadow-2xl"
+              className="modal-sheet shadow-2xl"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}

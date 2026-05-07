@@ -50,8 +50,10 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
         api.get('/suppliers'),
         api.get('/products')
       ]);
-      setSuppliers(sRes.data.data || []);
-      setProducts(pRes.data.data || []);
+      const sData = sRes.data.data;
+      const pData = pRes.data.data;
+      setSuppliers(Array.isArray(sData) ? sData : (sData?.items || []));
+      setProducts(Array.isArray(pData) ? pData : (pData?.items || []));
     } catch (err) {}
   };
 
@@ -204,17 +206,11 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
       </div>
 
       {showModal && ReactDOM.createPortal(
-        <div style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+        <div className="overlay-backdrop" onClick={() => setShowModal(false)} style={{ zIndex: 9999 }}>
             <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)' }}
-              onClick={() => setShowModal(false)}
-            />
-            
-            <motion.div 
-              className="modal-sheet shadow-2xl"
+              className="modal-sheet modal-xl shadow-2xl"
               initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} transition={{ duration: 0.2 }}
-              style={{ width: '100%', maxWidth: '1200px', height: '90vh', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', backgroundColor: '#fff', borderRadius: '24px' }}
+              style={{ height: '90vh', overflow: 'hidden' }}
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}

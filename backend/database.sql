@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 06, 2026 lúc 05:35 PM
+-- Thời gian đã tạo: Th5 07, 2026 lúc 08:54 AM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.20
 
@@ -141,8 +141,8 @@ CREATE TABLE `companies` (
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `deleted_at` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `deleted_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Bổ sung Đại diện pháp luật và Mã quản lý nội bộ';
 
 -- --------------------------------------------------------
 
@@ -182,7 +182,7 @@ CREATE TABLE `contacts` (
   `stage_id` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `deleted_at` datetime DEFAULT NULL
+  `deleted_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -277,7 +277,8 @@ CREATE TABLE `deals` (
   `tags` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`tags`)),
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `deleted_at` datetime DEFAULT NULL
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  `expected_close` date DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -348,7 +349,7 @@ CREATE TABLE `expenses` (
   `is_vat_inclusive` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Số tiền thuế VAT được tách riêng để báo cáo';
 
 -- --------------------------------------------------------
 
@@ -491,6 +492,7 @@ CREATE TABLE `invoices` (
   `total` decimal(15,2) NOT NULL DEFAULT 0.00,
   `shipping_customer_pay` tinyint(1) DEFAULT 1 COMMENT '1: Khách trả, 0: Shop trả',
   `shipping_fee` decimal(15,2) DEFAULT 0.00,
+  `is_inventory_deducted` tinyint(1) DEFAULT 0,
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -948,7 +950,8 @@ ALTER TABLE `contacts`
   ADD KEY `idx_contact_status` (`status`),
   ADD KEY `idx_contact_stage` (`stage_id`),
   ADD KEY `idx_contact_tenant_created` (`tenant_id`,`created_at`),
-  ADD KEY `idx_contacts_tenant_deleted` (`tenant_id`,`deleted_at`);
+  ADD KEY `idx_contacts_tenant_deleted` (`tenant_id`,`deleted_at`),
+  ADD KEY `idx_contacts_deep_filter` (`tenant_id`,`owner_id`,`deleted_at`);
 ALTER TABLE `contacts` ADD FULLTEXT KEY `idx_contact_search` (`first_name`,`last_name`,`email`);
 
 --
@@ -995,7 +998,8 @@ ALTER TABLE `deals`
   ADD KEY `idx_deal_close` (`expected_close_date`),
   ADD KEY `idx_deal_value` (`tenant_id`,`value`),
   ADD KEY `idx_deal_tenant_created` (`tenant_id`,`created_at`),
-  ADD KEY `idx_deals_tenant_deleted` (`tenant_id`,`deleted_at`);
+  ADD KEY `idx_deals_tenant_deleted` (`tenant_id`,`deleted_at`),
+  ADD KEY `idx_deals_deep_filter` (`tenant_id`,`stage_id`,`deleted_at`);
 
 --
 -- Chỉ mục cho bảng `deal_stage_history`
@@ -1080,7 +1084,8 @@ ALTER TABLE `inventory_logs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `tenant_id` (`tenant_id`),
   ADD KEY `batch_id` (`batch_id`),
-  ADD KEY `idx_inv_logs_receiver` (`receiver_type`,`receiver_id`);
+  ADD KEY `idx_inv_logs_receiver` (`receiver_type`,`receiver_id`),
+  ADD KEY `idx_inventory_logs_filter` (`tenant_id`,`action_type`,`created_at`);
 
 --
 -- Chỉ mục cho bảng `invoices`
@@ -1091,7 +1096,8 @@ ALTER TABLE `invoices`
   ADD KEY `company_id` (`company_id`),
   ADD KEY `contact_id` (`contact_id`),
   ADD KEY `idx_inv_tenant` (`tenant_id`),
-  ADD KEY `idx_inv_status` (`status`);
+  ADD KEY `idx_inv_status` (`status`),
+  ADD KEY `idx_invoices_deep_filter` (`tenant_id`,`status`,`paid_at`);
 
 --
 -- Chỉ mục cho bảng `invoice_items`

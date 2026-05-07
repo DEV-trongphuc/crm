@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Pagination } from '../components/ui/Pagination';
 import { Plus, GripVertical, Pencil, Trash2, Calendar, Target, DollarSign, MessageSquare, Building2, Loader2, Search, Filter, Users, User, CheckCircle2, Phone, Mail, LayoutGrid, List, Clock, Download, RefreshCw, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
@@ -62,6 +63,7 @@ export const DealsPage: React.FC = () => {
   
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
+  const [total, setTotal] = useState(0);
 
   const filteredItems = useMemo(() => {
     const result: Record<string, any[]> = {};
@@ -120,9 +122,9 @@ export const DealsPage: React.FC = () => {
       .filter(item => activeStageFilter === 'all' || String(item.stage_id) === String(activeStageFilter));
   };
 
-  const totalVisibleCount = getVisibleItems().length;
+  const totalVisibleCount = total;
   const totalPages = Math.ceil(totalVisibleCount / limit);
-  const pagedItems = getVisibleItems().slice((page - 1) * limit, page * limit);
+  const pagedItems = getVisibleItems(); // Already paged by backend in list mode, or all items in kanban mode (limit 500)
 
   const toggleSelect = (id: number) => {
     setSelected(prev => {
@@ -209,19 +211,35 @@ export const DealsPage: React.FC = () => {
     setLoading(true);
     try {
       const endpoint = pipelineView === 'contacts' ? '/contacts' : '/companies';
-      const r = await api.get(endpoint);
+      const params: any = {
+        page: viewMode === 'kanban' ? 1 : page,
+        limit: viewMode === 'kanban' ? 500 : limit,
+        search: debouncedSearch,
+        owner_id: filterAssignee,
+        stage_id: filterStage,
+      };
+
+      if (dateFilterType && (filterDateFrom || filterDateTo)) {
+        params.from = filterDateFrom;
+        params.to = filterDateTo;
+      }
+
+      const r = await api.get(endpoint, { params });
       const dataItems = r.data.data?.items || [];
       const grouped: Record<number, any[]> = {};
       dataItems.forEach((d: any) => {
-        const sid = d.stage_id || stages[0]?.id;
+        const sid = d.stage_id || (stages.length > 0 ? stages[0].id : 0);
         if (!grouped[sid]) grouped[sid] = [];
         grouped[sid].push(d);
       });
       setItems(grouped);
-    } catch {
+      setTotal(r.data.data?.total || dataItems.length);
+    } catch (e) {
+      console.error("Failed to fetch data", e);
       setItems({});
     } finally { setLoading(false); }
   };
+
 
   useEffect(() => {
     fetchUsers();
@@ -230,7 +248,7 @@ export const DealsPage: React.FC = () => {
 
   useEffect(() => {
     if (stages.length > 0) fetchData();
-  }, [stages, pipelineView]);
+  }, [stages, pipelineView, page, debouncedSearch, filterAssignee, filterStage, filterDateFrom, filterDateTo, viewMode]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -753,17 +771,8 @@ export const DealsPage: React.FC = () => {
           )}
           
           {/* Pagination Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderTop: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)' }}>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>
-              Hiển thị <strong>{Math.min(limit, totalVisibleCount)}</strong> / <strong>{totalVisibleCount}</strong> kết quả
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <button className="btn outline sm" disabled={page === 1} onClick={() => setPage(page - 1)}>&lt;</button>
-              {[...Array(totalPages)].map((_, i) => (
-                <button key={i} className={`btn sm ${page === i + 1 ? 'primary' : 'outline'}`} onClick={() => setPage(i + 1)} style={{ width: 32, height: 32, padding: 0 }}>{i + 1}</button>
-              )).slice(Math.max(0, page - 3), Math.min(totalPages, page + 2))}
-              <button className="btn outline sm" disabled={page === totalPages} onClick={() => setPage(page + 1)}>&gt;</button>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', borderTop: '1px solid var(--color-border-light)', background: 'var(--color-bg-light)' }}>
+            <Pagination total={total} page={page} pageSize={limit} onChange={setPage} />
           </div>
         </div>
       )}

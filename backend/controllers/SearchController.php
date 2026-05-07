@@ -29,7 +29,7 @@ class SearchController {
         // Notes (full-text content search)
         $sqlN = "SELECT n.id, SUBSTRING(n.body,1,80) as label, n.entity_type as sublabel, 'note' as type, 'note' as status FROM notes n WHERE n.tenant_id=? AND n.body LIKE ?";
         $pN = [$tid, $like];
-        if ($auth['role'] === 'sale') { $sqlN .= " AND n.created_by=?"; $pN[] = $auth['user_id']; }
+        if ($auth['role'] === 'sale') { $sqlN .= " AND n.user_id=?"; $pN[] = $auth['user_id']; }
         $s = $this->db->prepare($sqlN . " LIMIT 5");
         $s->execute($pN);
         foreach ($s->fetchAll() as $r) $results[] = $r;

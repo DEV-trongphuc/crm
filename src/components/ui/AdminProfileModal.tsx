@@ -33,7 +33,7 @@ export const AdminProfileModal: React.FC<Props> = ({ isOpen, onClose }) => {
       // In real app: await api.put('/users/profile', { full_name: formData.full_name, bio: formData.bio, avatar_url: formData.avatar_url });
       // For now, we mock success and update store
       setTimeout(() => {
-        const updatedUser = { ...user, full_name: formData.full_name, bio: formData.bio, avatar_url: formData.avatar_url };
+        const updatedUser = { ...user, full_name: formData.full_name, bio: formData.bio, avatar_url: formData.avatar_url } as any;
         setUser(updatedUser);
         addToast('Đã cập nhật thông tin cá nhân', 'success');
         setLoading(false);

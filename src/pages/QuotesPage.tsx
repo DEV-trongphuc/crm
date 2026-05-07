@@ -32,43 +32,50 @@ export const QuotesPage: React.FC = () => {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [editorQuote, setEditorQuote] = useState<any>(null);
   const [showEditor, setShowEditor] = useState(false);
+  const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState({ total_val: 0, accepted_val: 0, sent_count: 0, accepted_count: 0, total_count: 0 });
   const [previewItem, setPreviewItem] = useState<any>(null);
 
   const fetchQuotes = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await api.get('/quotes', { params: { from: dateRange.from, to: dateRange.to, status: statusFilter } });
-      setItems(r.data.data || []);
+      const params = {
+        page,
+        limit: PAGE_SIZE,
+        from: dateRange.from,
+        to: dateRange.to,
+        status: statusFilter,
+        search: search
+      };
+      const r = await api.get('/quotes', { params });
+      const data = r.data.data;
+      setItems(data.items || []);
+      setTotal(data.total || 0);
+      setSummary(data.summary || { total_val: 0, accepted_val: 0, sent_count: 0, accepted_count: 0, total_count: 0 });
     } catch {
       setItems([]);
+      setTotal(0);
       addToast('Lỗi khi tải danh sách báo giá', 'error');
     } finally {
       setLoading(false);
     }
-  }, [dateRange, statusFilter]);
+  }, [page, dateRange, statusFilter, search]);
 
   useEffect(() => { fetchQuotes(); }, [fetchQuotes]);
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return items.filter(i => {
-      const txt = `${i.quote_number} ${i.title} ${i.contact_name || ''} ${i.company_name || ''}`.toLowerCase();
-      return (!q || txt.includes(q)) && (!statusFilter || i.status === statusFilter);
-    });
-  }, [items, search, statusFilter]);
-
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // Client-side items match server-paginated data
 
   // KPIs
-  const totalVal = filtered.reduce((s, i) => s + Number(i.total), 0);
-  const acceptedVal = filtered.filter(i => i.status === 'accepted').reduce((s, i) => s + Number(i.total), 0);
-  const sentCount = filtered.filter(i => i.status === 'sent').length;
-  const convRate = items.length > 0 ? (items.filter(i => i.status === 'accepted').length / items.length) * 100 : 0;
+  const totalVal = Number(summary.total_val);
+  const acceptedVal = Number(summary.accepted_val);
+  const sentCount = Number(summary.sent_count);
+  const convRate = Number(summary.total_count) > 0 ? (Number(summary.accepted_count) / Number(summary.total_count)) * 100 : 0;
 
   const STATUS_CONFIG: Record<string, { label: string; class: string; icon: React.ReactNode; color: string }> = {
     draft: { label: 'Nháp', class: 'info', icon: <Pencil size={12} />, color: '#94a3b8' },
     sent: { label: 'Đã gửi', class: 'warning', icon: <Send size={12} />, color: '#f59e0b' },
     accepted: { label: 'Đã duyệt', class: 'success', icon: <FileCheck size={12} />, color: '#10b981' },
+    invoiced: { label: 'Đã xuất HĐ', class: 'secondary', icon: <Download size={12} />, color: '#8b5cf6' },
     rejected: { label: 'Từ chối', class: 'danger', icon: <XCircle size={12} />, color: '#ef4444' },
     expired: { label: 'Hết hạn', class: 'secondary', icon: <Clock size={12} />, color: '#64748b' },
   };
@@ -105,6 +112,23 @@ export const QuotesPage: React.FC = () => {
     }
   };
 
+  const handleConvertToInvoice = async (id: number) => {
+    showConfirm({
+      title: 'Chuyển thành Hóa đơn',
+      message: 'Bạn có chắc chắn muốn chuyển bản báo giá này thành hóa đơn không?',
+      onConfirm: async () => {
+        try {
+          const r = await api.post(`/quotes/${id}/convert`);
+          addToast('Đã chuyển thành hóa đơn thành công', 'success');
+          fetchQuotes();
+          // Optional: redirect to invoice detail
+        } catch (e: any) {
+          addToast(e.response?.data?.message || 'Lỗi khi chuyển đổi', 'error');
+        }
+      }
+    });
+  };
+
   return (
     <div className="page-container">
       {/* Header */}
@@ -114,7 +138,7 @@ export const QuotesPage: React.FC = () => {
           <p className="page-subtitle">Tạo và theo dõi các đề xuất kinh doanh với khách hàng</p>
         </div>
         <div className="flex gap-3">
-          <PeriodFilter value={period} onChange={(p, r) => { setPeriod(p); setDateRange(r); }} />
+          <PeriodFilter value={period} onChange={(p, r) => { setPeriod(p); setDateRange(r); setPage(1); }} />
           <button className="btn outline" onClick={fetchQuotes}><RefreshCw size={18} /> Làm mới</button>
           <button className="btn primary" onClick={() => handleOpenEditor()}>
             <Plus size={18} /> Tạo báo giá mới
@@ -123,23 +147,24 @@ export const QuotesPage: React.FC = () => {
       </div>
 
       {/* KPI Section */}
-      <div className="grid grid-4 mb-6">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Tổng giá trị đề xuất', value: FMT(totalVal), icon: TrendingUp, color: '#6366f1' },
-          { label: 'Giá trị đã chốt', value: FMT(acceptedVal), icon: FileCheck, color: '#10b981' },
-          { label: 'Đang chờ phản hồi', value: sentCount, icon: Clock, color: '#f59e0b', sub: 'Báo giá đã gửi' },
-          { label: 'Tỉ lệ chốt (Win Rate)', value: `${convRate.toFixed(1)}%`, icon: DollarSign, color: '#8b5cf6' },
+          { label: 'Tổng giá trị đề xuất', value: FMT(totalVal), icon: TrendingUp, color: '#6366f1', sub: `${total} bản báo giá` },
+          { label: 'Giá trị đã chốt', value: FMT(acceptedVal), icon: FileCheck, color: '#10b981', sub: 'Đã ký hợp đồng' },
+          { label: 'Đang chờ phản hồi', value: String(sentCount), icon: Clock, color: '#f59e0b', sub: 'Báo giá đã gửi' },
+          { label: 'Tỉ lệ chốt (Win Rate)', value: `${convRate.toFixed(1)}%`, icon: DollarSign, color: '#8b5cf6', sub: 'Hiệu suất bán hàng' },
         ].map((k, i) => (
-          <div key={i} className="card p-5 hover-lift">
-            <div className="flex justify-between items-start mb-3">
-              <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-lg)', background: `${k.color}15`, color: k.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <k.icon size={20} />
+          <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+            <div className="stat-kpi__header">
+              <div className="stat-kpi__icon" style={{ background: `${k.color}15`, color: k.color }}>
+                <k.icon size={16} />
               </div>
-              <span className="text-[10px] font-black text-muted uppercase tracking-wider">{k.label}</span>
+              <div className="stat-kpi__label">{k.label}</div>
             </div>
-            <div className="text-2xl font-black">{k.value}</div>
-            {k.sub && <p className="text-xs text-light mt-1">{k.sub}</p>}
-          </div>
+            {loading ? <div className="skeleton" style={{ height: 36, width: '85%', borderRadius: 6, marginBottom: 12 }} />
+              : <div className="stat-kpi__value">{k.value}</div>}
+            <div className="stat-kpi__sub">{k.sub}</div>
+          </motion.div>
         ))}
       </div>
 
@@ -158,7 +183,7 @@ export const QuotesPage: React.FC = () => {
             {['', 'draft', 'sent', 'accepted', 'rejected', 'expired'].map(s => (
               <button 
                 key={s}
-                onClick={() => setStatusFilter(s)}
+                onClick={() => { setStatusFilter(s); setPage(1); }}
                 className={`btn sm ${statusFilter === s ? 'primary' : 'ghost'}`}
               >
                 {s === '' ? 'Tất cả' : STATUS_CONFIG[s].label}
@@ -176,8 +201,8 @@ export const QuotesPage: React.FC = () => {
               <tr>
                 <th className="col-check">
                   <CustomCheckbox 
-                    checked={selected.size === paginated.length && paginated.length > 0} 
-                    onChange={() => setSelected(selected.size === paginated.length ? new Set() : new Set(paginated.map(i => i.id)))} 
+                    checked={selected.size === items.length && items.length > 0} 
+                    onChange={() => setSelected(selected.size === items.length ? new Set() : new Set(items.map(i => i.id)))} 
                   />
                 </th>
                 <th>MÃ BÁO GIÁ</th>
@@ -196,7 +221,7 @@ export const QuotesPage: React.FC = () => {
                     <td colSpan={8}><div className="skeleton" style={{ height: 48, borderRadius: 8 }} /></td>
                   </tr>
                 ))
-              ) : paginated.length === 0 ? (
+              ) : items.length === 0 ? (
                 <tr>
                   <td colSpan={8} style={{ textAlign: 'center', padding: '4rem' }}>
                     <div className="flex flex-col items-center gap-2 opacity-40">
@@ -206,7 +231,7 @@ export const QuotesPage: React.FC = () => {
                   </td>
                 </tr>
               ) : (
-                paginated.map(q => (
+                items.map(q => (
                   <tr key={q.id} className="table-row-hover" onClick={() => handleOpenEditor(q)}>
                     <td className="col-check" onClick={e => e.stopPropagation()}>
                       <CustomCheckbox checked={selected.has(q.id)} onChange={() => {
@@ -241,6 +266,9 @@ export const QuotesPage: React.FC = () => {
                     <td><span className="text-xs text-light">{fmtDate(q.created_at)}</span></td>
                     <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                       <div className="flex gap-1 justify-end">
+                        {q.status === 'accepted' && (
+                          <button className="btn-icon sm" title="Chuyển thành Hóa đơn" onClick={() => handleConvertToInvoice(q.id)} style={{ color: 'var(--color-success)', background: 'var(--color-success-light)' }}><FileCheck size={14} /></button>
+                        )}
                         <button className="btn-icon sm" title="Xem nhanh" onClick={() => setPreviewItem(q)}><Eye size={14} /></button>
                         <button className="btn-icon sm" title="Chỉnh sửa" onClick={() => handleOpenEditor(q)}><Pencil size={14} /></button>
                         <button className="btn-icon sm text-danger" title="Xóa" onClick={() => handleDelete(q.id)}><Trash2 size={14} /></button>
@@ -252,7 +280,7 @@ export const QuotesPage: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <Pagination total={filtered.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+        <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
       </div>
 
       {/* Editor Modal */}

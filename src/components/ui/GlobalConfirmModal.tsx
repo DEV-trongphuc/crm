@@ -14,7 +14,7 @@ export const GlobalConfirmModal: React.FC = () => {
 
   if (!isOpen) return null;
 
-  const isLocked = requireWordMatch && matchInput !== requireWordMatch;
+  const isLocked = !!(requireWordMatch && matchInput !== requireWordMatch);
 
   const handleConfirm = () => {
     if (isLocked) return;

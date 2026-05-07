@@ -141,23 +141,38 @@ class ReportController
         $from = ($_GET['from'] ?? date('Y-m-01')) . ' 00:00:00';
         $to = ($_GET['to'] ?? date('Y-m-t')) . ' 23:59:59';
         
-        $saleFilter = "";
-        $params = [$from, $to, $tid];
-        if ($auth['role'] === 'sale') {
-            $saleFilter = " AND d.owner_id=?";
-            $params[] = $auth['user_id'];
-        }
-
         $stmt = $this->db->prepare("
             SELECT ps.name as stage, ps.color, 
-                   (SELECT COUNT(*) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid1 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid" : "").") as count,
-                   (SELECT COALESCE(SUM(value),0) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid2 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid" : "").") as total_value
+                   (
+                     (SELECT COUNT(*) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid1 AND created_at BETWEEN :f1 AND :t1 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid1" : "").") +
+                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid2 AND created_at BETWEEN :f2 AND :t2 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid2" : "").") +
+                     (SELECT COUNT(*) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 AND created_at BETWEEN :f3 AND :t3 ".(($auth['role'] === 'sale') ? " AND cp.owner_id = :uid3" : "").")
+                   ) as count,
+                   (
+                     (SELECT COALESCE(SUM(value),0) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid4 AND created_at BETWEEN :f4 AND :t4 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid4" : "").") +
+                     (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid5 AND created_at BETWEEN :f5 AND :t5 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid5" : "").") +
+                     (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 AND created_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sale') ? " AND cp.owner_id = :uid6" : "").")
+                   ) as total_value
             FROM pipeline_stages ps 
-            WHERE ps.tenant_id = :tid4
+            WHERE ps.tenant_id = :tid_main
             GROUP BY ps.id ORDER BY ps.order_index
         ");
-        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid4' => $tid];
-        if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
+        
+        $p = [
+            'tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 
+            'tid4' => $tid, 'tid5' => $tid, 'tid6' => $tid,
+            'tid_main' => $tid,
+            'f1' => $from, 't1' => $to,
+            'f2' => $from, 't2' => $to,
+            'f3' => $from, 't3' => $to,
+            'f4' => $from, 't4' => $to,
+            'f5' => $from, 't5' => $to,
+            'f6' => $from, 't6' => $to
+        ];
+        if ($auth['role'] === 'sale') {
+            $p['uid1'] = $auth['user_id']; $p['uid2'] = $auth['user_id']; $p['uid3'] = $auth['user_id'];
+            $p['uid4'] = $auth['user_id']; $p['uid5'] = $auth['user_id']; $p['uid6'] = $auth['user_id'];
+        }
         $stmt->execute($p);
         respond(200, $stmt->fetchAll());
     }

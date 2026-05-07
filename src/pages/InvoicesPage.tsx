@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FileText, Plus, Search, Download, CheckCircle2, Clock, AlertCircle,
   Eye, Trash2, Printer, X, Loader2, ArrowUpRight, TrendingUp, DollarSign,
-  Pencil, Copy, Send
+  Pencil, Copy, Send, Package
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
@@ -34,25 +34,40 @@ export const InvoicesPage: React.FC = () => {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [deleteItem, setDeleteItem] = useState<any>(null);
   const [previewItem, setPreviewItem] = useState<any>(null);
+  const [total, setTotal] = useState(0);
+  const [summary, setSummary] = useState({ total_rev: 0, paid_amt: 0, pending_amt: 0, overdue_amt: 0 });
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     if (DEV_MODE) { 
-      setItems(useMockStore.getState().invoices); 
+      const all = useMockStore.getState().invoices;
+      setItems(all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)); 
+      setTotal(all.length);
       setLoading(false); 
       return; 
     }
     try {
-      const r = await api.get('/invoices', { params: { from: dateRange.from, to: dateRange.to, status: statusFilter } });
-      const data = r.data.data || [];
-      setItems(Array.isArray(data) ? data : []);
+      const params: any = { 
+        page, 
+        limit: PAGE_SIZE, 
+        from: dateRange.from, 
+        to: dateRange.to, 
+        status: statusFilter,
+        search: search
+      };
+      const r = await api.get('/invoices', { params });
+      const data = r.data.data;
+      setItems(data.items || []);
+      setTotal(data.total || 0);
+      setSummary(data.summary || { total_rev: 0, paid_amt: 0, pending_amt: 0, overdue_amt: 0 });
     } catch {
       setItems([]);
+      setTotal(0);
       addToast('Không thể kết nối với máy chủ Backend', 'error');
     } finally {
       setLoading(false);
     }
-  }, [dateRange, statusFilter]);
+  }, [page, dateRange, statusFilter, search]);
 
   useEffect(() => { fetchInvoices(); setPage(1); }, [fetchInvoices]);
 
@@ -67,20 +82,13 @@ export const InvoicesPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handler);
   }, [previewItem, deleteItem]);
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return items.filter(inv => {
-      const txt = `${inv.invoice_number} ${inv.contact_name || ''} ${inv.company_name || ''}`.toLowerCase();
-      return (!q || txt.includes(q)) && (!statusFilter || inv.status === statusFilter);
-    });
-  }, [items, search, statusFilter]);
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // Client-side items match server-paginated data
 
-  // KPIs
-  const totalRev = filtered.reduce((s, i) => s + Number(i.total), 0);
-  const paidAmt = filtered.filter(i => i.status === 'paid').reduce((s, i) => s + Number(i.total), 0);
-  const pendingAmt = filtered.filter(i => i.status === 'pending').reduce((s, i) => s + Number(i.total), 0);
-  const overdueAmt = filtered.filter(i => i.status === 'overdue').reduce((s, i) => s + Number(i.total), 0);
+  // KPIs from server summary
+  const totalRev = Number(summary.total_rev);
+  const paidAmt = Number(summary.paid_amt);
+  const pendingAmt = Number(summary.pending_amt);
+  const overdueAmt = Number(summary.overdue_amt);
 
   const STATUS_CONFIG: Record<string, { label: string; class: string; icon: React.ReactNode }> = {
     paid: { label: 'Đã thanh toán', class: 'success', icon: <CheckCircle2 size={11} /> },
@@ -94,8 +102,8 @@ export const InvoicesPage: React.FC = () => {
     else ns.add(id);
     return ns;
   });
-  const allSelected = paginated.length > 0 && paginated.every(i => selected.has(i.id));
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(paginated.map(i => i.id)));
+  const allSelected = items.length > 0 && items.every(i => selected.has(i.id));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(items.map(i => i.id)));
 
   const handleDelete = async () => {
     if (!deleteItem) return;
@@ -142,7 +150,7 @@ export const InvoicesPage: React.FC = () => {
 
   const exportCSV = () => {
     const headers = ['Mã HĐ', 'Khách hàng', 'Công ty', 'Nội dung', 'Tổng tiền', 'Ngày lập', 'Đến hạn', 'Trạng thái'];
-    const rows = filtered.map(i => [
+    const rows = items.map(i => [
       i.invoice_number, i.contact_name, i.company_name, i.title, i.total, i.issue_date, i.due_date, i.status
     ]);
     const csvContent = "data:text/csv;charset=utf-8,"
@@ -166,7 +174,7 @@ export const InvoicesPage: React.FC = () => {
           <p className="page-subtitle">Quản lý giao dịch tài chính và trạng thái thanh toán</p>
         </div>
         <div className="flex gap-2">
-          <PeriodFilter value={period} onChange={(p, r) => { setPeriod(p); setDateRange(r); }} />
+          <PeriodFilter value={period} onChange={(p, r) => { setPeriod(p); setDateRange(r); setPage(1); }} />
           <button className="btn secondary" onClick={exportCSV}><Download size={16} /> Xuất CSV</button>
           <button className="btn primary" onClick={() => useUIStore.getState().setShowPOS(true)}><Plus size={16} /> Tạo hóa đơn</button>
         </div>
@@ -175,10 +183,10 @@ export const InvoicesPage: React.FC = () => {
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
-          { label: 'Tổng doanh thu', value: FMT(totalRev), icon: TrendingUp, color: '#7c3aed', sub: `${filtered.length} hóa đơn` },
-          { label: 'Đã thu hồi', value: FMT(paidAmt), icon: CheckCircle2, color: '#10b981', sub: `${filtered.filter(i => i.status === 'paid').length} đã thanh toán` },
-          { label: 'Chờ thanh toán', value: FMT(pendingAmt), icon: Clock, color: '#f59e0b', sub: `${filtered.filter(i => i.status === 'pending').length} hóa đơn đang đợi` },
-          { label: 'Nợ quá hạn', value: FMT(overdueAmt), icon: AlertCircle, color: '#ef4444', sub: `${filtered.filter(i => i.status === 'overdue').length} hóa đơn quá hạn` },
+          { label: 'Tổng doanh thu', value: FMT(totalRev), icon: TrendingUp, color: '#7c3aed', sub: `${items.length} hóa đơn` },
+          { label: 'Đã thu hồi', value: FMT(paidAmt), icon: CheckCircle2, color: '#10b981', sub: `${items.filter(i => i.status === 'paid').length} đã thanh toán` },
+          { label: 'Chờ thanh toán', value: FMT(pendingAmt), icon: Clock, color: '#f59e0b', sub: `${items.filter(i => i.status === 'pending').length} hóa đơn đang đợi` },
+          { label: 'Nợ quá hạn', value: FMT(overdueAmt), icon: AlertCircle, color: '#ef4444', sub: `${items.filter(i => i.status === 'overdue').length} hóa đơn quá hạn` },
         ].map((k, i) => (
           <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
             <div className="stat-kpi__header">
@@ -195,7 +203,7 @@ export const InvoicesPage: React.FC = () => {
       {/* Status filter tabs */}
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
         {[
-          { key: '', label: 'Tất cả', count: filtered.length },
+          { key: '', label: 'Tất cả', count: items.length },
           { key: 'paid', label: 'Đã thanh toán', count: items.filter(i => i.status === 'paid').length },
           { key: 'pending', label: 'Chờ thanh toán', count: items.filter(i => i.status === 'pending').length },
           { key: 'overdue', label: 'Quá hạn', count: items.filter(i => i.status === 'overdue').length },
@@ -246,7 +254,7 @@ export const InvoicesPage: React.FC = () => {
                 <tr key={i}>{Array.from({ length: 9 }).map((__, j) => <td key={j}><div className="skeleton" style={{ height: 20, borderRadius: 4 }} /></td>)}</tr>
               ))}
               <AnimatePresence>
-                {!loading && paginated.map(inv => {
+                {!loading && items.map(inv => {
                   const sc = STATUS_CONFIG[inv.status] || { label: inv.status, class: 'info', icon: null };
                   const isOverdue = inv.status === 'overdue';
                   return (
@@ -255,7 +263,12 @@ export const InvoicesPage: React.FC = () => {
                         <CustomCheckbox checked={selected.has(inv.id)} onChange={() => toggleSelect(inv.id)} />
                       </td>
                       <td>
-                        <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.8125rem', fontFamily: 'monospace' }}>{inv.invoice_number}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.8125rem', fontFamily: 'monospace' }}>{inv.invoice_number}</span>
+                          {inv.is_inventory_deducted === 1 && (
+                          <Package size={12} style={{ color: 'var(--color-success)' }} />
+                          )}
+                        </div>
                       </td>
                       <td>
                         <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{inv.contact_name || 'Khách lẻ'}</div>
@@ -284,13 +297,13 @@ export const InvoicesPage: React.FC = () => {
                   );
                 })}
               </AnimatePresence>
-              {!loading && paginated.length === 0 && (
+              {!loading && items.length === 0 && (
                 <tr><td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Không có hóa đơn nào trong kỳ này</td></tr>
               )}
             </tbody>
           </table>
         </div>
-        <Pagination total={filtered.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} showSizeChanger onPageSizeChange={() => setPage(1)} />
+        <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} showSizeChanger onPageSizeChange={() => setPage(1)} />
       </div>
 
       {/* Delete confirm */}

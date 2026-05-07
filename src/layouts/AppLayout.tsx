@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, Briefcase, CalendarCheck,
   Package, BarChart3, Settings, LogOut, Menu, Search,
   ChevronLeft, Moon, Sun, Command, Plus, FileSpreadsheet, Wallet, LifeBuoy,
-  Truck, ShoppingCart, Folder, Calendar, Layers, FileText
+  Truck, ShoppingCart, Folder, Calendar, Layers, FileText, LayoutGrid
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
@@ -18,6 +18,7 @@ import { CommandPalette } from '../components/ui/CommandPalette';
 import { DemoIndicator } from '../components/ui/DemoIndicator';
 import { QRCodeCallModal } from '../components/ui/QRCodeCallModal';
 import { AdminProfileModal } from '../components/ui/AdminProfileModal';
+import { AppLauncherModal } from '../components/ui/AppLauncherModal';
 import styles from './AppLayout.module.css';
 
 const NAV_ITEMS = [
@@ -41,11 +42,12 @@ export const AppLayout: React.FC = () => {
   const { user, clearAuth } = useAuthStore();
   const { addToast, showPOS, setShowPOS } = useUIStore();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.getAttribute('data-theme') === 'dark');
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [launcherOpen, setLauncherOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Keyboard shortcut Ctrl+K
@@ -91,12 +93,15 @@ export const AppLayout: React.FC = () => {
       <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileVisible : ''}`}>
         {/* Logo */}
         <div className={styles.logoArea}>
-          <div className={styles.logoIcon}>D</div>
-          {!collapsed && <span className={styles.logoText}>Domation CRM</span>}
-          <button className={styles.collapseBtn} onClick={() => setCollapsed(!collapsed)} title="Thu gọn sidebar">
-            <ChevronLeft size={16} style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
-          </button>
+          <div className={styles.logoIcon} onClick={() => setLauncherOpen(true)} style={{ cursor: 'pointer', overflow: 'hidden' }}>
+            <img src="/LOGO.jpg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+          {!collapsed && <span className={styles.logoText} onClick={() => setLauncherOpen(true)} style={{ cursor: 'pointer' }}>CRM System</span>}
         </div>
+
+        <button className={styles.collapseBtn} onClick={() => setCollapsed(!collapsed)} title="Thu gọn sidebar">
+          <ChevronLeft size={16} style={{ transform: collapsed ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' }} />
+        </button>
         {/* Nav Groups Scrollable */}
         <div className={styles.navScrollArea}>
           <div className={styles.navSection}>
@@ -142,8 +147,8 @@ export const AppLayout: React.FC = () => {
         {/* TOPBAR */}
         <header className={styles.topbar}>
           <div className={styles.topbarLeft}>
-            <button className={styles.iconBtn} onClick={() => setMobileOpen(!mobileOpen)}>
-              <Menu size={20} />
+            <button className={styles.iconBtn} onClick={() => setLauncherOpen(true)} title="Trình khởi chạy">
+              <LayoutGrid size={20} />
             </button>
             {/* Global Search trigger */}
             <button className={styles.searchTrigger} onClick={() => setSearchOpen(true)}>
@@ -195,6 +200,7 @@ export const AppLayout: React.FC = () => {
       <CommandPalette />
       <QRCodeCallModal />
       <AdminProfileModal isOpen={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
+      <AppLauncherModal isOpen={launcherOpen} onClose={() => setLauncherOpen(false)} items={NAV_ITEMS} />
     </div>
   );
 };

@@ -41,9 +41,20 @@ class AuthController {
         // Refresh token (random, store hash)
         $refreshToken = bin2hex(random_bytes(40));
         $hash = hash('sha256', $refreshToken);
-        $this->db->prepare(
-            'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))'
-        )->execute([$user['id'], $hash, 30]);
+
+        $this->db->beginTransaction();
+        try {
+            // Clean up old expired tokens for this user
+            $this->db->prepare('DELETE FROM refresh_tokens WHERE user_id = ? AND expires_at < NOW()')->execute([$user['id']]);
+
+            $this->db->prepare(
+                'INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL ? DAY))'
+            )->execute([$user['id'], $hash, 30]);
+            $this->db->commit();
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            // Proceed anyway, login still works
+        }
 
         // Log activity
         logActivity($this->db, $user['tenant_id'], $user['id'], 'system', 'Đăng nhập hệ thống', "Người dùng {$user['full_name']} đã đăng nhập thành công từ {$_SERVER['REMOTE_ADDR']}");

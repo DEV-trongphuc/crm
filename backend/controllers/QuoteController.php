@@ -4,34 +4,74 @@ class QuoteController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function index(array $auth): void {
-        $sql = "SELECT q.*, u.full_name as created_by_name, CONCAT(c.first_name,' ',c.last_name) as contact_name 
-                FROM quotes q 
-                LEFT JOIN users u ON q.created_by=u.id 
-                LEFT JOIN contacts c ON q.contact_id=c.id 
-                WHERE q.tenant_id=?";
-        $p = [$auth['tenant_id']];
-
-        if (!empty($_GET['contact_id'])) {
-            $sql .= " AND q.contact_id = ?";
-            $p[] = (int)$_GET['contact_id'];
-        }
-        if (!empty($_GET['from'])) {
-            $sql .= " AND q.created_at >= ?";
-            $p[] = $_GET['from'] . " 00:00:00";
-        }
-        if (!empty($_GET['to'])) {
-            $sql .= " AND q.created_at <= ?";
-            $p[] = $_GET['to'] . " 23:59:59";
-        }
+        $tid    = $auth['tenant_id'];
+        $page   = max(1, (int)($_GET['page']   ?? 1));
+        $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
+        $offset = ($page - 1) * $limit;
+        $status = $_GET['status'] ?? '';
+        $search = $_GET['search'] ?? '';
+        $from   = $_GET['from'] ?? '';
+        $to     = $_GET['to'] ?? '';
+        
+        $where  = ['q.tenant_id = ?'];
+        $params = [$tid];
 
         if ($auth['role'] === 'sale') {
-            $sql .= " AND q.created_by=?";
-            $p[] = $auth['user_id'];
+            $where[] = 'q.created_by = ?';
+            $params[] = $auth['user_id'];
         }
-        $sql .= " ORDER BY q.created_at DESC";
-        $stmt=$this->db->prepare($sql);
-        $stmt->execute($p);
-        respond(200,$stmt->fetchAll());
+
+        if ($status) { $where[] = 'q.status = ?'; $params[] = $status; }
+        if ($from)   { $where[] = 'q.created_at >= ?'; $params[] = $from . " 00:00:00"; }
+        if ($to)     { $where[] = 'q.created_at <= ?'; $params[] = $to . " 23:59:59"; }
+        if ($search) {
+            $where[] = '(q.quote_number LIKE ? OR q.title LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?)';
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        $w = implode(' AND ', $where);
+
+        // Total count
+        $cnt = $this->db->prepare("SELECT COUNT(*) FROM quotes q LEFT JOIN contacts c ON q.contact_id = c.id WHERE $w");
+        $cnt->execute($params);
+        $total = (int)$cnt->fetchColumn();
+
+        // Summary totals
+        $sumStmt = $this->db->prepare("
+            SELECT 
+                COALESCE(SUM(q.total), 0) as total_val,
+                COALESCE(SUM(CASE WHEN q.status = 'accepted' THEN q.total END), 0) as accepted_val,
+                COUNT(CASE WHEN q.status = 'sent' THEN 1 END) as sent_count,
+                COUNT(CASE WHEN q.status = 'accepted' THEN 1 END) as accepted_count,
+                COUNT(*) as total_count
+            FROM quotes q 
+            LEFT JOIN contacts c ON q.contact_id = c.id
+            WHERE $w
+        ");
+        $sumStmt->execute($params);
+        $summary = $sumStmt->fetch();
+
+        // List items
+        $sql = "SELECT q.*, u.full_name as created_by_name, CONCAT(c.first_name,' ',c.last_name) as contact_name 
+                FROM quotes q 
+                LEFT JOIN users u ON q.created_by = u.id 
+                LEFT JOIN contacts c ON q.contact_id = c.id 
+                WHERE $w 
+                ORDER BY q.created_at DESC 
+                LIMIT $limit OFFSET $offset";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        
+        respond(200, [
+            'items' => $stmt->fetchAll(),
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit,
+            'summary' => $summary
+        ]);
     }
     public function store(array $auth): void {
         $tid = $auth['tenant_id'];
@@ -89,6 +129,57 @@ class QuoteController {
         }
         respond(200,null,'Đã cập nhật báo giá');
     }
+    public function convert(array $auth, int $id): void {
+        $tid = $auth['tenant_id'];
+        $uid = $auth['user_id'];
+        
+        $this->db->beginTransaction();
+        try {
+            // 1. Get quote and items
+            $stmt = $this->db->prepare("SELECT * FROM quotes WHERE id=? AND tenant_id=? FOR UPDATE");
+            $stmt->execute([$id, $tid]);
+            $q = $stmt->fetch();
+            if (!$q) throw new Exception('Không tìm thấy báo giá');
+            if ($q['status'] === 'invoiced') throw new Exception('Báo giá này đã được chuyển thành hóa đơn trước đó');
+
+            $itemsStmt = $this->db->prepare("SELECT * FROM quote_items WHERE quote_id=?");
+            $itemsStmt->execute([$id]);
+            $items = $itemsStmt->fetchAll();
+
+            // 2. Create Invoice
+            $invNum = 'INV-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
+            $insInv = $this->db->prepare("
+                INSERT INTO invoices (tenant_id, contact_id, created_by, invoice_number, title, status, issue_date, due_date, subtotal, discount, tax, total, notes)
+                VALUES (?, ?, ?, ?, ?, 'pending', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 7 DAY), ?, ?, ?, ?, ?)
+            ");
+            $insInv->execute([
+                $tid, $q['contact_id'], $uid, $invNum, "Hóa đơn từ báo giá: " . $q['title'],
+                $q['subtotal'], $q['discount'], $q['tax'], $q['total'], $q['notes']
+            ]);
+            $invId = $this->db->lastInsertId();
+
+            // 3. Create Invoice Items
+            $insItem = $this->db->prepare("INSERT INTO invoice_items (invoice_id, product_id, name, quantity, unit_price, discount, subtotal) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            foreach ($items as $item) {
+                $insItem->execute([
+                    $invId, $item['product_id'], $item['name'], $item['quantity'], $item['unit_price'], $item['discount'], $item['subtotal']
+                ]);
+            }
+
+            // 4. Update Quote Status
+            $this->db->prepare("UPDATE quotes SET status='invoiced' WHERE id=?")->execute([$id]);
+
+            // 5. Log Activity
+            logActivity($this->db, $tid, $uid, 'task', "Chuyển Báo giá thành Hóa đơn", "Báo giá #{$q['quote_number']} đã được chuyển thành hóa đơn #$invNum", 'quote', $id);
+
+            $this->db->commit();
+            respond(200, ['invoice_id' => $invId], 'Đã chuyển báo giá thành hóa đơn thành công');
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            respond(500, null, $e->getMessage(), false);
+        }
+    }
+
     public function destroy(array $auth,int $id): void {
         $sql = "DELETE FROM quotes WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];

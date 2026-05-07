@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Pagination } from '../components/ui/Pagination';
 import { Plus, Package, Pencil, Trash2, X, Loader2, Search, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
@@ -36,17 +37,38 @@ export const ProductsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+
   const fetchProducts = () => {
     setLoading(true);
     if (DEV_MODE) { 
-      setProducts(useMockStore.getState().products); 
+      const all = useMockStore.getState().products;
+      setProducts(all.slice((page - 1) * 20, page * 20)); 
+      setTotal(all.length);
       setLoading(false); 
       return; 
     }
-    api.get('/products')
-      .then(r => { setProducts(r.data.data || []); })
+    const params = {
+      page,
+      limit: 20,
+      search: debouncedSearch,
+      category_id: categoryFilter
+    };
+    api.get('/products', { params })
+      .then(r => { 
+        const data = r.data.data;
+        if (Array.isArray(data)) {
+          setProducts(data);
+          setTotal(data.length);
+        } else {
+          setProducts(data.items || []); 
+          setTotal(data.total || 0);
+        }
+      })
       .catch(() => {
         setProducts([]);
+        setTotal(0);
         addToast('Không thể tải danh sách sản phẩm', 'error');
       })
       .finally(() => setLoading(false));
@@ -54,7 +76,7 @@ export const ProductsPage: React.FC = () => {
 
   React.useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [page, debouncedSearch, categoryFilter]);
 
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -67,14 +89,7 @@ export const ProductsPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [showModal, showCatModal, saving]);
 
-  const filtered = useMemo(() => {
-    return products.filter(p => {
-      const q = debouncedSearch.toLowerCase();
-      const matchSearch = !q || p.name.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q);
-      const matchCat = !categoryFilter || p.category_id === categoryFilter;
-      return matchSearch && matchCat;
-    });
-  }, [products, debouncedSearch, categoryFilter]);
+  const filtered = products;
 
   const handleSave = async () => {
     if (!form.name.trim()) { addToast('Tên sản phẩm là bắt buộc', 'error'); return; }
@@ -123,7 +138,7 @@ export const ProductsPage: React.FC = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">Sản phẩm & Dịch vụ</h1>
-          <p className="page-subtitle">{products.filter(p=>p.is_active).length} đang hoạt động</p>
+          <p className="page-subtitle">{total} sản phẩm</p>
         </div>
         <div className="flex gap-2">
           <button className="btn secondary" onClick={() => setShowCatModal(true)}>Quản lý danh mục</button>
@@ -137,7 +152,7 @@ export const ProductsPage: React.FC = () => {
           <input 
             placeholder="Tìm sản phẩm theo tên hoặc mã SKU..." 
             value={search} 
-            onChange={e => setSearch(e.target.value)} 
+            onChange={e => { setSearch(e.target.value); setPage(1); }} 
           />
           <AnimatePresence>
             {search && (
@@ -158,7 +173,7 @@ export const ProductsPage: React.FC = () => {
           <CustomSelect 
             options={[{ value: '', label: 'Tất cả danh mục' }, ...categories.map(c => ({ value: c.id, label: c.name }))]} 
             value={categoryFilter} 
-            onChange={val => setCategoryFilter(String(val))} 
+            onChange={val => { setCategoryFilter(String(val)); setPage(1); }} 
           />
         </div>
         {selectedIds.length > 0 && (
@@ -260,14 +275,22 @@ export const ProductsPage: React.FC = () => {
             </tbody>
           </table>
         </div>
+        {total > 20 && (
+          <div style={{ padding: '1rem', borderTop: '1px solid var(--color-border-light)' }}>
+            <Pagination total={total} page={page} pageSize={20} onChange={setPage} />
+          </div>
+        )}
       </div>
 
       <AnimatePresence>
         {showModal && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onClick={() => !saving && setShowModal(false)} />
-            <motion.div className="modal-sheet" style={{ position:'fixed', top:'50%', left:'50%', width:'560px', maxWidth:'calc(100vw - 2rem)', zIndex:300 }}
-              initial={{ opacity:0, scale:0.96, x: '-50%', y: '-45%' }} animate={{ opacity:1, scale:1, x: '-50%', y: '-50%' }} exit={{ opacity:0, scale:0.96, x: '-50%', y: '-45%' }}>
+          <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 300 }}>
+            <motion.div className="modal-sheet shadow-2xl"
+              initial={{ opacity:0, scale:0.96, y: 20 }} 
+              animate={{ opacity:1, scale:1, y: 0 }} 
+              exit={{ opacity:0, scale:0.96, y: 20 }}
+              onClick={e => e.stopPropagation()}
+            >
               
               <div className="modal-header" style={{ padding: '1.25rem 1.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -381,7 +404,7 @@ export const ProductsPage: React.FC = () => {
                 </button>
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
 

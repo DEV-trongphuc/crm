@@ -73,12 +73,13 @@ export const DashboardPage: React.FC = () => {
         { month: 'T5', revenue: totalWon, cost: totalExpenses },
       ]);
       const funnelStages = [
-        { id: 1, name: 'Giai đoạn mới', color: '#3b82f6' },
-        { id: 2, name: 'Đã liên hệ', color: '#6366f1' },
-        { id: 3, name: 'Đang thương lượng', color: '#f59e0b' },
-        { id: 4, name: 'Gửi báo giá', color: '#8b5cf6' },
-        { id: 5, name: 'Chốt thành công', color: '#10b981' },
-        { id: 6, name: 'Thất bại', color: '#ef4444' },
+        { id: 1, name: 'Khách hàng tiềm năng', color: '#3b82f6' },
+        { id: 2, name: 'Giai đoạn mới', color: '#6366f1' },
+        { id: 3, name: 'Đã liên hệ', color: '#8b5cf6' },
+        { id: 4, name: 'Đang thương lượng', color: '#f59e0b' },
+        { id: 5, name: 'Gửi báo giá', color: '#10b981' },
+        { id: 6, name: 'Đã chốt — Thành công', color: '#22c55e' },
+        { id: 7, name: 'Đã chốt — Thất bại', color: '#ef4444' },
       ];
       setPipelineFunnel(funnelStages.map(s => {
         const contactCount = contacts.filter((c: any) => Number(c.stage_id) === s.id).length;

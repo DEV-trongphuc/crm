@@ -42,6 +42,11 @@ api.interceptors.response.use(
         window.location.href = '/login';
       }
     }
+    if (error.response?.status === 500) {
+      console.error('SERVER ERROR:', error.response.data);
+      // We don't have direct access to addToast here easily without a store or window property.
+      // But we can ensure the error is descriptive for the caller.
+    }
     return Promise.reject(error);
   }
 );

@@ -14,7 +14,16 @@ class CompanyController {
         $status = $_GET['status'] ?? '';
         $stage  = $_GET['stage_id'] ?? '';
 
+        $sortBy = $_GET['sort'] ?? 'created_at';
+        $order  = $_GET['order'] ?? 'DESC';
+
         $where = ['c.tenant_id=?','c.deleted_at IS NULL']; $params = [$tid];
+
+        // Validating sort fields
+        $allowedSort = ['created_at', 'updated_at', 'name', 'industry', 'city'];
+        if (!in_array($sortBy, $allowedSort)) $sortBy = 'created_at';
+        if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
+
         if ($auth['role'] === 'sale') {
             $where[] = 'c.owner_id = ?';
             $params[] = $auth['user_id'];
@@ -37,7 +46,7 @@ class CompanyController {
             LEFT JOIN contacts ct ON ct.company_id=c.id AND ct.deleted_at IS NULL
             WHERE $w 
             GROUP BY c.id
-            ORDER BY c.created_at DESC 
+            ORDER BY c.$sortBy $order 
             LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);

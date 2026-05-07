@@ -10,14 +10,22 @@ class ContactController {
         $page   = max(1, (int)($_GET['page']   ?? 1));
         $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
         $offset = ($page - 1) * $limit;
-        $search = $_GET['search'] ?? '';
-        $status = $_GET['status'] ?? '';
-        $source = $_GET['source'] ?? '';
-        $owner  = $_GET['owner_id'] ?? '';
-        $stage  = $_GET['stage_id'] ?? '';
+        $search  = $_GET['search'] ?? '';
+        $status  = $_GET['status'] ?? '';
+        $source  = $_GET['source'] ?? '';
+        $owner   = $_GET['owner_id'] ?? '';
+        $stage   = $_GET['stage_id'] ?? '';
+        $segment = $_GET['segment'] ?? 'all';
+        $sortBy  = $_GET['sort'] ?? 'created_at';
+        $order   = $_GET['order'] ?? 'DESC';
 
         $where  = ['c.tenant_id = ?', 'c.deleted_at IS NULL'];
         $params = [$tid];
+
+        // Validating sort fields
+        $allowedSort = ['created_at', 'updated_at', 'first_name', 'lead_score', 'last_contact'];
+        if (!in_array($sortBy, $allowedSort)) $sortBy = 'created_at';
+        if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
 
         // Role-based visibility: Sale can only see their own contacts
         if ($auth['role'] === 'sale') {
@@ -37,6 +45,14 @@ class ContactController {
         if ($owner)  { $where[] = 'c.owner_id = ?'; $params[] = (int)$owner; }
         if ($stage)  { $where[] = 'c.stage_id = ?'; $params[] = (int)$stage; }
 
+        switch ($segment) {
+            case 'hot':        $where[] = 'c.lead_score >= 80'; break;
+            case 'customer':   $where[] = "c.status = 'customer'"; break;
+            case 'has_deal':   $where[] = "EXISTS (SELECT 1 FROM deals d WHERE d.contact_id = c.id AND d.deleted_at IS NULL)"; break;
+            case 'no_contact': $where[] = "c.last_contact < DATE_SUB(NOW(), INTERVAL 30 DAY)"; break;
+            case 'new_week':   $where[] = "c.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"; break;
+        }
+
         $whereStr = implode(' AND ', $where);
 
         $count = $this->db->prepare("SELECT COUNT(*) FROM contacts c WHERE $whereStr");
@@ -53,7 +69,7 @@ class ContactController {
             LEFT JOIN users u ON c.owner_id = u.id
             LEFT JOIN pipeline_stages ps ON c.stage_id = ps.id
             WHERE $whereStr
-            ORDER BY c.created_at DESC
+            ORDER BY c.$sortBy $order
             LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
@@ -163,7 +179,7 @@ class ContactController {
             'company_id','owner_id','first_name','last_name','email','phone',
             'mobile','job_title','department','source','status','notes',
             'birthday','address','city','ward',
-            'expected_revenue','win_probability','last_contact','stage_id', 'created_at'
+            'expected_revenue','win_probability','last_contact','stage_id'
         ];
         $sets = []; $params = [];
         

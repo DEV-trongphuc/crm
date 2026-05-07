@@ -4,9 +4,44 @@ class ProductController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function index(array $auth): void {
-        $stmt=$this->db->prepare("SELECT * FROM products WHERE tenant_id=? AND deleted_at IS NULL ORDER BY name ASC");
-        $stmt->execute([$auth['tenant_id']]);
-        respond(200,$stmt->fetchAll());
+        $tid    = $auth['tenant_id'];
+        $page   = max(1, (int)($_GET['page']   ?? 1));
+        $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
+        $offset = ($page - 1) * $limit;
+        $search = $_GET['search'] ?? '';
+
+        $where = ['p.tenant_id = ?', 'p.deleted_at IS NULL'];
+        $params = [$tid];
+
+        if ($search) {
+            $where[] = '(p.name LIKE ? OR p.sku LIKE ? OR pc.name LIKE ?)';
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        $cid = $_GET['category_id'] ?? '';
+        if ($cid) {
+            $where[] = 'p.category_id = ?';
+            $params[] = $cid;
+        }
+
+        $whereStr = implode(' AND ', $where);
+
+        $cnt = $this->db->prepare("SELECT COUNT(*) FROM products p LEFT JOIN product_categories pc ON p.category_id = pc.id WHERE $whereStr");
+        $cnt->execute($params);
+        $total = (int)$cnt->fetchColumn();
+
+        $stmt=$this->db->prepare("
+            SELECT p.*, pc.name as category_name 
+            FROM products p 
+            LEFT JOIN product_categories pc ON p.category_id = pc.id 
+            WHERE $whereStr 
+            ORDER BY p.name ASC
+            LIMIT $limit OFFSET $offset
+        ");
+        $stmt->execute($params);
+        respond(200, ['items' => $stmt->fetchAll(), 'total' => $total, 'page' => $page, 'limit' => $limit]);
     }
     public function store(array $auth): void {
         $b=getBody();

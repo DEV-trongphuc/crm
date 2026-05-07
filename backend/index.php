@@ -1,13 +1,9 @@
 <?php
 require_once __DIR__ . '/config.php';          // DB constants + CORS origins
 
-if (defined('APP_ENV') && APP_ENV === 'development') {
-    ini_set('display_errors', 1);
-    error_reporting(E_ALL);
-} else {
-    ini_set('display_errors', 0);
-    error_reporting(0);
-}
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // require_once __DIR__ . '/config/Config.php';   // Removed to prevent 'already defined' warnings
 require_once __DIR__ . '/config/Database.php';
@@ -82,6 +78,48 @@ function logActivity(PDO $db, int $tid, int $uid, string $type, string $subject,
     ]);
 }
 
+/**
+ * Shared Inventory Deduction Logic (FIFO)
+ */
+function deductStockFIFO(PDO $db, int $tid, int $uid, int $productId, int $qty, string $invNum): void {
+    // 1. Get batches sorted by import date (FIFO)
+    $stmtBatches = $db->prepare("
+        SELECT id, current_qty 
+        FROM batches 
+        WHERE product_id = ? AND tenant_id = ? AND current_qty > 0 AND status = 'active'
+        ORDER BY import_date ASC, id ASC 
+        FOR UPDATE
+    ");
+    $stmtBatches->execute([$productId, $tid]);
+    $batches = $stmtBatches->fetchAll();
+
+    $remainingToDeduct = $qty;
+
+    foreach ($batches as $batch) {
+        if ($remainingToDeduct <= 0) break;
+
+        $deductFromThisBatch = min($batch['current_qty'], $remainingToDeduct);
+        
+        // Update batch quantity
+        $db->prepare("UPDATE batches SET current_qty = current_qty - ? WHERE id = ?")
+             ->execute([$deductFromThisBatch, $batch['id']]);
+        
+        // Create inventory log
+        $db->prepare("
+            INSERT INTO inventory_logs (tenant_id, batch_id, action_type, qty_change, reason, created_by)
+            VALUES (?, ?, 'SALE', ?, ?, ?)
+        ")->execute([
+            $tid, $batch['id'], -$deductFromThisBatch, "Bán hàng - Hóa đơn #$invNum", $uid
+        ]);
+
+        $remainingToDeduct -= $deductFromThisBatch;
+    }
+
+    // Update overall product stock
+    $db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id=? AND tenant_id=?")
+         ->execute([$qty, $productId, $tid]);
+}
+
 // ── Load controllers ──────────────────────────────────────────
 require_once __DIR__ . '/controllers/AuthController.php';
 require_once __DIR__ . '/controllers/DashboardController.php';
@@ -134,11 +172,6 @@ switch ($resource) {
         elseif ($resourceId === 'refresh' && $method === 'POST') $ctrl->refresh();
         elseif ($resourceId === 'logout'  && $method === 'POST') $ctrl->logout();
         elseif ($resourceId === 'me'      && $method === 'GET')  $ctrl->me(requireAuth());
-        elseif ($resourceId === 'reset-demo' && $method === 'GET') {
-            $hash = password_hash('password', PASSWORD_BCRYPT, ['cost' => 12]);
-            $db->prepare("UPDATE users SET password_hash = ? WHERE email = 'admin@minth.crm'")->execute([$hash]);
-            respond(200, null, 'Đã reset mật khẩu admin thành: password');
-        }
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
@@ -250,6 +283,7 @@ switch ($resource) {
         $ctrl = new QuoteController($db);
         if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $subResource === 'convert' && $method === 'POST') $ctrl->convert($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);

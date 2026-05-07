@@ -31,8 +31,10 @@ export const LoginPage: React.FC = () => {
     <div className={styles.page}>
       <div className={styles.left}>
         <div className={styles.brand}>
-          <div className={styles.brandIcon}>D</div>
-          <span className={styles.brandName}>Domation CRM</span>
+          <div className={styles.brandIcon} style={{ overflow: 'hidden' }}>
+            <img src="/LOGO.jpg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          </div>
+          <span className={styles.brandName}>CRM System</span>
         </div>
         <div className={styles.heroText}>
           <h1>Quản lý khách hàng<br />thông minh hơn.</h1>

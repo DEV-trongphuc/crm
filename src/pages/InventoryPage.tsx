@@ -9,6 +9,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
 import { PurchaseOrdersTab } from '../components/PurchaseOrdersTab';
 import api from '../api/axios';
+import { useDebounce } from '../hooks/useDebounce';
+import { Pagination } from '../components/ui/Pagination';
+import { useMockStore } from '../store/mockStore';
+import { DEV_MODE } from '../config/env';
+
+const PAGE_SIZE = 20;
 
 interface Batch {
   id: number;
@@ -43,8 +49,11 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('date_desc');
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   
   // Modals
   const [showExportModal, setShowExportModal] = useState(false);
@@ -55,6 +64,7 @@ export default function InventoryPage() {
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   const [logs, setLogs] = useState<InventoryLog[]>([]);
   const [globalLogs, setGlobalLogs] = useState<(InventoryLog & { product_name: string, batch_code: string })[]>([]);
+  const [summary, setSummary] = useState({ total_items: 0, out_of_stock: 0, capital_value: 0 });
   
   const [exportForm, setExportForm] = useState({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' });
   const [adjustForm, setAdjustForm] = useState({ new_qty: '', reason: 'Điều chỉnh kiểm kho' });
@@ -64,6 +74,9 @@ export default function InventoryPage() {
 
   useEffect(() => {
     fetchBatches();
+  }, [page, debouncedSearch, statusFilter, sortBy]);
+
+  useEffect(() => {
     fetchGlobalLogs();
     fetchReceivers();
   }, []);
@@ -79,9 +92,27 @@ export default function InventoryPage() {
 
   const fetchBatches = async () => {
     setLoading(true);
+    if (DEV_MODE) {
+      const all = useMockStore.getState().batches;
+      setBatches(all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE));
+      setTotal(all.length);
+      setLoading(false);
+      return;
+    }
     try {
-      const res = await api.get('/inventory');
-      if (res.data.success) setBatches(res.data.data);
+      const params: any = { 
+        page, 
+        limit: PAGE_SIZE, 
+        search: debouncedSearch,
+        stock_status: statusFilter === 'all' ? '' : statusFilter,
+        sort: sortBy.split('_')[0],
+        order: sortBy.split('_')[1] === 'desc' ? 'DESC' : 'ASC'
+      };
+      const res = await api.get('/inventory', { params });
+      const data = res.data.data;
+      setBatches(data.items || []);
+      setTotal(data.total || 0);
+      if (data.summary) setSummary(data.summary);
     } catch (err) {
       console.error(err);
     } finally {
@@ -170,32 +201,13 @@ export default function InventoryPage() {
     }
   };
 
-  const filteredBatches = batches
-    .filter(b => 
-      b.product_name.toLowerCase().includes(search.toLowerCase()) || 
-      b.batch_code.toLowerCase().includes(search.toLowerCase()) ||
-      b.sku?.toLowerCase().includes(search.toLowerCase())
-    )
-    .filter(b => {
-      if (statusFilter === 'all') return true;
-      if (statusFilter === 'in_stock') return b.current_qty > 0;
-      if (statusFilter === 'out_of_stock') return b.current_qty <= 0;
-      if (statusFilter === 'low_stock') return b.current_qty > 0 && b.current_qty <= 5;
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'date_desc') return new Date(b.import_date).getTime() - new Date(a.import_date).getTime();
-      if (sortBy === 'date_asc') return new Date(a.import_date).getTime() - new Date(b.import_date).getTime();
-      if (sortBy === 'qty_desc') return b.current_qty - a.current_qty;
-      if (sortBy === 'qty_asc') return a.current_qty - b.current_qty;
-      return 0;
-    });
+  const filteredBatches = batches;
 
   const stats = {
-    totalValue: batches.reduce((sum, b) => sum + (b.current_qty * b.import_price), 0),
-    totalBatches: batches.length,
-    lowStock: batches.filter(b => b.current_qty > 0 && b.current_qty <= 5).length,
-    outOfStock: batches.filter(b => b.current_qty <= 0).length,
+    totalValue: summary.capital_value || 0,
+    totalBatches: total,
+    lowStock: batches.filter(b => b.current_qty > 0 && b.current_qty <= 5).length, // Keep client-side for "low stock" if not in summary
+    outOfStock: summary.out_of_stock || 0,
     expiringSoon: batches.filter(b => b.expiry_date && new Date(b.expiry_date) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) && b.current_qty > 0).length
   };
 
@@ -273,47 +285,26 @@ export default function InventoryPage() {
       {activeTab !== 'purchase_orders' && (
         <>
           {/* Stats Cards */}
-          <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
-        <motion.div className="stat-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} style={{ minHeight: '140px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span className="stat-label">Tổng vốn tồn kho</span>
-            <div style={{ color: 'var(--color-primary)', opacity: 0.8 }}><DollarSign size={20} /></div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+            {[
+              { label: 'Tổng vốn tồn kho', value: new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(stats.totalValue), icon: DollarSign, color: 'var(--color-primary)', sub: `${stats.totalBatches} lô hàng đang quản lý` },
+              { label: 'Số lô hàng', value: String(stats.totalBatches), icon: Layers, color: '#3b82f6', sub: `${batches.filter(b => b.current_qty > 0).length} lô còn hàng` },
+              { label: 'Sắp hết hàng', value: String(stats.lowStock), icon: AlertTriangle, color: 'var(--color-warning)', sub: 'Dưới 5 sản phẩm' },
+              { label: 'Sắp hết hạn (30d)', value: String(stats.expiringSoon), icon: Clock, color: 'var(--color-danger)', sub: 'Cần xử lý sớm' },
+            ].map((k, i) => (
+              <motion.div key={i} className="stat-kpi" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}>
+                <div className="stat-kpi__header">
+                  <div className="stat-kpi__icon" style={{ background: `${k.color}15`, color: k.color }}>
+                    <k.icon size={16} />
+                  </div>
+                  <div className="stat-kpi__label">{k.label}</div>
+                </div>
+                {loading ? <div className="skeleton" style={{ height: 36, width: '85%', borderRadius: 6, marginBottom: 12 }} />
+                  : <div className="stat-kpi__value">{k.value}</div>}
+                <div className="stat-kpi__sub">{k.sub}</div>
+              </motion.div>
+            ))}
           </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div className="stat-value" style={{ fontSize: '1.5rem', marginTop: 'auto' }}>{stats.totalValue.toLocaleString()} đ</div>
-          </div>
-        </motion.div>
-        
-        <motion.div className="stat-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} style={{ minHeight: '140px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span className="stat-label">Số lượng lô</span>
-            <div style={{ color: '#3b82f6', opacity: 0.8 }}><Layers size={20} /></div>
-          </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div className="stat-value" style={{ fontSize: '1.5rem', marginTop: 'auto' }}>{stats.totalBatches}</div>
-          </div>
-        </motion.div>
-
-        <motion.div className="stat-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} style={{ minHeight: '140px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span className="stat-label">Sắp hết hàng</span>
-            <div style={{ color: 'var(--color-warning)', opacity: 0.8 }}><AlertTriangle size={20} /></div>
-          </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div className="stat-value" style={{ fontSize: '1.5rem', marginTop: 'auto' }}>{stats.lowStock}</div>
-          </div>
-        </motion.div>
-
-        <motion.div className="stat-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} style={{ minHeight: '140px', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span className="stat-label">Sắp hết hạn (30d)</span>
-            <div style={{ color: 'var(--color-danger)', opacity: 0.8 }}><Clock size={20} /></div>
-          </div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div className="stat-value" style={{ fontSize: '1.5rem', marginTop: 'auto' }}>{stats.expiringSoon}</div>
-          </div>
-        </motion.div>
-      </div>
 
       {/* Critical Alerts */}
       <AnimatePresence>
@@ -356,21 +347,16 @@ export default function InventoryPage() {
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <select 
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            style={{ padding: '8px 36px 8px 16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', fontSize: '0.875rem', fontWeight: 600, outline: 'none', appearance: 'none', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2364748b\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+          <select className="form-input" style={{ width: 'auto', paddingRight: '2.5rem' }}
+            value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
           >
             <option value="all">Tất cả trạng thái</option>
             <option value="in_stock">Còn hàng</option>
             <option value="low_stock">Sắp hết hàng</option>
             <option value="out_of_stock">Đã hết hàng</option>
           </select>
-
-          <select 
-            value={sortBy}
-            onChange={e => setSortBy(e.target.value)}
-            style={{ padding: '8px 36px 8px 16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)', fontSize: '0.875rem', fontWeight: 600, outline: 'none', appearance: 'none', cursor: 'pointer', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2364748b\' stroke-width=\'2\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'%3E%3C/polyline%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' }}
+          <select className="form-input" style={{ width: 'auto', paddingRight: '2.5rem' }}
+            value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }}
           >
             <option value="date_desc">Mới nhất trước</option>
             <option value="date_asc">Cũ nhất trước</option>
@@ -385,142 +371,6 @@ export default function InventoryPage() {
         <div className="flex flex-col items-center justify-center py-20 text-slate-400">
           <div className="animate-spin mb-4"><Package size={40} /></div>
           <p>Đang tải dữ liệu kho...</p>
-        </div>
-      ) : filteredBatches.length === 0 ? (
-        <div style={{ flex: 1, display: 'flex', minHeight: '400px', width: '100%' }}>
-          <div style={{ flex: 1, background: 'var(--color-surface)', padding: '4rem', borderRadius: 'var(--radius-2xl)', border: '2px dashed var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-            <div style={{ width: '96px', height: '96px', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
-              <Package size={48} style={{ color: 'var(--color-text-muted)' }} />
-            </div>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Không tìm thấy lô hàng nào</h3>
-            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '2rem', lineHeight: 1.5 }}>
-              Thử thay đổi bộ lọc, tìm kiếm bằng từ khóa khác hoặc kiểm tra lại điều kiện.
-            </p>
-          </div>
-        </div>
-      ) : viewMode === 'list' ? (
-        <div className="card-panel overflow-hidden">
-          <div className="overflow-x-auto">
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>Lô hàng & SKU</th>
-                  <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>Ngày nhập / HSD</th>
-                  <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Giá vốn</th>
-                  <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>Tồn kho</th>
-                  <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>
-                  <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Thao tác</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredBatches.map((b, i) => {
-                  const isNewDate = i === 0 || b.import_date !== filteredBatches[i-1].import_date;
-                  return (
-                    <React.Fragment key={b.id}>
-                      {isNewDate && (
-                        <tr style={{ background: 'rgba(0,0,0,0.02)' }}>
-                          <td colSpan={6} style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                              <CalendarDays size={14} />
-                              Nhập ngày: {new Date(b.import_date).toLocaleDateString('vi-VN')}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                      <tr className="group" style={{ transition: 'background-color 0.2s', borderBottom: '1px solid var(--color-border-light)' }}>
-                        <td style={{ padding: '0.875rem 0.75rem' }}>
-                          <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{b.product_name}</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                            <span style={{ fontSize: '10px', background: 'var(--color-surface)', color: 'var(--color-text-muted)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--color-border)', fontFamily: 'monospace', textTransform: 'uppercase' }}>{b.sku || 'No SKU'}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 500 }}>#{b.batch_code}</span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '0.875rem 0.75rem' }}>
-                          <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 500 }}>{b.import_date}</div>
-                          {b.expiry_date && (
-                            <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: 500, color: new Date(b.expiry_date) < new Date() ? 'var(--color-danger)' : 'var(--color-text-light)' }}>
-                              HSD: {b.expiry_date}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: '0.875rem 0.75rem', textAlign: 'right' }}>
-                          <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{b.import_price.toLocaleString()} đ</div>
-                          <div className="table-wrap" style={{ border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-lg)', maxHeight: '300px' }}>{b.unit}</div>
-                        </td>
-                        <td style={{ padding: '0.875rem 0.75rem' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            <div style={{ fontSize: '0.875rem', fontWeight: 700, color: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-text)' }}>
-                              {b.current_qty} / {b.initial_qty}
-                            </div>
-                            <div style={{ width: '64px', height: '6px', background: 'var(--color-border)', borderRadius: 'var(--radius-full)', marginTop: '6px', overflow: 'hidden' }}>
-                              <div 
-                                style={{ height: '100%', borderRadius: 'var(--radius-full)', background: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-primary)', width: `${Math.min((b.current_qty / b.initial_qty) * 100, 100)}%` }}
-                              />
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '0.875rem 0.75rem' }}>
-                          {b.current_qty <= 0 ? (
-                            <span className="badge badge-danger">Hết hàng</span>
-                          ) : b.current_qty <= 5 ? (
-                            <span className="badge badge-warning">Sắp hết</span>
-                          ) : (
-                            <span className="badge badge-success">Còn hàng</span>
-                          )}
-                        </td>
-                        <td style={{ padding: '0.875rem 0.75rem', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', opacity: 0, transition: 'opacity 0.2s' }} className="group-hover-visible">
-                            <button 
-                              className="p-2 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-colors text-slate-400"
-                              title="Xuất nội bộ (Hỏng/Tặng)"
-                              onClick={() => {
-                                setSelectedBatch(b);
-                                setExportForm({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' });
-                                setShowExportModal(true);
-                              }}
-                            >
-                              <Share size={16} />
-                            </button>
-                            <button 
-                              className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors text-slate-400"
-                              title="Lịch sử lô hàng"
-                              onClick={() => {
-                                setSelectedBatch(b);
-                                fetchBatchLogs(b.id);
-                                setShowHistoryModal(true);
-                              }}
-                            >
-                              <History size={16} />
-                            </button>
-                            <button 
-                              className="p-2 hover:bg-slate-100 hover:text-slate-800 rounded-lg transition-colors text-slate-400"
-                              title="Điều chỉnh tồn kho"
-                              onClick={() => {
-                                setSelectedBatch(b);
-                                setAdjustForm({ new_qty: String(b.current_qty), reason: 'Điều chỉnh kiểm kho' });
-                                setShowAdjustModal(true);
-                              }}
-                            >
-                              <Edit size={16} />
-                            </button>
-                            {b.current_qty <= 0 && (
-                              <button 
-                                className="p-2 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors text-slate-400"
-                                title="Lưu trữ lô hàng"
-                                onClick={() => archiveBatch(b.id)}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
         </div>
       ) : activeTab === 'history' ? (
         <div className="card-panel overflow-hidden anim-fade-up">
@@ -572,103 +422,257 @@ export default function InventoryPage() {
             </table>
           </div>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredBatches.map(b => (
-            <motion.div 
-              key={b.id}
-              layout
-              className={`card-panel group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 ${b.current_qty <= 0 ? 'border-danger' : b.current_qty <= 5 ? 'border-warning' : 'border-primary'}`}
-            >
-              <div className="p-5">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-800 line-clamp-1">{b.product_name}</h3>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono uppercase">{b.sku || 'No SKU'}</span>
-                      <span className="text-xs text-slate-400 font-medium">#{b.batch_code}</span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <div className="text-lg font-black text-slate-700">{b.import_price.toLocaleString()} đ</div>
-                    <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{b.unit}</div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 rounded-xl p-4 mb-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tồn kho hiện tại</span>
-                    <span className={`text-sm font-black ${b.current_qty <= 5 ? 'text-danger' : 'text-slate-700'}`}>
-                      {b.current_qty} <span className="text-slate-400 font-medium">/ {b.initial_qty}</span>
-                    </span>
-                  </div>
-                  <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner">
-                    <div 
-                      className={`h-full rounded-full transition-all duration-1000 ${b.current_qty <= 5 ? 'bg-danger' : 'bg-gradient-to-r from-primary to-blue-500'}`}
-                      style={{ width: `${Math.min((b.current_qty / b.initial_qty) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <CalendarDays size={14} className="text-slate-400" />
-                    <div className="text-xs font-medium">Nhập: <span className="text-slate-700">{b.import_date}</span></div>
-                  </div>
-                  {b.expiry_date && (
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Clock size={14} className={new Date(b.expiry_date) < new Date() ? 'text-danger' : 'text-slate-400'} />
-                      <div className="text-xs font-medium">HSD: <span className={new Date(b.expiry_date) < new Date() ? 'text-danger font-bold' : 'text-slate-700'}>{b.expiry_date}</span></div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 pt-4 border-t border-slate-100">
-                  <button 
-                    onClick={() => { setSelectedBatch(b); setExportForm({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' }); setShowExportModal(true); }}
-                    className="flex-1 h-9 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-700 flex items-center justify-center gap-2 text-xs font-bold transition-colors"
-                  >
-                    <Share size={14} /> Xuất nội bộ
-                  </button>
-                  <button 
-                    onClick={() => { setSelectedBatch(b); fetchBatchLogs(b.id); setShowHistoryModal(true); }}
-                    className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-400 hover:text-blue-600 flex items-center justify-center transition-colors"
-                    title="Lịch sử"
-                  >
-                    <History size={16} />
-                  </button>
-                  <button 
-                    onClick={() => { setSelectedBatch(b); setAdjustForm({ new_qty: String(b.current_qty), reason: 'Điều chỉnh kiểm kho' }); setShowAdjustModal(true); }}
-                    className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-800 flex items-center justify-center transition-colors"
-                    title="Điều chỉnh"
-                  >
-                    <Edit size={16} />
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
+      ) : filteredBatches.length === 0 ? (
+        <div style={{ flex: 1, display: 'flex', minHeight: '400px', width: '100%' }}>
+          <div style={{ flex: 1, background: 'var(--color-surface)', padding: '4rem', borderRadius: 'var(--radius-2xl)', border: '2px dashed var(--color-border)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+            <div style={{ width: '96px', height: '96px', background: 'var(--color-bg)', borderRadius: 'var(--radius-full)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
+              <Package size={48} style={{ color: 'var(--color-text-muted)' }} />
+            </div>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Không tìm thấy lô hàng nào</h3>
+            <p style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem', marginBottom: '2rem', lineHeight: 1.5 }}>
+              Thử thay đổi bộ lọc, tìm kiếm bằng từ khóa khác hoặc kiểm tra lại điều kiện.
+            </p>
+          </div>
         </div>
+      ) : (
+        <>
+          {viewMode === 'list' ? (
+            <div className="card-panel overflow-hidden">
+              <div className="overflow-x-auto">
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>Lô hàng & SKU</th>
+                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>Ngày nhập / HSD</th>
+                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Giá vốn</th>
+                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>Tồn kho</th>
+                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>
+                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Thao tác</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBatches.map((b, i) => {
+                      const isNewDate = i === 0 || b.import_date !== filteredBatches[i-1].import_date;
+                      return (
+                        <React.Fragment key={b.id}>
+                          {isNewDate && (
+                            <tr style={{ background: 'rgba(0,0,0,0.02)' }}>
+                              <td colSpan={6} style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                  <CalendarDays size={14} />
+                                  Nhập ngày: {new Date(b.import_date).toLocaleDateString('vi-VN')}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          <tr className="group" style={{ transition: 'background-color 0.2s', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <td style={{ padding: '0.875rem 0.75rem' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{b.product_name}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                <span style={{ fontSize: '10px', background: 'var(--color-surface)', color: 'var(--color-text-muted)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--color-border)', fontFamily: 'monospace', textTransform: 'uppercase' }}>{b.sku || 'No SKU'}</span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 500 }}>#{b.batch_code}</span>
+                              </div>
+                            </td>
+                            <td style={{ padding: '0.875rem 0.75rem' }}>
+                              <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 500 }}>{b.import_date}</div>
+                              {b.expiry_date && (
+                                <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: 500, color: new Date(b.expiry_date) < new Date() ? 'var(--color-danger)' : 'var(--color-text-light)' }}>
+                                  HSD: {b.expiry_date}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '0.875rem 0.75rem', textAlign: 'right' }}>
+                              <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{b.import_price.toLocaleString()} đ</div>
+                              <div className="table-wrap" style={{ border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-lg)', maxHeight: '300px' }}>{b.unit}</div>
+                            </td>
+                            <td style={{ padding: '0.875rem 0.75rem' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                                  {b.current_qty} / {b.initial_qty}
+                                </div>
+                                <div style={{ width: '64px', height: '6px', background: 'var(--color-border)', borderRadius: 'var(--radius-full)', marginTop: '6px', overflow: 'hidden' }}>
+                                  <div 
+                                    style={{ height: '100%', borderRadius: 'var(--radius-full)', background: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-primary)', width: `${Math.min((b.current_qty / b.initial_qty) * 100, 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '0.875rem 0.75rem' }}>
+                              {b.current_qty <= 0 ? (
+                                <span className="badge badge-danger">Hết hàng</span>
+                              ) : b.current_qty <= 5 ? (
+                                <span className="badge badge-warning">Sắp hết</span>
+                              ) : (
+                                <span className="badge badge-success">Còn hàng</span>
+                              )}
+                            </td>
+                            <td style={{ padding: '0.875rem 0.75rem', textAlign: 'right' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', opacity: 0, transition: 'opacity 0.2s' }} className="group-hover-visible">
+                                <button 
+                                  className="p-2 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-colors text-slate-400"
+                                  title="Xuất nội bộ (Hỏng/Tặng)"
+                                  onClick={() => {
+                                    setSelectedBatch(b);
+                                    setExportForm({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' });
+                                    setShowExportModal(true);
+                                  }}
+                                >
+                                  <Share size={16} />
+                                </button>
+                                <button 
+                                  className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors text-slate-400"
+                                  title="Lịch sử lô hàng"
+                                  onClick={() => {
+                                    setSelectedBatch(b);
+                                    fetchBatchLogs(b.id);
+                                    setShowHistoryModal(true);
+                                  }}
+                                >
+                                  <History size={16} />
+                                </button>
+                                <button 
+                                  className="p-2 hover:bg-slate-100 hover:text-slate-800 rounded-lg transition-colors text-slate-400"
+                                  title="Điều chỉnh tồn kho"
+                                  onClick={() => {
+                                    setSelectedBatch(b);
+                                    setAdjustForm({ new_qty: String(b.current_qty), reason: 'Điều chỉnh kiểm kho' });
+                                    setShowAdjustModal(true);
+                                  }}
+                                >
+                                  <Edit size={16} />
+                                </button>
+                                {b.current_qty <= 0 && (
+                                  <button 
+                                    className="p-2 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors text-slate-400"
+                                    title="Lưu trữ lô hàng"
+                                    onClick={() => archiveBatch(b.id)}
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredBatches.map(b => (
+                <motion.div 
+                  key={b.id}
+                  layout
+                  className={`card-panel group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 ${b.current_qty <= 0 ? 'border-danger' : b.current_qty <= 5 ? 'border-warning' : 'border-primary'}`}
+                >
+                  <div className="p-5">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <h3 className="font-bold text-slate-800 line-clamp-1">{b.product_name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono uppercase">{b.sku || 'No SKU'}</span>
+                          <span className="text-xs text-slate-400 font-medium">#{b.batch_code}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <div className="text-lg font-black text-slate-700">{b.import_price.toLocaleString()} đ</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{b.unit}</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 rounded-xl p-4 mb-4">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tồn kho hiện tại</span>
+                        <span className={`text-sm font-black ${b.current_qty <= 5 ? 'text-danger' : 'text-slate-700'}`}>
+                          {b.current_qty} <span className="text-slate-400 font-medium">/ {b.initial_qty}</span>
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-1000 ${b.current_qty <= 5 ? 'bg-danger' : 'bg-gradient-to-r from-primary to-blue-500'}`}
+                          style={{ width: `${Math.min((b.current_qty / b.initial_qty) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="flex items-center gap-2 text-slate-500">
+                        <CalendarDays size={14} className="text-slate-400" />
+                        <div className="text-xs font-medium">Nhập: <span className="text-slate-700">{b.import_date}</span></div>
+                      </div>
+                      {b.expiry_date && (
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <Clock size={14} className={new Date(b.expiry_date) < new Date() ? 'text-danger' : 'text-slate-400'} />
+                          <div className="text-xs font-medium">HSD: <span className={new Date(b.expiry_date) < new Date() ? 'text-danger font-bold' : 'text-slate-700'}>{b.expiry_date}</span></div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-4 border-t border-slate-100">
+                      <button 
+                        onClick={() => { setSelectedBatch(b); setExportForm({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' }); setShowExportModal(true); }}
+                        className="flex-1 h-9 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-700 flex items-center justify-center gap-2 text-xs font-bold transition-colors"
+                      >
+                        <Share size={14} /> Xuất nội bộ
+                      </button>
+                      <button 
+                        onClick={() => { setSelectedBatch(b); fetchBatchLogs(b.id); setShowHistoryModal(true); }}
+                        className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-400 hover:text-blue-600 flex items-center justify-center transition-colors"
+                        title="Lịch sử"
+                      >
+                        <History size={16} />
+                      </button>
+                      <button 
+                        onClick={() => { setSelectedBatch(b); setAdjustForm({ new_qty: String(b.current_qty), reason: 'Điều chỉnh kiểm kho' }); setShowAdjustModal(true); }}
+                        className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-800 flex items-center justify-center transition-colors"
+                        title="Điều chỉnh"
+                      >
+                        <Edit size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-8 flex justify-end">
+            <Pagination 
+              total={total} 
+              page={page} 
+              pageSize={PAGE_SIZE} 
+              onChange={setPage} 
+            />
+          </div>
+        </>
       )}
 
       {/* Internal Export Modal */}
       <AnimatePresence>
         {showExportModal && selectedBatch && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              className="modal-sheet"
+              style={{ width: '100%', maxWidth: '480px' }}
+              onClick={e => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-800">Xuất kho nội bộ</h2>
-                  <p className="text-sm text-slate-400">#{selectedBatch.batch_code} - {selectedBatch.product_name}</p>
+              <div className="modal-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ width: 42, height: 42, borderRadius: '12px', background: '#fef3c715', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fde68a' }}>
+                    <Share size={20} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '1.125rem', fontWeight: 800 }}>Xuất kho nội bộ</h2>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>#{selectedBatch.batch_code} — {selectedBatch.product_name}</p>
+                  </div>
                 </div>
-                <button onClick={() => setShowExportModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                  <X size={20} className="text-slate-400" />
-                </button>
+                <button className="btn-icon sm" onClick={() => setShowExportModal(false)}><X size={18} /></button>
               </div>
               <form onSubmit={handleInternalExport}>
                 <div className="p-6 space-y-4">
@@ -737,9 +741,9 @@ export default function InventoryPage() {
                     )}
                   </AnimatePresence>
                 </div>
-                <div className="p-6 bg-slate-50 flex gap-3">
-                  <button type="button" onClick={() => setShowExportModal(false)} className="flex-1 h-11 rounded-xl bg-white border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 transition-colors">Hủy bỏ</button>
-                  <button type="submit" className="flex-1 h-11 rounded-xl bg-primary text-white font-bold hover:bg-primary-dark shadow-lg shadow-primary/20 transition-all">Xác nhận xuất</button>
+                <div className="modal-footer">
+                  <button type="button" className="btn outline" onClick={() => setShowExportModal(false)}>Hủy bỏ</button>
+                  <button type="submit" className="btn primary" style={{ minWidth: '140px' }}>Xác nhận xuất</button>
                 </div>
               </form>
             </motion.div>
@@ -750,21 +754,26 @@ export default function InventoryPage() {
       {/* Adjust Modal */}
       <AnimatePresence>
         {showAdjustModal && selectedBatch && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          <div className="overlay-backdrop" style={{ zIndex: 9999 }}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              className="modal-sheet"
+              style={{ width: '100%', maxWidth: '460px' }}
+              onClick={e => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-800">Điều chỉnh tồn kho</h2>
-                  <p className="text-sm text-slate-400">Cập nhật số dư thực tế cho lô #{selectedBatch.batch_code}</p>
+              <div className="modal-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Edit size={20} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '1.125rem', fontWeight: 800 }}>Điều chỉnh tồn kho</h2>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>Lô #{selectedBatch.batch_code} — {selectedBatch.product_name}</p>
+                  </div>
                 </div>
-                <button onClick={() => setShowAdjustModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors">
-                  <X size={20} className="text-slate-400" />
-                </button>
+                <button className="btn-icon sm" onClick={() => setShowAdjustModal(false)}><X size={18} /></button>
               </div>
               <form onSubmit={handleAdjust}>
                 <div className="p-6 space-y-4">
@@ -790,9 +799,9 @@ export default function InventoryPage() {
                     />
                   </div>
                 </div>
-                <div className="p-6 bg-slate-50 flex gap-3">
-                  <button type="button" onClick={() => setShowAdjustModal(false)} className="flex-1 h-11 rounded-xl bg-white border border-slate-200 font-bold text-slate-600 hover:bg-slate-100 transition-colors">Hủy bỏ</button>
-                  <button type="submit" className="flex-1 h-11 rounded-xl bg-slate-800 text-white font-bold hover:bg-slate-900 shadow-lg shadow-slate-900/20 transition-all">Lưu thay đổi</button>
+                <div className="modal-footer">
+                  <button type="button" className="btn outline" onClick={() => setShowAdjustModal(false)}>Hủy bỏ</button>
+                  <button type="submit" className="btn primary" style={{ minWidth: '140px' }}>Lưu thay đổi</button>
                 </div>
               </form>
             </motion.div>

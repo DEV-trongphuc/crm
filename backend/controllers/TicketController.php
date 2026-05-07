@@ -6,8 +6,12 @@ class TicketController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function index(array $auth): void {
-        $tid = $auth['tenant_id'];
+        $tid    = $auth['tenant_id'];
+        $page   = max(1, (int)($_GET['page']   ?? 1));
+        $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
+        $offset = ($page - 1) * $limit;
         $status = $_GET['status'] ?? '';
+        $search = $_GET['search'] ?? '';
         
         $where = ['t.tenant_id=?'];
         $params = [$tid];
@@ -23,12 +27,26 @@ class TicketController {
             $params[] = $status;
         }
 
+        if ($search) {
+            $where[] = '(t.subject LIKE ? OR t.customer_name LIKE ? OR t.description LIKE ?)';
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
         $w = implode(' AND ', $where);
+
+        $cnt = $this->db->prepare("SELECT COUNT(*) FROM tickets t WHERE $w");
+        $cnt->execute($params);
+        $total = (int)$cnt->fetchColumn();
+
         $stmt = $this->db->prepare("
             SELECT t.*, u.full_name as assignee_name
             FROM tickets t
             LEFT JOIN users u ON t.assignee_id = u.id
-            WHERE $w ORDER BY t.created_at DESC LIMIT 200
+            WHERE $w 
+            ORDER BY t.created_at DESC 
+            LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
         $tickets = $stmt->fetchAll();
@@ -37,7 +55,12 @@ class TicketController {
             $t['related_users'] = json_decode($t['related_users'] ?? '[]');
         }
         
-        respond(200, ['items' => $tickets]);
+        respond(200, [
+            'items' => $tickets,
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit
+        ]);
     }
 
     public function show(array $auth, int $id): void {

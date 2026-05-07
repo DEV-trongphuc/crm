@@ -9,6 +9,9 @@ class FinanceController {
 
     public function listInvoices(array $auth): void {
         $tid    = $auth['tenant_id'];
+        $page   = max(1, (int)($_GET['page']   ?? 1));
+        $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
+        $offset = ($page - 1) * $limit;
         $status = $_GET['status'] ?? '';
         $search = $_GET['search'] ?? '';
         $where  = ['i.tenant_id=?']; $params = [$tid];
@@ -20,6 +23,10 @@ class FinanceController {
         if ($search) { $where[] = '(i.invoice_number LIKE ? OR ct.first_name LIKE ? OR ct.last_name LIKE ?)'; $params[] = "%$search%"; $params[] = "%$search%"; $params[] = "%$search%"; }
         $w = implode(' AND ', $where);
 
+        $cnt = $this->db->prepare("SELECT COUNT(*) FROM invoices i LEFT JOIN contacts ct ON i.contact_id = ct.id WHERE $w");
+        $cnt->execute($params);
+        $total = (int)$cnt->fetchColumn();
+
         $stmt = $this->db->prepare("
             SELECT i.*, c.name as company_name,
                    CONCAT(ct.first_name,' ',ct.last_name) as contact_name,
@@ -28,10 +35,15 @@ class FinanceController {
             LEFT JOIN companies c  ON i.company_id  = c.id
             LEFT JOIN contacts ct  ON i.contact_id  = ct.id
             LEFT JOIN users u      ON i.created_by  = u.id
-            WHERE $w ORDER BY i.issue_date DESC LIMIT 100
+            WHERE $w ORDER BY i.issue_date DESC LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
-        respond(200, $stmt->fetchAll());
+        // Summary totals respecting filters
+        $sSummary = $this->db->prepare("SELECT COALESCE(SUM(i.total),0) as total_rev, COALESCE(SUM(CASE WHEN i.status='paid' THEN i.total END),0) as paid_amt, COALESCE(SUM(CASE WHEN i.status='pending' THEN i.total END),0) as pending_amt, COALESCE(SUM(CASE WHEN i.status='overdue' THEN i.total END),0) as overdue_amt FROM invoices i LEFT JOIN contacts ct ON i.contact_id = ct.id WHERE $w");
+        $sSummary->execute($params);
+        $summary = $sSummary->fetch();
+
+        respond(200, ['items' => $stmt->fetchAll(), 'total' => $total, 'page' => $page, 'limit' => $limit, 'summary' => $summary]);
     }
 
     public function showInvoice(array $auth, int $id): void {
@@ -85,16 +97,19 @@ class FinanceController {
                 if (!$c->fetch()) $data['company_id'] = null;
             }
 
+            $isPaid = ($data['status']??'pending') === 'paid';
             $stmt = $this->db->prepare("
-                INSERT INTO invoices (tenant_id,deal_id,company_id,contact_id,created_by,invoice_number,title,status,issue_date,due_date,subtotal,discount,tax,total,notes,shipping_customer_pay,shipping_fee)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                INSERT INTO invoices (tenant_id,deal_id,company_id,contact_id,created_by,invoice_number,title,status,issue_date,due_date,subtotal,discount,tax,total,notes,shipping_customer_pay,shipping_fee,is_inventory_deducted,paid_at)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ");
             $stmt->execute([
                 $tid, $data['deal_id']??null, $data['company_id']??null, $data['contact_id']??null, $uid,
                 $data['invoice_number'], $data['title'], $data['status']??'pending',
                 $data['issue_date']??date('Y-m-d'), $data['due_date']??date('Y-m-d', strtotime('+30 days')),
                 $data['subtotal']??0, $data['discount']??0, $data['tax']??0, $data['total']??0, $data['notes']??null,
-                $data['shipping_customer_pay']??1, $data['shipping_fee']??0
+                $data['shipping_customer_pay']??1, $data['shipping_fee']??0,
+                $isPaid ? 1 : 0,
+                $isPaid ? date('Y-m-d H:i:s') : null
             ]);
             $invId = $this->db->lastInsertId();
 
@@ -103,9 +118,12 @@ class FinanceController {
                 foreach ($data['items'] as $item) {
                     $sItem->execute([$invId, $item['product_id']??null, $item['name'], $item['quantity']??1, $item['unit_price']??0, $item['subtotal']??0]);
                     
-                    // Deduct stock if already paid
-                    if (($data['status']??'pending') === 'paid' && !empty($item['product_id'])) {
-                        $this->deductStockFIFO($tid, $uid, (int)$item['product_id'], (int)$item['quantity'], $data['invoice_number']);
+                    if ($isPaid && !empty($item['product_id'])) {
+                        $pCheck = $this->db->prepare("SELECT track_inventory FROM products WHERE id=?");
+                        $pCheck->execute([(int)$item['product_id']]);
+                        if ($pCheck->fetchColumn()) {
+                            deductStockFIFO($this->db, $tid, $uid, (int)$item['product_id'], (int)$item['quantity'], $data['invoice_number']);
+                        }
                     }
                 }
             }
@@ -123,17 +141,53 @@ class FinanceController {
         $sets = []; $params = [];
         foreach ($fields as $f) { if (array_key_exists($f, $data)) { $sets[] = "$f=?"; $params[] = $data[$f]; } }
         if (!$sets) respond(422, null, 'Không có dữ liệu', false);
-        // Check permission first
-        $check = $this->db->prepare("SELECT id FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND created_by=?" : ""));
-        $cp = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
-        $check->execute($cp);
-        if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+        $this->db->beginTransaction();
+        try {
+            // Check permission and current status
+            $check = $this->db->prepare("SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND created_by=?" : ""));
+            $cp = [$id, $auth['tenant_id']];
+            if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
+            $check->execute($cp);
+            $current = $check->fetch();
+            if (!$current) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 
-        $params[] = $id; $params[] = $auth['tenant_id'];
-        $stmt = $this->db->prepare("UPDATE invoices SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
-        $stmt->execute($params);
-        $this->showInvoice($auth, $id);
+            if (isset($data['status']) && $data['status'] === 'paid' && $current['status'] !== 'paid') {
+                $data['paid_at'] = date('Y-m-d H:i:s');
+                $sets[] = "paid_at=?";
+                $params[] = $data['paid_at'];
+            }
+
+            $params[] = $id; $params[] = $auth['tenant_id'];
+            $stmt = $this->db->prepare("UPDATE invoices SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
+            $stmt->execute($params);
+
+            // Handle stock deduction if status changed to paid and not already deducted
+            if (isset($data['status']) && $data['status'] === 'paid' && !$current['is_inventory_deducted']) {
+                $this->triggerStockDeduction($auth, $id, $current['invoice_number']);
+                $this->db->prepare("UPDATE invoices SET is_inventory_deducted=1 WHERE id=?")->execute([$id]);
+            }
+
+            $this->db->commit();
+            $this->showInvoice($auth, $id);
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            respond(500, null, $e->getMessage(), false);
+        }
+    }
+
+    private function triggerStockDeduction(array $auth, int $invId, string $invNum): void {
+        $items = $this->db->prepare("
+            SELECT ii.product_id, ii.quantity, p.track_inventory 
+            FROM invoice_items ii 
+            JOIN products p ON ii.product_id = p.id 
+            WHERE ii.invoice_id = ?
+        ");
+        $items->execute([$invId]);
+        while ($item = $items->fetch()) {
+            if ($item['track_inventory'] && !empty($item['product_id'])) {
+                deductStockFIFO($this->db, $auth['tenant_id'], $auth['user_id'], (int)$item['product_id'], (int)$item['quantity'], $invNum);
+            }
+        }
     }
 
     public function deleteInvoice(array $auth, int $id): void {
@@ -153,7 +207,17 @@ class FinanceController {
         try {
             $this->db->beginTransaction();
             
-            $sql = "UPDATE invoices SET status='paid', paid_at=NOW() WHERE id=? AND tenant_id=?";
+            // Check if already deducted or already paid
+            $check = $this->db->prepare("SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND created_by=?" : ""));
+            $cp = [$id, $auth['tenant_id']];
+            if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
+            $check->execute($cp);
+            $inv = $check->fetch();
+
+            if (!$inv) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+            if ($inv['status'] === 'paid') respond(400, null, 'Hóa đơn đã được thanh toán', false);
+
+            $sql = "UPDATE invoices SET status='paid', paid_at=NOW(), is_inventory_deducted=1 WHERE id=? AND tenant_id=?";
             $p = [$id, $auth['tenant_id']];
             if ($auth['role'] === 'sale') {
                 $sql .= " AND created_by=?";
@@ -162,41 +226,21 @@ class FinanceController {
             $stmt = $this->db->prepare($sql);
             $stmt->execute($p);
             
-            if ($stmt->rowCount()) {
-                // Get invoice number and items
-                $invInfo = $this->db->prepare("SELECT invoice_number FROM invoices WHERE id=?");
-                $invInfo->execute([$id]);
-                $invNum = $invInfo->fetchColumn();
-
-                // Deduct stock for items in this invoice
-                $items = $this->db->prepare("
-                    SELECT ii.product_id, ii.quantity, p.track_inventory 
-                    FROM invoice_items ii 
-                    JOIN products p ON ii.product_id = p.id 
-                    WHERE ii.invoice_id = ?
-                ");
-                $items->execute([$id]);
-                while ($item = $items->fetch()) {
-                    if ($item['track_inventory'] && !empty($item['product_id'])) {
-                        $this->deductStockFIFO($auth['tenant_id'], $auth['user_id'], (int)$item['product_id'], (int)$item['quantity'], $invNum);
-                    }
-                }
-                
-                // Update contact's last_contact
-                $invData = $this->db->prepare("SELECT contact_id FROM invoices WHERE id=?");
-                $invData->execute([$id]);
-                $cId = $invData->fetchColumn();
-                if ($cId) {
-                    $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
-                         ->execute([(int)$cId, $auth['tenant_id']]);
-                }
-                
-                $this->db->commit();
-                respond(200, null, 'Hóa đơn đã được thanh toán và tồn kho đã được cập nhật');
-            } else {
-                $this->db->rollBack();
-                respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+            if (!$inv['is_inventory_deducted']) {
+                $this->triggerStockDeduction($auth, $id, $inv['invoice_number']);
             }
+            
+            // Update contact's last_contact
+            $invData = $this->db->prepare("SELECT contact_id FROM invoices WHERE id=?");
+            $invData->execute([$id]);
+            $cId = $invData->fetchColumn();
+            if ($cId) {
+                $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
+                     ->execute([(int)$cId, $auth['tenant_id']]);
+            }
+            
+            $this->db->commit();
+            respond(200, null, 'Hóa đơn đã được thanh toán và tồn kho đã được cập nhật');
         } catch (Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();
             respond(500, null, 'Lỗi hệ thống: ' . $e->getMessage(), false);
@@ -207,23 +251,32 @@ class FinanceController {
 
     public function listExpenses(array $auth): void {
         $tid    = $auth['tenant_id'];
-        $status = $_GET['status'] ?? '';
-        $from   = $_GET['from'] ?? '';
-        $to     = $_GET['to'] ?? '';
-        $where  = ['e.tenant_id=?']; $params = [$tid];
+        $page   = max(1, (int)($_GET['page']   ?? 1));
+        $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
+        $offset = ($page - 1) * $limit;
+        $status   = $_GET['status'] ?? '';
+        $category = $_GET['category'] ?? '';
+        $from     = $_GET['from'] ?? '';
+        $to       = $_GET['to'] ?? '';
+        $where    = ['e.tenant_id=?']; $params = [$tid];
         if ($auth['role'] === 'sale') {
             $where[] = 'e.created_by = ?';
             $params[] = $auth['user_id'];
         }
-        if ($status) { $where[] = 'e.status=?'; $params[] = $status; }
-        if ($from)   { $where[] = 'e.date >= ?'; $params[] = $from; }
-        if ($to)     { $where[] = 'e.date <= ?'; $params[] = $to; }
+        if ($status)   { $where[] = 'e.status=?'; $params[] = $status; }
+        if ($category) { $where[] = 'e.category=?'; $params[] = $category; }
+        if ($from)     { $where[] = 'e.date >= ?'; $params[] = $from; }
+        if ($to)       { $where[] = 'e.date <= ?'; $params[] = $to; }
         $w = implode(' AND ', $where);
+
+        $cnt = $this->db->prepare("SELECT COUNT(*) FROM expenses e WHERE $w");
+        $cnt->execute($params);
+        $total = (int)$cnt->fetchColumn();
 
         $stmt = $this->db->prepare("
             SELECT e.*, u.full_name as creator_name
             FROM expenses e LEFT JOIN users u ON e.created_by = u.id
-            WHERE $w ORDER BY e.date DESC LIMIT 200
+            WHERE $w ORDER BY e.date DESC LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
         $rows = $stmt->fetchAll();
@@ -247,12 +300,12 @@ class FinanceController {
             }
         }
 
-        // Summary totals
-        $sTotal = $this->db->prepare("SELECT COALESCE(SUM(amount),0) as total, COALESCE(SUM(CASE WHEN status='approved' THEN amount END),0) as approved FROM expenses WHERE tenant_id=?");
-        $sTotal->execute([$tid]);
+        // Summary totals respecting filters
+        $sTotal = $this->db->prepare("SELECT COALESCE(SUM(e.amount),0) as total, COALESCE(SUM(CASE WHEN e.status='approved' THEN e.amount END),0) as approved FROM expenses e WHERE $w");
+        $sTotal->execute($params);
         $summary = $sTotal->fetch();
 
-        respond(200, ['items' => $rows, 'summary' => $summary]);
+        respond(200, ['items' => $rows, 'total' => $total, 'page' => $page, 'limit' => $limit, 'summary' => $summary]);
     }
 
     public function showExpense(array $auth, int $id): void {
@@ -449,43 +502,5 @@ class FinanceController {
         $exp = $sExp->fetch();
 
         respond(200, array_merge($inv, $exp));
-    }
-    private function deductStockFIFO(int $tid, int $uid, int $productId, int $qty, string $invNum): void {
-        // 1. Get batches sorted by import date (FIFO)
-        $stmtBatches = $this->db->prepare("
-            SELECT id, current_qty 
-            FROM batches 
-            WHERE product_id = ? AND tenant_id = ? AND current_qty > 0 AND status = 'active'
-            ORDER BY import_date ASC, id ASC 
-            FOR UPDATE
-        ");
-        $stmtBatches->execute([$productId, $tid]);
-        $batches = $stmtBatches->fetchAll();
-
-        $remainingToDeduct = $qty;
-
-        foreach ($batches as $batch) {
-            if ($remainingToDeduct <= 0) break;
-
-            $deductFromThisBatch = min($batch['current_qty'], $remainingToDeduct);
-            
-            // Update batch quantity
-            $this->db->prepare("UPDATE batches SET current_qty = current_qty - ? WHERE id = ?")
-                 ->execute([$deductFromThisBatch, $batch['id']]);
-            
-            // Create inventory log
-            $this->db->prepare("
-                INSERT INTO inventory_logs (tenant_id, batch_id, action_type, qty_change, reason, created_by)
-                VALUES (?, ?, 'SALE', ?, ?, ?)
-            ")->execute([
-                $tid, $batch['id'], -$deductFromThisBatch, "Bán hàng - Hóa đơn #$invNum", $uid
-            ]);
-
-            $remainingToDeduct -= $deductFromThisBatch;
-        }
-
-        // Update overall product stock
-        $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id=? AND tenant_id=?")
-             ->execute([$qty, $productId, $tid]);
     }
 }

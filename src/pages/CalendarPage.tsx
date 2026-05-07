@@ -14,9 +14,21 @@ export const CalendarPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchActivities = async () => {
+    setLoading(true);
     try {
-      const res = await api.get('/activities');
-      setActivities(res.data.data || []);
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01 00:00:00`;
+      const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${new Date(year, month + 1, 0).getDate()} 23:59:59`;
+      
+      const res = await api.get('/activities', {
+        params: {
+          start_date: startDate,
+          end_date: endDate,
+          limit: 200 // Ensure we get all for the month
+        }
+      });
+      setActivities(res.data.data?.items || res.data.data || []);
     } catch (err) {
       addToast('Lỗi khi tải lịch làm việc', 'error');
     } finally {
@@ -24,7 +36,7 @@ export const CalendarPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchActivities(); }, []);
+  useEffect(() => { fetchActivities(); }, [currentDate]);
 
   const daysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay();

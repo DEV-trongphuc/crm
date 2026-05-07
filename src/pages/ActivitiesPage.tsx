@@ -66,13 +66,14 @@ export const ActivitiesPage: React.FC = () => {
       return;
     }
     try {
-      const params: Record<string, string> = { page: page.toString(), search: debouncedSearch };
+      const params: any = { page, limit: PAGE_SIZE, search: debouncedSearch };
       if (filterType) params.type = filterType;
       if (filterStatus) params.status = filterStatus;
+      
       const r = await api.get('/activities', { params });
-      const data = r.data.data?.items || r.data.data || [];
-      setItems(data);
-      setTotal(r.data.data?.total || data.length);
+      const data = r.data.data;
+      setItems(data.items || []);
+      setTotal(data.total || 0);
     } catch {
       setItems([]);
       setTotal(0);
@@ -387,9 +388,9 @@ export const ActivitiesPage: React.FC = () => {
       )}
 
       {/* Pagination */}
-      {!loading && items.length > PAGE_SIZE && (
+      {!loading && total > PAGE_SIZE && (
         <div className="card" style={{ marginTop: '0.5rem' }}>
-          <Pagination total={items.filter(act => !search || act.subject.toLowerCase().includes(search.toLowerCase())).length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
         </div>
       )}
 

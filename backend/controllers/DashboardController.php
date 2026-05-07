@@ -17,28 +17,27 @@ class DashboardController {
         $saleFilter = "";
         $saleParams = [];
         if ($auth['role'] === 'sale') {
-            $saleFilter = " AND owner_id = :uid";
-            $saleParams['uid'] = $auth['user_id'];
+            $saleFilter = " AND owner_id = :uid_main";
+            $saleParams['uid_main'] = $auth['user_id'];
         }
 
-        $uidF = ($auth['role'] === 'sale') ? " AND user_id = :uid" : "";
-        $uidD = ($auth['role'] === 'sale') ? " AND d.owner_id = :uid" : "";
+        $uidF = ($auth['role'] === 'sale') ? " AND user_id = :uid_act" : "";
 
         // Optimized consolidated query with unique parameter names
         $stats = $this->db->prepare("
             SELECT
                 (SELECT COALESCE(SUM(value),0) FROM deals WHERE tenant_id=:tid1 AND deleted_at IS NULL AND created_at BETWEEN :f1 AND :t1 $saleFilter) as total_value,
-                (SELECT COALESCE(SUM(total),0) FROM invoices WHERE tenant_id=:tid2 AND status='paid' AND paid_at BETWEEN :f2 AND :t2 ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "").") as actual_revenue,
-                (SELECT COALESCE(SUM(amount),0) FROM expenses WHERE tenant_id=:tid3 AND status='approved' AND date BETWEEN :f_date AND :t_date ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "").") as total_expenses,
+                (SELECT COALESCE(SUM(total),0) FROM invoices WHERE tenant_id=:tid2 AND status='paid' AND paid_at BETWEEN :f2 AND :t2 ".(($auth['role'] === 'sale') ? " AND created_by = :uid_inv" : "").") as actual_revenue,
+                (SELECT COALESCE(SUM(amount),0) FROM expenses WHERE tenant_id=:tid3 AND status='approved' AND date BETWEEN :f_date1 AND :t_date1 ".(($auth['role'] === 'sale') ? " AND created_by = :uid_exp" : "").") as total_expenses,
                 (SELECT COUNT(*) FROM contacts WHERE tenant_id=:tid4 AND deleted_at IS NULL AND created_at BETWEEN :f3 AND :t3 $saleFilter) as new_contacts,
-                (SELECT COUNT(*) FROM activities WHERE tenant_id=:tid5 AND status='planned' AND due_date BETWEEN CURDATE() AND CONCAT(CURDATE(), ' 23:59:59') $uidF) as tasks_due_today,
-                (SELECT COUNT(*) FROM activities WHERE tenant_id=:tid9 AND status='planned' AND due_date BETWEEN DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 23:59:59') $uidF) as tasks_due_tomorrow,
-                (SELECT COUNT(*) FROM activities WHERE tenant_id=:tid10 AND status='planned' AND due_date < CURDATE() $uidF) as overdue_tasks,
-                (SELECT COUNT(*) FROM deals d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid6 AND d.deleted_at IS NULL AND ps.is_won=1 AND d.created_at BETWEEN :f4 AND :t4 $saleFilter) as won_count,
-                (SELECT COALESCE(SUM(d.value),0) FROM deals d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid7 AND d.deleted_at IS NULL AND ps.is_won=1 AND d.created_at BETWEEN :f5 AND :t5 $saleFilter) as won_value,
-                (SELECT COALESCE(SUM(shipping_fee),0) FROM invoices WHERE tenant_id=:tid8 AND status='paid' AND shipping_customer_pay=1 AND paid_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "").") as shipping_collected,
-                (SELECT COALESCE(SUM(ii.quantity * p.cost), 0) FROM invoice_items ii JOIN products p ON ii.product_id = p.id JOIN invoices i ON ii.invoice_id = i.id WHERE i.tenant_id = :tid11 AND i.status = 'paid' AND i.paid_at BETWEEN :f7 AND :t7 ".(($auth['role'] === 'sale') ? " AND i.created_by = :uid" : "").") as total_cogs,
-                (SELECT COALESCE(SUM(shipping_fee), 0) FROM invoices WHERE tenant_id = :tid12 AND status = 'paid' AND shipping_customer_pay = 0 AND paid_at BETWEEN :f8 AND :t8 ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "").") as shop_paid_shipping
+                (SELECT COUNT(*) FROM activities WHERE tenant_id=:tid5 AND status='planned' AND due_date BETWEEN CURDATE() AND CONCAT(CURDATE(), ' 23:59:59') ".(($auth['role'] === 'sale') ? " AND user_id = :uid_act1" : "").") as tasks_due_today,
+                (SELECT COUNT(*) FROM activities WHERE tenant_id=:tid9 AND status='planned' AND due_date BETWEEN DATE_ADD(CURDATE(), INTERVAL 1 DAY) AND CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 23:59:59') ".(($auth['role'] === 'sale') ? " AND user_id = :uid_act2" : "").") as tasks_due_tomorrow,
+                (SELECT COUNT(*) FROM activities WHERE tenant_id=:tid10 AND status='planned' AND due_date < CURDATE() ".(($auth['role'] === 'sale') ? " AND user_id = :uid_act3" : "").") as overdue_tasks,
+                (SELECT COUNT(*) FROM deals d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid6 AND d.deleted_at IS NULL AND ps.is_won=1 AND d.actual_close_date BETWEEN :f_date2 AND :t_date2 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid_main2" : "").") as won_count,
+                (SELECT COALESCE(SUM(d.value),0) FROM deals d JOIN pipeline_stages ps ON d.stage_id=ps.id WHERE d.tenant_id=:tid7 AND d.deleted_at IS NULL AND ps.is_won=1 AND d.actual_close_date BETWEEN :f_date3 AND :t_date3 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid_main3" : "").") as won_value,
+                (SELECT COALESCE(SUM(shipping_fee),0) FROM invoices WHERE tenant_id=:tid8 AND status='paid' AND shipping_customer_pay=1 AND paid_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sale') ? " AND created_by = :uid_inv_ship" : "").") as shipping_collected,
+                (SELECT COALESCE(SUM(ii.quantity * p.cost), 0) FROM invoice_items ii JOIN products p ON ii.product_id = p.id JOIN invoices i ON ii.invoice_id = i.id WHERE i.tenant_id = :tid11 AND i.status = 'paid' AND i.paid_at BETWEEN :f7 AND :t7 ".(($auth['role'] === 'sale') ? " AND i.created_by = :uid_inv_cogs" : "").") as total_cogs,
+                (SELECT COALESCE(SUM(shipping_fee), 0) FROM invoices WHERE tenant_id = :tid12 AND status = 'paid' AND shipping_customer_pay = 0 AND paid_at BETWEEN :f8 AND :t8 ".(($auth['role'] === 'sale') ? " AND created_by = :uid_inv_ship_shop" : "").") as shop_paid_shipping
         ");
         
         $p = [
@@ -47,16 +46,29 @@ class DashboardController {
             'f1' => $fromTs, 't1' => $toTs,
             'f2' => $fromTs, 't2' => $toTs,
             'f3' => $fromTs, 't3' => $toTs,
-            'f4' => $fromTs, 't4' => $toTs,
-            'f5' => $fromTs, 't5' => $toTs,
             'f6' => $fromTs, 't6' => $toTs,
             'f7' => $fromTs, 't7' => $toTs,
             'f8' => $fromTs, 't8' => $toTs,
-            'f_date' => $from, 't_date' => $to
+            'f_date1' => $from, 't_date1' => $to,
+            'f_date2' => $from, 't_date2' => $to,
+            'f_date3' => $from, 't_date3' => $to
         ];
-        if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
+        if ($auth['role'] === 'sale') {
+            $p['uid_main'] = $auth['user_id'];
+            $p['uid_main2'] = $auth['user_id'];
+            $p['uid_main3'] = $auth['user_id'];
+            $p['uid_inv'] = $auth['user_id'];
+            $p['uid_exp'] = $auth['user_id'];
+            $p['uid_act1'] = $auth['user_id'];
+            $p['uid_act2'] = $auth['user_id'];
+            $p['uid_act3'] = $auth['user_id'];
+            $p['uid_inv_ship'] = $auth['user_id'];
+            $p['uid_inv_cogs'] = $auth['user_id'];
+            $p['uid_inv_ship_shop'] = $auth['user_id'];
+        }
         $stats->execute($p);
         $res = $stats->fetch();
+
 
         // Calculate Previous Period Stats for % Change
         $diff = strtotime($to) - strtotime($from);
@@ -72,14 +84,26 @@ class DashboardController {
             'f1' => $prevFromTs, 't1' => $prevToTs,
             'f2' => $prevFromTs, 't2' => $prevToTs,
             'f3' => $prevFromTs, 't3' => $prevToTs,
-            'f4' => $prevFromTs, 't4' => $prevToTs,
-            'f5' => $prevFromTs, 't5' => $prevToTs,
             'f6' => $prevFromTs, 't6' => $prevToTs,
             'f7' => $prevFromTs, 't7' => $prevToTs,
             'f8' => $prevFromTs, 't8' => $prevToTs,
-            'f_date' => $prevFrom, 't_date' => $prevTo
+            'f_date1' => $prevFrom, 't_date1' => $prevTo,
+            'f_date2' => $prevFrom, 't_date2' => $prevTo,
+            'f_date3' => $prevFrom, 't_date3' => $prevTo
         ];
-        if ($auth['role'] === 'sale') $pPrev['uid'] = $auth['user_id'];
+        if ($auth['role'] === 'sale') {
+            $pPrev['uid_main'] = $auth['user_id'];
+            $pPrev['uid_main2'] = $auth['user_id'];
+            $pPrev['uid_main3'] = $auth['user_id'];
+            $pPrev['uid_inv'] = $auth['user_id'];
+            $pPrev['uid_exp'] = $auth['user_id'];
+            $pPrev['uid_act1'] = $auth['user_id'];
+            $pPrev['uid_act2'] = $auth['user_id'];
+            $pPrev['uid_act3'] = $auth['user_id'];
+            $pPrev['uid_inv_ship'] = $auth['user_id'];
+            $pPrev['uid_inv_cogs'] = $auth['user_id'];
+            $pPrev['uid_inv_ship_shop'] = $auth['user_id'];
+        }
         
         $stats->execute($pPrev);
         $resPrev = $stats->fetch();
@@ -156,7 +180,7 @@ class DashboardController {
                     WHERE tenant_id = :tid1 
                       AND status = 'paid' 
                       AND DATE_FORMAT(paid_at, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
-                      ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "")."
+                      ".(($auth['role'] === 'sale') ? " AND created_by = :uid1" : "")."
                 ) as revenue,
                 (
                     (SELECT COALESCE(SUM(amount), 0) 
@@ -164,7 +188,7 @@ class DashboardController {
                      WHERE tenant_id = :tid2 
                        AND status = 'approved' 
                        AND DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
-                       ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "")."
+                       ".(($auth['role'] === 'sale') ? " AND created_by = :uid2" : "")."
                     ) +
                     (SELECT COALESCE(SUM(ii.quantity * p.cost), 0)
                      FROM invoice_items ii 
@@ -173,7 +197,7 @@ class DashboardController {
                      WHERE i.tenant_id = :tid3
                        AND i.status = 'paid'
                        AND DATE_FORMAT(i.paid_at, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
-                       ".(($auth['role'] === 'sale') ? " AND i.created_by = :uid" : "")."
+                       ".(($auth['role'] === 'sale') ? " AND i.created_by = :uid3" : "")."
                     ) +
                     (SELECT COALESCE(SUM(shipping_fee), 0)
                      FROM invoices
@@ -181,7 +205,7 @@ class DashboardController {
                        AND status = 'paid'
                        AND shipping_customer_pay = 0
                        AND DATE_FORMAT(paid_at, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
-                       ".(($auth['role'] === 'sale') ? " AND created_by = :uid" : "")."
+                       ".(($auth['role'] === 'sale') ? " AND created_by = :uid4" : "")."
                     )
                 ) as cost
             FROM (
@@ -196,7 +220,12 @@ class DashboardController {
         ";
         
         $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid];
-        if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
+        if ($auth['role'] === 'sale') {
+            $p['uid1'] = $auth['user_id'];
+            $p['uid2'] = $auth['user_id'];
+            $p['uid3'] = $auth['user_id'];
+            $p['uid4'] = $auth['user_id'];
+        }
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
@@ -243,15 +272,38 @@ class DashboardController {
 
     public function pipelineFunnel(array $auth): void {
         $tid = $auth['tenant_id'];
+        
         $sql = "
             SELECT ps.id, ps.name, ps.color, ps.order_index, ps.is_won, ps.is_lost,
-                   (SELECT COUNT(*) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid1 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid" : "").") as deal_count,
-                   (SELECT COALESCE(SUM(value),0) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid2 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid" : "").") as total_value
+                   (
+                     (SELECT COUNT(*) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid1 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid1" : "").") +
+                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid2 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid2" : "").") +
+                     (SELECT COUNT(*) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 ".(($auth['role'] === 'sale') ? " AND cp.owner_id = :uid3" : "").")
+                   ) as deal_count,
+                   (
+                     (SELECT COALESCE(SUM(value),0) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid4 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid4" : "").") +
+                     (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid5 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid5" : "").") +
+                     (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 ".(($auth['role'] === 'sale') ? " AND cp.owner_id = :uid6" : "").")
+                   ) as total_value
             FROM pipeline_stages ps
+            WHERE ps.tenant_id = :tid_main
+            GROUP BY ps.id 
+            ORDER BY ps.order_index ASC
         ";
-        $p = ['tid1' => $tid, 'tid2' => $tid, 'tid4' => $tid];
-        if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
-        $sql .= " WHERE ps.tenant_id = :tid4 GROUP BY ps.id ORDER BY ps.order_index ASC";
+        
+        $p = [
+            'tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 
+            'tid4' => $tid, 'tid5' => $tid, 'tid6' => $tid, 
+            'tid_main' => $tid
+        ];
+        if ($auth['role'] === 'sale') {
+            $p['uid1'] = $auth['user_id'];
+            $p['uid2'] = $auth['user_id'];
+            $p['uid3'] = $auth['user_id'];
+            $p['uid4'] = $auth['user_id'];
+            $p['uid5'] = $auth['user_id'];
+            $p['uid6'] = $auth['user_id'];
+        }
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);

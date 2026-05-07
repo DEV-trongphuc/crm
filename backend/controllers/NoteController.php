@@ -97,7 +97,7 @@ class NoteController {
         // 2. Process mentions
         if (!empty($mentions)) {
             $ins = $this->db->prepare("INSERT IGNORE INTO note_mentions (note_id, user_id) VALUES (?,?)");
-            $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, type, title, message, related_type, related_id) VALUES (?,?,?,?,?,?,?)");
+            $notif = $this->db->prepare("INSERT INTO notifications (user_id, tenant_id, title, body, type, link) VALUES (?,?,?,?,?,?)");
             
             foreach ($mentions as $uid) {
                 $uid = (int)$uid;
@@ -106,10 +106,11 @@ class NoteController {
                 // Don't notify self
                 if ($uid !== (int)$auth['user_id']) {
                     $notif->execute([
-                        $uid, $auth['tenant_id'], 'mention', 
+                        $uid, $auth['tenant_id'], 
                         'Bạn được nhắc tên', 
                         $auth['full_name'] . ' đã nhắc tên bạn trong một ghi chú.',
-                        'note', $id
+                        'mention', 
+                        "/notes/{$id}"
                     ]);
                 }
             }

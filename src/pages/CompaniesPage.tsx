@@ -38,20 +38,21 @@ export const CompaniesPage: React.FC = () => {
   const fetchCompanies = useCallback(async () => {
     setLoading(true);
     if (DEV_MODE) { 
-      const { companies } = useMockStore.getState();
-      setCompanies(companies); 
-      setTotal(companies.length); 
+      const { companies: all } = useMockStore.getState();
+      setCompanies(all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)); 
+      setTotal(all.length); 
       setLoading(false); 
       return; 
     }
     try {
-      const params: Record<string, string> = {};
-      if (search) params.search = search;
+      const params: any = { page, limit: PAGE_SIZE };
+      if (debouncedSearch) params.search = debouncedSearch;
       if (statusFilter) params.status = statusFilter;
+      
       const r = await api.get('/companies', { params });
-      const data = r.data.data?.items || r.data.data || [];
-      setCompanies(data);
-      setTotal(r.data.data?.total || data.length);
+      const data = r.data.data;
+      setCompanies(data.items || []);
+      setTotal(data.total || 0);
     } catch {
       setCompanies([]);
       setTotal(0);
@@ -59,7 +60,7 @@ export const CompaniesPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, statusFilter]);
+  }, [page, debouncedSearch, statusFilter]);
 
   useEffect(() => {
     fetchCompanies();
@@ -175,7 +176,7 @@ export const CompaniesPage: React.FC = () => {
       {!loading && viewMode === 'card' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
           <AnimatePresence>
-            {companies.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(co => (
+            {companies.map(co => (
               <motion.div
                 key={co.id}
                 className="card card-hover"
@@ -214,7 +215,7 @@ export const CompaniesPage: React.FC = () => {
               </motion.div>
             ))}
           </AnimatePresence>
-          {companies.length === 0 && (
+          {total === 0 && (
             <div className="empty-state" style={{ gridColumn: '1/-1' }}>
               <Building2 size={40} />
               <h3>Chưa có công ty nào</h3>
@@ -226,7 +227,7 @@ export const CompaniesPage: React.FC = () => {
       )}
       {!loading && viewMode === 'card' && companies.length > PAGE_SIZE && (
         <div className="card" style={{ marginTop: '1rem' }}>
-          <Pagination total={companies.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
         </div>
       )}
 
@@ -247,7 +248,7 @@ export const CompaniesPage: React.FC = () => {
               </thead>
               <tbody>
                 <AnimatePresence>
-                  {companies.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(co => (
+                  {companies.map(co => (
                     <motion.tr
                       key={co.id}
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -286,7 +287,7 @@ export const CompaniesPage: React.FC = () => {
                     </motion.tr>
                   ))}
                 </AnimatePresence>
-                {companies.length === 0 && (
+                {total === 0 && (
                   <tr><td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Không tìm thấy công ty nào.</td></tr>
                 )}
               </tbody>
@@ -296,7 +297,7 @@ export const CompaniesPage: React.FC = () => {
       )}
       {!loading && viewMode === 'list' && (
         <div className="card" style={{ marginTop: '0.25rem' }}>
-          <Pagination total={companies.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+          <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
         </div>
       )}
 

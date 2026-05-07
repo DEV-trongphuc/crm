@@ -129,8 +129,8 @@ class PurchaseOrderController {
             }
 
             // 4. Update supplier totals (accounts payable)
-            $this->db->prepare("UPDATE suppliers SET total_ordered = total_ordered + ? WHERE id = ?")
-                 ->execute([$poInfo['total'], $poInfo['supplier_id']]);
+            $this->db->prepare("UPDATE suppliers SET total_ordered = total_ordered + ? WHERE id = ? AND tenant_id = ?")
+                 ->execute([$poInfo['total'], $poInfo['supplier_id'], $auth['tenant_id']]);
 
             $this->db->commit();
             respond(200, null, 'Đã nhập kho thành công, đã tạo lô hàng và cập nhật số lượng tồn kho');

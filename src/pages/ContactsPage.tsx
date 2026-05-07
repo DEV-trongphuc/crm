@@ -91,27 +91,53 @@ export const ContactsPage: React.FC = () => {
   ]);
   const [showColumns, setShowColumns] = useState(false);
 
-  useEffect(() => {
+  const [total, setTotal] = useState(0);
+
+  const fetchData = async () => {
     setLoading(true);
     if (DEV_MODE) {
-      setContacts(useMockStore.getState().contacts.map(c => ({ ...c, score: calcScore(c) })));
+      const all = useMockStore.getState().contacts.map(c => ({ ...c, score: calcScore(c) }));
+      setContacts(all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE));
+      setTotal(all.length);
       setLoading(false);
       return;
     }
-    
-    // Fetch contacts
-    api.get('/contacts')
-      .then(r => { 
-        const d = r.data.data?.items||r.data.data||[]; 
-        setContacts(d.map((c: any) => ({ ...c, score: calcScore(c) }))); 
-      })
-      .catch(() => {
-        setContacts([]);
-        addToast('Không thể lấy danh sách liên hệ', 'error');
-      })
-      .finally(() => setLoading(false));
 
-    // Fetch sales/users for assignment
+    try {
+      const params: any = { 
+        page, 
+        limit: PAGE_SIZE, 
+        search: debouncedSearch, 
+        segment,
+        sort: sortBy === 'score_desc' ? 'lead_score' : (sortBy === 'deal_desc' ? 'open_deal_value' : 'created_at'),
+        order: 'DESC'
+      };
+      
+      if (dateFilterActive && (dateRange.from || dateRange.to)) {
+        params.from = dateRange.from;
+        params.to = dateRange.to;
+        params.date_field = filterDateField;
+      }
+
+      const r = await api.get('/contacts', { params });
+      const data = r.data.data;
+      setContacts((data.items || []).map((c: any) => ({ ...c, score: c.lead_score || calcScore(c) })));
+      setTotal(data.total || 0);
+    } catch {
+      setContacts([]);
+      setTotal(0);
+      addToast('Không thể lấy danh sách liên hệ', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [page, debouncedSearch, segment, sortBy, dateRange, filterDateField, dateFilterActive]);
+
+  useEffect(() => {
+    // Fetch sales/users for assignment once
     api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => {});
   }, []);
 
@@ -125,39 +151,7 @@ export const ContactsPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [showCreateModal, creating]);
 
-  const filtered = useMemo(() => {
-    return contacts
-      .filter(c => c && c.id != null)
-      .filter(c => {
-        const q = debouncedSearch.toLowerCase();
-        const matchSearch = !q || `${c.first_name} ${c.last_name} ${c.email} ${c.company_name} ${c.phone}`.toLowerCase().includes(q);
-        if (!matchSearch) return false;
-        
-        // Date range filter
-        if (dateFilterActive && (dateRange.from || dateRange.to)) {
-          const dateVal = (c[filterDateField] || '').substring(0, 10);
-          if (dateRange.from && dateVal < dateRange.from) return false;
-          if (dateRange.to   && dateVal > dateRange.to)   return false;
-        }
-        
-        const days = AGO_DAYS(c.last_contact);
-        switch(segment) {
-          case 'hot':        return c.score >= 80;
-          case 'customer':   return c.status === 'customer';
-          case 'has_deal':   return (c.open_deal_value||0) > 0;
-          case 'no_contact': return days > 30;
-          case 'new_week':   return days <= 7;
-          default:           return true;
-        }
-      })
-      .sort((a, b) => {
-        if (sortBy === 'score_desc') return b.score - a.score;
-        if (sortBy === 'deal_desc') return (b.open_deal_value || 0) - (a.open_deal_value || 0);
-        return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(); // newest
-      });
-  }, [contacts, debouncedSearch, segment, sortBy, dateRange, filterDateField, dateFilterActive]);
-
-  const paged = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE);
+  const paged = contacts;
 
   const toggleSelect = (id: number) => setSelected(p => { 
     const n = new Set(p); 
@@ -257,7 +251,7 @@ export const ContactsPage: React.FC = () => {
       <div className="page-header">
         <div>
           <h1 className="page-title">Liên hệ & Khách hàng</h1>
-          <p className="page-subtitle">{loading ? '...' : `${filtered.length} liên hệ`}</p>
+          <p className="page-subtitle">{loading ? '...' : `${total} liên hệ`}</p>
         </div>
         <div className="flex gap-2">
           <button className="btn outline" onClick={() => setShowImportExport(true)}><Download size={14}/> Nhập/Xuất Dữ liệu</button>
@@ -571,7 +565,7 @@ export const ContactsPage: React.FC = () => {
                   })}
                 </tbody>
               </table>
-              {filtered.length === 0 && (
+              {total === 0 && (
                 <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                   <Users size={40} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
                   <p style={{ fontWeight: 600 }}>Không tìm thấy liên hệ nào</p>
@@ -641,7 +635,7 @@ export const ContactsPage: React.FC = () => {
                   );
                 })}
               </div>
-              {filtered.length === 0 && (
+              {total === 0 && (
                 <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
                   <Users size={40} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
                   <p style={{ fontWeight: 600 }}>Không tìm thấy liên hệ nào</p>
@@ -649,8 +643,9 @@ export const ContactsPage: React.FC = () => {
               )}
             </div>
           )}
-          
-          <Pagination total={filtered.length} page={page} pageSize={PAGE_SIZE} onChange={setPage}/>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderTop: '1px solid var(--color-border-light)', paddingTop: '1.25rem', marginTop: '1rem' }}>
+            <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} />
+          </div>
         </div>
       )}
 

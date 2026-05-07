@@ -82,6 +82,12 @@ export const ExpensesPage: React.FC = () => {
   const [catOpen, setCatOpen] = useState(false);
   const [users, setUsers] = useState<any[]>(DEV_MODE ? useMockStore.getState().users : []); // for approver dropdown
   const [contacts, setContacts] = useState<any[]>([]); // for splitting bill
+  const [suppliers, setSuppliers] = useState<any[]>([]); // for vendor autocomplete
+  const [vendorSearch, setVendorSearch] = useState('');
+  const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  const vendorRef = React.useRef<HTMLDivElement>(null);
+
+  const [summary, setSummary] = useState({ total: 0, approved: 0 });
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -89,22 +95,48 @@ export const ExpensesPage: React.FC = () => {
       const { expenses } = useMockStore.getState();
       setItems(expenses);
       setTotal(expenses.length);
+      setSummary({ 
+        total: expenses.reduce((s, e) => s + Number(e.amount), 0),
+        approved: expenses.filter(e => e.status === 'approved').reduce((s, e) => s + Number(e.amount), 0)
+      });
       setLoading(false);
       return;
     }
     try {
-      const r = await api.get('/expenses', { params: { from: dateRange.from, to: dateRange.to, status: statusFilter } });
-      const data = r.data.data?.items || r.data.data || [];
-      setItems(data);
-      setTotal(r.data.data?.total || data.length);
+      const params: any = { 
+        page, 
+        limit: PAGE_SIZE, 
+        from: dateRange.from, 
+        to: dateRange.to, 
+        status: statusFilter,
+        category: catFilter,
+        search: search
+      };
+      const r = await api.get('/expenses', { params });
+      const data = r.data.data;
+      setItems(data.items || []);
+      setTotal(data.total || 0);
+      setSummary(data.summary || { total: 0, approved: 0 });
     } catch {
       setItems([]);
       setTotal(0);
       addToast('Không thể tải danh sách chi phí', 'error');
-    } finally { setLoading(false); }
-  }, [dateRange, statusFilter]);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, dateRange, statusFilter, catFilter, search]);
 
   // Fetch users & contacts for dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (vendorRef.current && !vendorRef.current.contains(event.target as Node)) {
+        setShowVendorDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   useEffect(() => {
     if (DEV_MODE) {
       setUsers(useMockStore.getState().users);
@@ -113,31 +145,28 @@ export const ExpensesPage: React.FC = () => {
     }
     api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => {});
     api.get('/contacts').then(r => setContacts(r.data.data?.items || [])).catch(() => {});
+    api.get('/suppliers').then(r => setSuppliers(r.data.data || [])).catch(() => {});
   }, []);
 
-  useEffect(() => { fetchExpenses(); setPage(1); }, [fetchExpenses]);
+  useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
 
   // Client-side filter + paginate
-  const filtered = items.filter(e => {
-    const txt = `${e.title} ${e.creator_name}`.toLowerCase();
-    return (!search || txt.includes(search.toLowerCase()))
-      && (!catFilter || e.category === catFilter);
-  });
-  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // Client-side items match server-paginated data
 
-  // KPIs from filtered set
-  const totalAmt = filtered.reduce((s, e) => s + Number(e.amount), 0);
-  const approvedAmt = filtered.filter(e => e.status === 'approved').reduce((s, e) => s + Number(e.amount), 0);
-  const pendingAmt = filtered.filter(e => e.status === 'pending').reduce((s, e) => s + Number(e.amount), 0);
-  const maxItem = filtered.reduce((mx, e) => Number(e.amount) > Number(mx?.amount || 0) ? e : mx, null as any);
+  // KPIs from server-side summary
+  const totalAmt = Number(summary.total);
+  const approvedAmt = Number(summary.approved);
+  const pendingAmt = totalAmt - approvedAmt;
+  const maxItem = items.reduce((mx, e) => Number(e.amount) > Number(mx?.amount || 0) ? e : mx, null as any);
   const catBreakdown = CATEGORIES.map(c => ({
     ...c,
-    total: filtered.filter(e => e.category === c.label).reduce((s, e) => s + Number(e.amount), 0),
+    total: items.filter(e => e.category === c.label).reduce((s, e) => s + Number(e.amount), 0),
   })).sort((a, b) => b.total - a.total).filter(c => c.total > 0);
 
-  const openCreate = () => { setEditItem(null); setForm(EMPTY_FORM); setShowModal(true); };
+  const openCreate = () => { setEditItem(null); setForm(EMPTY_FORM); setVendorSearch(''); setShowModal(true); };
   const openEdit = (item: any) => { 
     setEditItem(item); 
+    setVendorSearch(item.vendor_name || '');
     setForm({ 
       title: item.title || '',
       category: item.category || 'Khác',
@@ -229,8 +258,6 @@ export const ExpensesPage: React.FC = () => {
     else ns.add(id);
     return ns;
   });
-  const allSelected = paginated.length > 0 && paginated.every(e => selected.has(e.id));
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(paginated.map(e => e.id)));
 
   const getCatInfo = (label: string) => CATEGORIES.find(c => c.label === label) || { color: '#6b7280', icon: Tag };
 
@@ -245,7 +272,7 @@ export const ExpensesPage: React.FC = () => {
         <div className="flex gap-2">
           <PeriodFilter
             value={period}
-            onChange={(p, r) => { setPeriod(p); setDateRange(r); }}
+            onChange={(p, r) => { setPeriod(p); setDateRange(r); setPage(1); }}
           />
           <button className="btn secondary" onClick={() => addToast('Đang xuất bảng kê...', 'info')}>
             <Download size={16} /> Xuất
@@ -259,17 +286,17 @@ export const ExpensesPage: React.FC = () => {
         {[
           {
             label: 'Tổng chi phí kỳ này', value: FMT(totalAmt), icon: TrendingDown,
-            color: '#ef4444', sub: `${filtered.length} khoản`,
+            color: '#ef4444', sub: `${items.length} khoản`,
           },
           {
             label: 'Đã phê duyệt', value: FMT(approvedAmt), icon: CheckCircle2,
             color: '#10b981',
-            sub: `${filtered.filter(e => e.status === 'approved').length} khoản đã duyệt`,
+            sub: `${items.filter(e => e.status === 'approved').length} khoản đã duyệt`,
           },
           {
             label: 'Chờ phê duyệt', value: FMT(pendingAmt), icon: Clock,
             color: '#f59e0b',
-            sub: `${filtered.filter(e => e.status === 'pending').length} khoản đang chờ`,
+            sub: `${items.filter(e => e.status === 'pending').length} khoản đang chờ`,
           },
           {
             label: 'Chi phí lớn nhất', value: maxItem ? FMT(maxItem.amount) : '—', icon: DollarSign,
@@ -298,7 +325,7 @@ export const ExpensesPage: React.FC = () => {
           {catBreakdown.map(c => {
             const Icon = c.icon;
             return (
-              <button key={c.label} onClick={() => setCatFilter(catFilter === c.label ? '' : c.label)}
+              <button key={c.label} onClick={() => { setCatFilter(catFilter === c.label ? '' : c.label); setPage(1); }}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: 'var(--radius-full)', border: `1.5px solid ${catFilter === c.label ? c.color : 'var(--color-border)'}`, background: catFilter === c.label ? `${c.color}15` : 'transparent', cursor: 'pointer', transition: 'all 0.18s', fontSize: '0.8125rem' }}>
                 <Icon size={13} color={c.color} />
                 <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>{c.label}</span>
@@ -306,7 +333,7 @@ export const ExpensesPage: React.FC = () => {
               </button>
             );
           })}
-          {catFilter && <button onClick={() => setCatFilter('')} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}><X size={13} /> Bỏ lọc</button>}
+          {catFilter && <button onClick={() => { setCatFilter(''); setPage(1); }} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}><X size={13} /> Bỏ lọc</button>}
         </div>
       )}
 
@@ -326,12 +353,12 @@ export const ExpensesPage: React.FC = () => {
               { value: 'pending', label: 'Chờ duyệt' }
             ]} 
             value={statusFilter} 
-            onChange={val => setStatusFilter(val.toString())} 
+            onChange={val => { setStatusFilter(val.toString()); setPage(1); }} 
           />
         </div>
 
         {selected.size > 0 && (
-          <button className="btn danger sm" onClick={() => { setItems(prev => prev.filter(e => !selected.has(e.id))); setSelected(new Set()); addToast(`Đã xóa ${selected.size} khoản`, 'success'); }}>
+          <button className="btn danger sm" onClick={() => { setItems(prev => prev.filter((e: any) => !selected.has(e.id))); setSelected(new Set()); addToast(`Đã xóa ${selected.size} khoản`, 'success'); }}>
             <Trash2 size={14} /> Xóa {selected.size} đã chọn
           </button>
         )}
@@ -344,7 +371,10 @@ export const ExpensesPage: React.FC = () => {
             <thead>
               <tr>
                 <th style={{ width: 44, padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border)' }}>
-                  <CustomCheckbox checked={allSelected} onChange={toggleAll} />
+                  <CustomCheckbox 
+                    checked={items.length > 0 && items.every((e: any) => selected.has(e.id))} 
+                    onChange={() => setSelected(items.length > 0 && items.every((e: any) => selected.has(e.id)) ? new Set() : new Set(items.map((e: any) => e.id)))} 
+                  />
                 </th>
                 <th>Nội dung chi</th>
                 <th>Danh mục</th>
@@ -365,7 +395,7 @@ export const ExpensesPage: React.FC = () => {
                 </tr>
               ))}
               <AnimatePresence>
-                {!loading && paginated.map(exp => {
+                {!loading && items.map(exp => {
                     const catInfo = getCatInfo(exp.category);
                     const CatIcon = catInfo.icon;
                     const approver = users.find((u: any) => u.id === Number(exp.approver_id));
@@ -417,7 +447,7 @@ export const ExpensesPage: React.FC = () => {
                   );
                 })}
               </AnimatePresence>
-              {!loading && paginated.length === 0 && (
+              {!loading && total === 0 && (
                 <tr><td colSpan={8} style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>
                   Không có khoản chi phí nào trong kỳ này
                 </td></tr>
@@ -425,16 +455,19 @@ export const ExpensesPage: React.FC = () => {
             </tbody>
           </table>
         </div>
-        <Pagination total={filtered.length} page={page} pageSize={PAGE_SIZE} onChange={setPage} showSizeChanger onPageSizeChange={() => setPage(1)} />
+        <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} showSizeChanger onPageSizeChange={() => setPage(1)} />
       </div>
 
       {/* Add/Edit Modal */}
       <AnimatePresence>
         {showModal && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !saving && setShowModal(false)} />
-            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 520, maxWidth: 'calc(100vw - 2rem)', zIndex: 300, overflow: 'visible', borderRadius: 'var(--radius-2xl)' }}
-              initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}>
+          <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 300 }}>
+            <motion.div className="modal-sheet shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onClick={e => e.stopPropagation()}
+            >
               
               <div className="modal-header" style={{ padding: '1.5rem 2rem', background: 'linear-gradient(to right, var(--color-bg), var(--color-surface))', borderBottom: '1px solid var(--color-border)', borderTopLeftRadius: 'var(--radius-2xl)', borderTopRightRadius: 'var(--radius-2xl)' }}>
                 <div>
@@ -451,10 +484,48 @@ export const ExpensesPage: React.FC = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Đơn vị thụ hưởng (Thanh toán cho ai?)</label>
-                  <div style={{ position: 'relative' }}>
-                    <input className="form-input" style={{ paddingLeft: '2.5rem' }} value={form.vendor_name} onChange={e => setForm({ ...form, vendor_name: e.target.value })} placeholder="VD: Công ty ABC, Grab, Highland..." />
-                    <Building2 size={14} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                  <label className="form-label" style={{ fontWeight: 600 }}>Đơn vị thụ hưởng <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', fontWeight: 400 }}>(Thanh toán cho ai?)</span></label>
+                  <div style={{ position: 'relative' }} ref={vendorRef}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 1rem', height: '44px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', background: 'var(--color-surface)' }}>
+                      <Building2 size={15} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                      <input
+                        style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '0.875rem', color: 'var(--color-text)' }}
+                        placeholder="Tìm NCC hoặc nhập tự do..."
+                        value={vendorSearch}
+                        onChange={e => { setVendorSearch(e.target.value); setForm({ ...form, vendor_name: e.target.value }); setShowVendorDropdown(true); }}
+                        onFocus={() => setShowVendorDropdown(true)}
+                      />
+                      {vendorSearch && <button type="button" onClick={() => { setVendorSearch(''); setForm({ ...form, vendor_name: '' }); }} style={{ color: 'var(--color-text-muted)', display: 'flex' }}><X size={14} /></button>}
+                      <ChevronDown size={13} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />
+                    </div>
+
+                    {showVendorDropdown && (
+                      <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--color-surface)', borderRadius: '14px', border: '1px solid var(--color-border-light)', boxShadow: '0 16px 32px -8px rgba(0,0,0,0.12)', zIndex: 200, overflow: 'hidden' }}>
+                        {suppliers.filter(s => (s.name || s.company_name || '').toLowerCase().includes(vendorSearch.toLowerCase())).slice(0, 6).map(s => (
+                          <div
+                            key={s.id}
+                            onMouseDown={() => { const n = s.name || s.company_name || ''; setVendorSearch(n); setForm({ ...form, vendor_name: n }); setShowVendorDropdown(false); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 14px', cursor: 'pointer', transition: 'background 0.15s' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--color-primary-light)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            <div style={{ width: 30, height: 30, borderRadius: '8px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem', flexShrink: 0 }}>{(s.name || s.company_name || '?')[0]}</div>
+                            <div>
+                              <p style={{ fontWeight: 700, fontSize: '0.875rem' }}>{s.name || s.company_name}</p>
+                              {s.phone && <p style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)' }}>{s.phone}</p>}
+                            </div>
+                          </div>
+                        ))}
+                        {vendorSearch && !suppliers.find(s => (s.name || s.company_name) === vendorSearch) && (
+                          <div
+                            onMouseDown={() => { setForm({ ...form, vendor_name: vendorSearch }); setShowVendorDropdown(false); }}
+                            style={{ padding: '9px 14px', cursor: 'pointer', borderTop: '1px solid var(--color-border-light)', fontSize: '0.8125rem', color: 'var(--color-primary)', fontWeight: 700 }}
+                          >
+                            + Dùng "{vendorSearch}" (nhập tự do)
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -599,7 +670,7 @@ export const ExpensesPage: React.FC = () => {
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 600 }}>Ghi chú chi tiết</label>
-                  <textarea className="form-input" rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Mô tả thêm nếu cần..." style={{ resize: 'none' }} />
+                  <textarea className="form-textarea" rows={3} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Mô tả thêm nếu cần..." style={{ minHeight: '80px' }} />
                 </div>
 
                 <div className="form-group" style={{ background: 'var(--color-bg)', padding: '1.25rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)' }}>
@@ -644,17 +715,21 @@ export const ExpensesPage: React.FC = () => {
                 </button>
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
 
       {/* Delete confirm */}
       <AnimatePresence>
         {deleteItem && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteItem(null)} />
-            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 380, zIndex: 310, textAlign: 'center', padding: '2.5rem 2rem', borderRadius: '24px' }}
-              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
+          <div className="overlay-backdrop" onClick={() => setDeleteItem(null)} style={{ zIndex: 310 }}>
+            <motion.div className="modal-sheet modal-sm shadow-2xl"
+              initial={{ opacity: 0, scale: 0.96, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              style={{ textAlign: 'center', padding: '2.5rem 2rem' }}
+            >
               <div style={{ width: 64, height: 64, background: 'var(--color-danger-light)', color: 'var(--color-danger)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
                 <Trash2 size={28} />
               </div>
@@ -665,17 +740,21 @@ export const ExpensesPage: React.FC = () => {
                 <button className="btn danger" style={{ flex: 1 }} onClick={handleDelete}><Trash2 size={14} /> Xóa ngay</button>
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
 
       {/* Quick View Modal */}
       <AnimatePresence>
         {viewItem && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViewItem(null)} />
-            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 500, zIndex: 310, padding: '2rem', borderRadius: '24px' }}
-              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-40%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-40%' }}>
+          <div className="overlay-backdrop" onClick={() => setViewItem(null)} style={{ zIndex: 310 }}>
+            <motion.div className="modal-sheet shadow-2xl"
+              initial={{ opacity: 0, scale: 0.96, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              style={{ padding: '2rem' }}
+            >
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <div className="flex items-center gap-2 mb-2">
@@ -733,7 +812,7 @@ export const ExpensesPage: React.FC = () => {
                 <button className="btn primary" style={{ flex: 1 }} onClick={() => { const item = viewItem; setViewItem(null); openEdit(item); }}><Pencil size={14} /> Chỉnh sửa</button>
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>

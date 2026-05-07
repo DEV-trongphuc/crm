@@ -46,44 +46,72 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
     <>
       <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} />
       <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: -20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: -20 }}
-        transition={{ duration: 0.18 }}
-        style={{ position: 'fixed', top: '15%', left: '50%', transform: 'translateX(-50%)', width: 640, maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 600, overflow: 'hidden' }}
+        initial={{ opacity: 0, scale: 0.95, y: -40, x: '-50%' }} 
+        animate={{ opacity: 1, scale: 1, y: 0, x: '-50%' }} 
+        exit={{ opacity: 0, scale: 0.95, y: -40, x: '-50%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        style={{ 
+          position: 'fixed', 
+          top: '12vh', 
+          left: '50%', 
+          width: 640, 
+          maxWidth: 'calc(100vw - 2rem)', 
+          background: 'rgba(255, 255, 255, 0.85)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          borderRadius: '24px', 
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0,0,0,0.05)', 
+          zIndex: 600, 
+          overflow: 'hidden' 
+        }}
       >
         {/* Search input */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.25rem', borderBottom: '1px solid var(--color-border)' }}>
-          {loading ? <Loader2 size={18} className="spin" style={{ color: 'var(--color-primary)', flexShrink: 0 }} /> : <Search size={18} style={{ color: 'var(--color-text-muted)', flexShrink: 0 }} />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1.25rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+          <div style={{ width: 40, height: 40, borderRadius: '12px', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {loading ? <Loader2 size={20} className="spin" style={{ color: 'var(--color-primary)' }} /> : <Search size={20} style={{ color: 'var(--color-primary)' }} />}
+          </div>
           <input
             ref={inputRef}
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Tìm khách hàng, deal, công ty..."
-            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '1rem', outline: 'none', color: 'var(--color-text)' }}
+            style={{ flex: 1, border: 'none', background: 'transparent', fontSize: '1.125rem', fontWeight: 500, outline: 'none', color: 'var(--color-text)' }}
           />
-          {query && <button onClick={() => setQuery('')} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}><X size={16} /></button>}
-          <kbd style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '4px', padding: '2px 6px' }}>ESC</kbd>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {query && (
+              <button onClick={() => setQuery('')} style={{ color: 'var(--color-text-muted)', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <X size={14} />
+              </button>
+            )}
+            <kbd style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', background: 'rgba(0,0,0,0.05)', padding: '4px 8px', borderRadius: '6px' }}>ESC</kbd>
+          </div>
         </div>
 
         {/* Results */}
-        <div style={{ maxHeight: 460, overflowY: 'auto' }}>
+        <div style={{ maxHeight: 460, overflowY: 'auto' }} className="no-scrollbar">
           {/* Suggestions (empty state) */}
           {!query && (
-            <div style={{ padding: '1.5rem 1.25rem' }}>
-              <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Tìm kiếm gợi ý</p>
-              {['Nguyễn Văn An', 'Deal ERP', 'ABC Tech', 'Quá hạn hôm nay'].map(s => (
-                <button key={s} onClick={() => setQuery(s)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.625rem 0.75rem', borderRadius: 'var(--radius-md)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-light)', fontSize: '0.875rem', textAlign: 'left' }}>
-                  <Search size={14} style={{ flexShrink: 0 }} /> {s}
-                </button>
-              ))}
+            <div style={{ padding: '1.25rem' }}>
+              <p style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '1rem', paddingLeft: '0.5rem' }}>Tìm kiếm gợi ý</p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                {['Nguyễn Văn An', 'Deal ERP', 'ABC Tech', 'Quá hạn hôm nay'].map(s => (
+                  <button key={s} onClick={() => setQuery(s)}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', padding: '0.75rem 1rem', borderRadius: '12px', background: 'rgba(0,0,0,0.02)', border: '1px solid transparent', cursor: 'pointer', color: 'var(--color-text)', fontSize: '0.875rem', textAlign: 'left', transition: 'all 0.2s' }}>
+                    <Search size={14} style={{ color: 'var(--color-primary)', opacity: 0.7 }} /> {s}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
           {/* No results */}
           {query.length >= 2 && !loading && !hasResults && (
-            <div style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-              <Search size={32} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
-              <p style={{ fontSize: '0.875rem' }}>Không tìm thấy kết quả cho "<strong>{query}</strong>"</p>
+            <div style={{ padding: '3.5rem 1rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '20px', background: 'var(--color-bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                <Search size={32} style={{ opacity: 0.3 }} />
+              </div>
+              <p style={{ fontSize: '1rem', fontWeight: 500 }}>Không tìm thấy kết quả cho "<strong>{query}</strong>"</p>
+              <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>Hãy thử từ khóa khác hoặc kiểm tra lại chính tả.</p>
             </div>
           )}
 
@@ -95,7 +123,7 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
                   key={c.id} 
                   title={`${c.first_name} ${c.last_name}`} 
                   subtitle={c.email || c.phone || ''} 
-                  onClick={() => goTo('/contacts')} 
+                  onClick={() => goTo(`/contacts`)} 
                   actions={[
                     { icon: <Phone size={12} />, label: 'Gọi điện', onClick: () => window.location.href = `tel:${c.phone}` },
                     { icon: <Mail size={12} />, label: 'Gửi Email', onClick: () => window.location.href = `mailto:${c.email}` },
@@ -112,7 +140,7 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
                   key={c.id} 
                   title={c.name} 
                   subtitle={c.industry || c.city || ''} 
-                  onClick={() => goTo('/companies')} 
+                  onClick={() => goTo(`/companies`)} 
                   actions={[
                     { icon: <Plus size={12} />, label: 'Tạo cơ hội', onClick: () => goTo('/deals') }
                   ]}
@@ -121,13 +149,13 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
             </ResultGroup>
           )}
           {results.deals && results.deals.length > 0 && (
-            <ResultGroup icon={<Briefcase size={14} />} label="Deals" color="#10b981">
+            <ResultGroup icon={<Briefcase size={14} />} label="Pipeline" color="#10b981">
               {results.deals.slice(0, 3).map((d: any) => (
                 <ResultItem 
                   key={d.id} 
                   title={d.title} 
                   subtitle={`${Number(d.value || 0).toLocaleString('vi-VN')} đ`} 
-                  onClick={() => goTo('/deals')} 
+                  onClick={() => goTo(`/deals`)} 
                 />
               ))}
             </ResultGroup>
@@ -135,8 +163,10 @@ export const GlobalSearchModal: React.FC<{ onClose: () => void }> = ({ onClose }
         </div>
 
         {/* Footer hint */}
-        <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--color-border)', display: 'flex', gap: '1rem', fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>
-          <span>↵ Mở</span><span>↑↓ Điều hướng</span><span>ESC Đóng</span>
+        <div style={{ padding: '0.875rem 1.5rem', borderTop: '1px solid rgba(0,0,0,0.06)', display: 'flex', gap: '1.25rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', background: 'rgba(0,0,0,0.02)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ padding: '2px 5px', background: 'rgba(0,0,0,0.08)', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>↵</span> Mở</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ padding: '2px 5px', background: 'rgba(0,0,0,0.08)', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>↑↓</span> Điều hướng</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><span style={{ padding: '2px 5px', background: 'rgba(0,0,0,0.08)', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>ESC</span> Đóng</div>
         </div>
       </motion.div>
     </>

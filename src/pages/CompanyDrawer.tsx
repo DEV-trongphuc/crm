@@ -224,15 +224,15 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       <div className="grid grid-2">
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                           <label className="form-label">Tên công ty <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                          <input className="form-input" placeholder="Tên đầy đủ của doanh nghiệp..." value={formData?.name || ''} onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))} />
+                          <input className="form-input" placeholder="Tên đầy đủ của doanh nghiệp..." value={formData?.name || ''} onChange={e => setFormData((prev: any) => ({ ...prev, name: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Mã số thuế (Tax ID)</label>
-                          <input className="form-input" placeholder="Nhập MST..." value={formData?.tax_id || ''} onChange={e => setFormData(prev => ({ ...prev, tax_id: e.target.value }))} />
+                          <input className="form-input" placeholder="Nhập MST..." value={formData?.tax_id || ''} onChange={e => setFormData((prev: any) => ({ ...prev, tax_id: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Ngành nghề (Industry)</label>
-                          <input className="form-input" placeholder="Ví dụ: Công nghệ, Bán lẻ, Tài chính..." value={formData?.industry || ''} onChange={e => setFormData(prev => ({ ...prev, industry: e.target.value }))} />
+                          <input className="form-input" placeholder="Ví dụ: Công nghệ, Bán lẻ, Tài chính..." value={formData?.industry || ''} onChange={e => setFormData((prev: any) => ({ ...prev, industry: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Quy mô công ty</label>
@@ -245,7 +245,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                               { value: '500+', label: 'Hơn 500 nhân viên' }
                             ]}
                             value={formData?.size || ''}
-                            onChange={val => setFormData(prev => ({ ...prev, size: val as string }))}
+                            onChange={val => setFormData((prev: any) => ({ ...prev, size: val as string }))}
                             placeholder="Chọn quy mô..."
                           />
                         </div>
@@ -258,7 +258,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                               { value: 'inactive', label: 'Ngừng hoạt động (Inactive)' }
                             ]}
                             value={formData?.status || 'prospect'}
-                            onChange={val => setFormData(prev => ({ ...prev, status: val as string }))}
+                            onChange={val => setFormData((prev: any) => ({ ...prev, status: val as string }))}
                           />
                         </div>
                         <div className="form-group">
@@ -273,17 +273,17 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                               { value: 6, label: 'Thất bại' },
                             ]}
                             value={formData?.stage_id || ''}
-                            onChange={val => setFormData(prev => ({ ...prev, stage_id: val }))}
+                            onChange={val => setFormData((prev: any) => ({ ...prev, stage_id: val }))}
                             placeholder="Chọn giai đoạn..."
                           />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Mã số thuế</label>
-                          <input className="form-input" placeholder="MST..." value={formData?.tax_id || ''} onChange={e => setFormData(prev => ({ ...prev, tax_id: e.target.value }))} />
+                          <input className="form-input" placeholder="MST..." value={formData?.tax_id || ''} onChange={e => setFormData((prev: any) => ({ ...prev, tax_id: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Lĩnh vực kinh doanh</label>
-                          <input className="form-input" placeholder="VD: Công nghệ, Xây dựng..." value={formData?.industry || ''} onChange={e => setFormData(prev => ({ ...prev, industry: e.target.value }))} />
+                          <input className="form-input" placeholder="VD: Công nghệ, Xây dựng..." value={formData?.industry || ''} onChange={e => setFormData((prev: any) => ({ ...prev, industry: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Doanh thu dự kiến (VND)</label>
@@ -292,7 +292,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                             type="number" 
                             placeholder="Nhập giá trị..." 
                             value={formData?.expected_revenue || ''} 
-                            onChange={e => setFormData(prev => ({ ...prev, expected_revenue: e.target.value }))} 
+                            onChange={e => setFormData((prev: any) => ({ ...prev, expected_revenue: e.target.value }))} 
                           />
                         </div>
                       </div>
@@ -303,19 +303,19 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       <div className="grid grid-2">
                         <div className="form-group">
                           <label className="form-label">Điện thoại Hotline</label>
-                          <input className="form-input" type="tel" placeholder="028 xxx xxxx" value={formData?.phone || ''} onChange={e => setFormData(prev => ({ ...prev, phone: e.target.value }))} />
+                          <input className="form-input" type="tel" placeholder="028 xxx xxxx" value={formData?.phone || ''} onChange={e => setFormData((prev: any) => ({ ...prev, phone: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Email Doanh nghiệp</label>
-                          <input className="form-input" type="email" placeholder="info@congty.com" value={formData?.email || ''} onChange={e => setFormData(prev => ({ ...prev, email: e.target.value }))} />
+                          <input className="form-input" type="email" placeholder="info@congty.com" value={formData?.email || ''} onChange={e => setFormData((prev: any) => ({ ...prev, email: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Website</label>
-                          <input className="form-input" placeholder="www.congty.com" value={formData?.website || ''} onChange={e => setFormData(prev => ({ ...prev, website: e.target.value }))} />
+                          <input className="form-input" placeholder="www.congty.com" value={formData?.website || ''} onChange={e => setFormData((prev: any) => ({ ...prev, website: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label">Mạng xã hội (LinkedIn/FB)</label>
-                          <input className="form-input" placeholder="https://..." value={formData?.social_link || ''} onChange={e => setFormData(prev => ({ ...prev, social_link: e.target.value }))} />
+                          <input className="form-input" placeholder="https://..." value={formData?.social_link || ''} onChange={e => setFormData((prev: any) => ({ ...prev, social_link: e.target.value }))} />
                         </div>
                       </div>
                     </div>
@@ -340,11 +340,11 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                             Đại diện pháp luật
                             <button className="btn-icon-bare" onClick={() => setHelpModal({ title: 'Đại diện pháp luật', content: 'Tên người đại diện pháp lý theo Giấy phép kinh doanh.' })}><HelpCircle size={14} color="var(--color-text-muted)" /></button>
                           </label>
-                          <input className="form-input" placeholder="Tên người đại diện..." value={formData?.legal_representative || ''} onChange={e => setFormData(prev => ({ ...prev, legal_representative: e.target.value }))} />
+                          <input className="form-input" placeholder="Tên người đại diện..." value={formData?.legal_representative || ''} onChange={e => setFormData((prev: any) => ({ ...prev, legal_representative: e.target.value }))} />
                         </div>
                         <div className="form-group">
                           <label className="form-label" style={{ color: 'var(--color-primary)' }}>Mã khách hàng nội bộ (ERP)</label>
-                          <input className="form-input" placeholder="Nhập mã ERP..." value={formData?.erp_code || ''} onChange={e => setFormData(prev => ({ ...prev, erp_code: e.target.value }))} />
+                          <input className="form-input" placeholder="Nhập mã ERP..." value={formData?.erp_code || ''} onChange={e => setFormData((prev: any) => ({ ...prev, erp_code: e.target.value }))} />
                         </div>
                       </div>
                     </div>

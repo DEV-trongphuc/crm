@@ -837,11 +837,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                               <input className="form-input" placeholder="Họ" value={formData.first_name || ''} onChange={e => {
                                 const val = e.target.value;
-                                setFormData(prev => ({ ...prev, first_name: val }));
+                                setFormData((prev: any) => ({ ...prev, first_name: val }));
                               }} />
                               <input className="form-input" placeholder="Tên" value={formData.last_name || ''} onChange={e => {
                                 const val = e.target.value;
-                                setFormData(prev => ({ ...prev, last_name: val }));
+                                setFormData((prev: any) => ({ ...prev, last_name: val }));
                               }} />
                             </div>
                           </div>
@@ -849,42 +849,42 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <label className="form-label">Email</label>
                             <input className="form-input" type="email" placeholder="ví dụ: email@congty.com" value={formData.email || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData(prev => ({ ...prev, email: val }));
+                              setFormData((prev: any) => ({ ...prev, email: val }));
                             }} />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Số điện thoại chính</label>
                             <input className="form-input" type="tel" placeholder="09xx xxx xxx" value={formData.phone || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData(prev => ({ ...prev, phone: val }));
+                              setFormData((prev: any) => ({ ...prev, phone: val }));
                             }} />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Số di động</label>
                             <input className="form-input" type="tel" placeholder="08xx xxx xxx" value={formData.mobile || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData(prev => ({ ...prev, mobile: val }));
+                              setFormData((prev: any) => ({ ...prev, mobile: val }));
                             }} />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Ngày sinh</label>
                             <input className="form-input" type="date" value={formData.birthday || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData(prev => ({ ...prev, birthday: val }));
+                              setFormData((prev: any) => ({ ...prev, birthday: val }));
                             }} />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Chức danh</label>
                             <input className="form-input" placeholder="ví dụ: Giám đốc" value={formData.job_title || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData(prev => ({ ...prev, job_title: val }));
+                              setFormData((prev: any) => ({ ...prev, job_title: val }));
                             }} />
                           </div>
                           <div className="form-group">
                             <label className="form-label">Phòng ban</label>
                             <input className="form-input" placeholder="ví dụ: Kinh doanh" value={formData.department || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData(prev => ({ ...prev, department: val }));
+                              setFormData((prev: any) => ({ ...prev, department: val }));
                             }} />
                           </div>
                         </div>
@@ -896,7 +896,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <label className="form-label">Công ty / Tổ chức</label>
                             <input className="form-input" placeholder="Tên công ty" value={formData.company_name || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData(prev => ({ ...prev, company_name: val }));
+                              setFormData((prev: any) => ({ ...prev, company_name: val }));
                             }} />
                           </div>
                           <div className="form-group">
@@ -913,7 +913,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   value={formData.created_at ? formData.created_at.substring(0, 16) : ''} 
                                   onChange={e => {
                                     const val = e.target.value.replace('T', ' ') + ':00';
-                                    setFormData(prev => ({ ...prev, created_at: val }));
+                                    setFormData((prev: any) => ({ ...prev, created_at: val }));
                                   }}
                                 />
                               </div>
@@ -941,7 +941,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 { value: 'cold_call', label: 'Cold Call' }
                               ]}
                               value={formData.source || 'website'}
-                              onChange={val => setFormData(prev => ({ ...prev, source: val as string }))}
+                              onChange={val => setFormData((prev: any) => ({ ...prev, source: val as string }))}
                             />
                           </div>
                           <div className="form-group">
@@ -949,7 +949,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <div style={{ position: 'relative' }}>
                               <input className="form-input" type="number" placeholder="0" style={{ paddingRight: '40px' }} value={formData.expected_revenue || ''} onChange={e => {
                                 const val = e.target.value;
-                                setFormData(prev => ({ ...prev, expected_revenue: val }));
+                                setFormData((prev: any) => ({ ...prev, expected_revenue: val }));
                               }} />
                               <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>VNĐ</span>
                             </div>
@@ -958,7 +958,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             <label className="form-label">Xác suất chốt (%)</label>
                             <input className="form-input" type="number" min="0" max="100" placeholder="50" value={formData.win_probability || ''} onChange={e => {
                               const val = e.target.value;
-                              setFormData(prev => ({ ...prev, win_probability: val }));
+                              setFormData((prev: any) => ({ ...prev, win_probability: val }));
                             }} />
                           </div>
                           <div className="form-group">

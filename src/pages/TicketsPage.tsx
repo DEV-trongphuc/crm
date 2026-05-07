@@ -10,6 +10,7 @@ import { useMockStore } from '../store/mockStore';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { Pagination } from '../components/ui/Pagination';
 
 const MOCK_TICKETS: any[] = [];
 
@@ -51,6 +52,8 @@ export const TicketsPage: React.FC = () => {
   });
 
   const [now] = useState(() => Date.now());
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -60,9 +63,17 @@ export const TicketsPage: React.FC = () => {
       return;
     }
     try {
-      const r = await api.get('/tickets');
-      const items = r.data.data?.items || r.data.data || [];
-      setTickets(items);
+      const r = await api.get('/tickets', { 
+        params: { 
+          page, 
+          limit: 20, 
+          search: debouncedSearch, 
+          status: filterStatus 
+        } 
+      });
+      const data = r.data.data;
+      setTickets(data.items || []);
+      setTotal(data.total || 0);
     } catch {
       setTickets([]);
       addToast('Không thể kết nối với máy chủ Backend', 'error');
@@ -84,13 +95,11 @@ export const TicketsPage: React.FC = () => {
     }
   };
 
-  React.useEffect(() => {
-    if (DEV_MODE) {
-      setTickets(useMockStore.getState().tickets);
-      setLoading(false);
-      return;
-    }
+  useEffect(() => {
     fetchTickets();
+  }, [page, debouncedSearch, filterStatus]);
+
+  useEffect(() => {
     fetchRelatedData();
   }, []);
 
@@ -104,14 +113,12 @@ export const TicketsPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleEscape);
   }, [showCreateModal, saving]);
 
-  const filteredTickets = useMemo(() => {
-    const q = debouncedSearch.toLowerCase();
-    return tickets.filter(t => {
-      if (filterStatus !== 'all' && t.status !== filterStatus) return false;
-      if (q && !t.subject?.toLowerCase().includes(q) && !(t.customer_name || '').toLowerCase().includes(q)) return false;
-      return true;
-    }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [tickets, debouncedSearch, filterStatus]);
+  const filteredTickets = tickets;
+
+  // Reset page when search or filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, filterStatus]);
 
   const handleUpdate = async (updated: any) => {
     try {
@@ -292,13 +299,21 @@ export const TicketsPage: React.FC = () => {
         </div>
       )}
 
+      {total > 20 && (
+        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+          <Pagination total={total} page={page} pageSize={20} onChange={setPage} />
+        </div>
+      )}
 
       <AnimatePresence>
         {showCreateModal && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowCreateModal(false)} style={{ zIndex: 300 }} />
-            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 500, maxWidth: 'calc(100vw - 2rem)', zIndex: 310 }}
-              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
+          <div className="overlay-backdrop" onClick={() => setShowCreateModal(false)} style={{ zIndex: 300 }}>
+            <motion.div className="modal-sheet shadow-2xl"
+              initial={{ opacity: 0, scale: 0.96, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.96, y: 20 }}
+              onClick={e => e.stopPropagation()}
+            >
               <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
                 <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Tạo Ticket Hỗ trợ mới</h3>
                 <button onClick={() => setShowCreateModal(false)} style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} /></button>
@@ -402,7 +417,7 @@ export const TicketsPage: React.FC = () => {
                 <button className="btn primary" onClick={handleCreateTicket}><Save size={14} /> Tạo Ticket</button>
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
       <TicketDrawer 

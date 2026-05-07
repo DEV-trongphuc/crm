@@ -10,15 +10,18 @@ class DealController {
         $sql = "
             SELECT ps.*, 
                    (
-                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid1 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid" : "").") +
-                     (SELECT COUNT(*) FROM companies comp WHERE comp.stage_id = ps.id AND comp.deleted_at IS NULL AND comp.tenant_id = :tid2 ".(($auth['role'] === 'sale') ? " AND comp.owner_id = :uid" : "").")
+                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid1 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid1" : "").") +
+                     (SELECT COUNT(*) FROM companies comp WHERE comp.stage_id = ps.id AND comp.deleted_at IS NULL AND comp.tenant_id = :tid2 ".(($auth['role'] === 'sale') ? " AND comp.owner_id = :uid2" : "").")
                    ) as deals
             FROM pipeline_stages ps
             WHERE ps.tenant_id = :tid3
             ORDER BY ps.order_index
         ";
         $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid];
-        if ($auth['role'] === 'sale') $p['uid'] = $auth['user_id'];
+        if ($auth['role'] === 'sale') {
+            $p['uid1'] = $auth['user_id'];
+            $p['uid2'] = $auth['user_id'];
+        }
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);

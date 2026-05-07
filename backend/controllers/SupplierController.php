@@ -4,10 +4,38 @@ class SupplierController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function index(array $auth): void {
-        $tid = $auth['tenant_id'];
-        $stmt = $this->db->prepare("SELECT * FROM suppliers WHERE tenant_id = ? AND deleted_at IS NULL ORDER BY name ASC");
-        $stmt->execute([$tid]);
-        respond(200, $stmt->fetchAll());
+        $tid    = $auth['tenant_id'];
+        $page   = max(1, (int)($_GET['page']   ?? 1));
+        $limit  = min(100, max(10, (int)($_GET['limit']  ?? 20)));
+        $offset = ($page - 1) * $limit;
+        $search = $_GET['search'] ?? '';
+
+        $where = ['tenant_id = ?', 'deleted_at IS NULL'];
+        $params = [$tid];
+
+        if ($search) {
+            $where[] = '(name LIKE ? OR contact_name LIKE ? OR email LIKE ? OR phone LIKE ?)';
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        $w = implode(' AND ', $where);
+
+        $cnt = $this->db->prepare("SELECT COUNT(*) FROM suppliers WHERE $w");
+        $cnt->execute($params);
+        $total = (int)$cnt->fetchColumn();
+
+        $stmt = $this->db->prepare("SELECT * FROM suppliers WHERE $w ORDER BY name ASC LIMIT $limit OFFSET $offset");
+        $stmt->execute($params);
+        
+        respond(200, [
+            'items' => $stmt->fetchAll(),
+            'total' => $total,
+            'page' => $page,
+            'limit' => $limit
+        ]);
     }
 
     public function store(array $auth): void {

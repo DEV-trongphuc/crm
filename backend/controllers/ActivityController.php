@@ -10,8 +10,29 @@ class ActivityController {
         $offset = ($page-1)*$limit;
         $type = $_GET['type']??''; $status = $_GET['status']??''; $uid = $_GET['user_id']??'';
         $relType = $_GET['related_type']??''; $relId = $_GET['related_id']??'';
+        $search = $_GET['search'] ?? '';
+        $start = $_GET['start_date'] ?? '';
+        $end   = $_GET['end_date'] ?? '';
         
+        $sortBy = $_GET['sort']  ?? 'due_date';
+        $order  = $_GET['order'] ?? 'ASC';
+
         $where=['a.tenant_id=?']; $params=[$tid];
+
+        if ($search) {
+            $where[] = '(a.subject LIKE ? OR a.description LIKE ?)';
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        if ($start) { $where[] = 'a.due_date >= ?'; $params[] = $start; }
+        if ($end)   { $where[] = 'a.due_date <= ?'; $params[] = $end; }
+
+        // Validating sort fields
+        $allowedSort = ['created_at', 'due_date', 'priority', 'status'];
+        if (!in_array($sortBy, $allowedSort)) $sortBy = 'due_date';
+        if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'ASC';
+
         if ($auth['role'] === 'sale') {
             $where[] = 'a.user_id = ?';
             $params[] = $auth['user_id'];
@@ -36,7 +57,7 @@ class ActivityController {
             LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id AND ct.deleted_at IS NULL
             LEFT JOIN deals d ON a.related_type='deal' AND a.related_id=d.id AND d.deleted_at IS NULL
             LEFT JOIN companies c ON a.related_type='company' AND a.related_id=c.id AND c.deleted_at IS NULL
-            WHERE $w ORDER BY a.created_at DESC
+            WHERE $w ORDER BY a.$sortBy $order
             LIMIT $limit OFFSET $offset
         ");
         $stmt->execute($params);
@@ -48,12 +69,17 @@ class ActivityController {
         if (empty($b['subject'])||empty($b['type'])) respond(422,null,'Tiêu đề và loại là bắt buộc',false);
         
         // Verify related entity if provided
+        $allowedRelTypes = ['contact', 'company', 'deal'];
         if (!empty($b['related_type']) && !empty($b['related_id'])) {
-            $table = $b['related_type'] === 'contact' ? 'contacts' : ($b['related_type'] === 'company' ? 'companies' : 'deals');
-            $check = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
-            $check->execute([(int)$b['related_id'], $auth['tenant_id']]);
-            if (!$check->fetch()) {
-                $b['related_type'] = null; $b['related_id'] = null; // Reset if unauthorized
+            if (in_array($b['related_type'], $allowedRelTypes)) {
+                $table = $b['related_type'] === 'contact' ? 'contacts' : ($b['related_type'] === 'company' ? 'companies' : 'deals');
+                $check = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
+                $check->execute([(int)$b['related_id'], $auth['tenant_id']]);
+                if (!$check->fetch()) {
+                    $b['related_type'] = null; $b['related_id'] = null; // Reset if unauthorized
+                }
+            } else {
+                $b['related_type'] = null; $b['related_id'] = null; // Reset if type not allowed
             }
         }
 
@@ -109,11 +135,16 @@ class ActivityController {
         }
 
         // Verify related entity if changed
+        $allowedRelTypes = ['contact', 'company', 'deal'];
         if (!empty($b['related_type']) && !empty($b['related_id'])) {
-            $table = $b['related_type'] === 'contact' ? 'contacts' : ($b['related_type'] === 'company' ? 'companies' : 'deals');
-            $check = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
-            $check->execute([(int)$b['related_id'], $auth['tenant_id']]);
-            if (!$check->fetch()) {
+            if (in_array($b['related_type'], $allowedRelTypes)) {
+                $table = $b['related_type'] === 'contact' ? 'contacts' : ($b['related_type'] === 'company' ? 'companies' : 'deals');
+                $check = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=?");
+                $check->execute([(int)$b['related_id'], $auth['tenant_id']]);
+                if (!$check->fetch()) {
+                    $b['related_type'] = null; $b['related_id'] = null;
+                }
+            } else {
                 $b['related_type'] = null; $b['related_id'] = null;
             }
         }
