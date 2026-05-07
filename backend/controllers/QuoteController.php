@@ -95,6 +95,12 @@ class QuoteController {
                 $ins->execute([$qid,$item['product_id']??null,$item['name'],$item['description']??null,$item['quantity']??1,$item['unit_price']??0,$item['discount']??0,$item['subtotal']??0,$i]);
             }
         }
+
+        // Log interaction if sent
+        if (($b['status'] ?? 'draft') === 'sent' && !empty($b['contact_id'])) {
+            logInteraction($this->db, $tid, $auth['user_id'], 'email', "Gửi Báo giá #$qNum", "Báo giá \"{$b['title']}\" đã được gửi cho khách hàng.", 'quote', $qid);
+        }
+
         $this->show($auth,$qid);
     }
     public function show(array $auth,int $id): void {
@@ -117,6 +123,11 @@ class QuoteController {
         $sets=[];$params=[];
         foreach($fields as $f){if(array_key_exists($f,$b)){$sets[]="$f=?";$params[]=$b[$f];}}
         if($sets){
+            // Get old status to check for transition
+            $old = $this->db->prepare("SELECT status, contact_id, quote_number, title FROM quotes WHERE id=? AND tenant_id=?");
+            $old->execute([$id, $auth['tenant_id']]);
+            $oldData = $old->fetch();
+
             $sql = "UPDATE quotes SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
             $params[]=$id;$params[]=$auth['tenant_id'];
             if ($auth['role'] === 'sale') {
@@ -126,6 +137,14 @@ class QuoteController {
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
             if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+
+            // Log interaction if status changed to 'sent'
+            if ($oldData && $oldData['status'] !== 'sent' && ($b['status'] ?? '') === 'sent' && ($b['contact_id'] ?? $oldData['contact_id'])) {
+                $cid = $b['contact_id'] ?? $oldData['contact_id'];
+                $qNum = $oldData['quote_number'];
+                $title = $b['title'] ?? $oldData['title'];
+                logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'email', "Gửi Báo giá #$qNum", "Báo giá \"$title\" đã được gửi cho khách hàng.", 'quote', $id);
+            }
         }
         respond(200,null,'Đã cập nhật báo giá');
     }
@@ -170,7 +189,7 @@ class QuoteController {
             $this->db->prepare("UPDATE quotes SET status='invoiced' WHERE id=?")->execute([$id]);
 
             // 5. Log Activity
-            logActivity($this->db, $tid, $uid, 'task', "Chuyển Báo giá thành Hóa đơn", "Báo giá #{$q['quote_number']} đã được chuyển thành hóa đơn #$invNum", 'quote', $id);
+            logInteraction($this->db, $tid, $uid, 'task', "Chuyển Báo giá thành Hóa đơn", "Báo giá #{$q['quote_number']} đã được chuyển thành hóa đơn #$invNum", 'quote', $id);
 
             $this->db->commit();
             respond(200, ['invoice_id' => $invId], 'Đã chuyển báo giá thành hóa đơn thành công');

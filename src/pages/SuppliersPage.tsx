@@ -10,6 +10,8 @@ import { useUIStore } from '../store/uiStore';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { Pagination } from '../components/ui/Pagination';
+import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 
 export const SuppliersPage: React.FC = () => {
   const { addToast, showConfirm } = useUIStore();
@@ -25,6 +27,21 @@ export const SuppliersPage: React.FC = () => {
   const [total, setTotal] = useState(0);
 
   const fetchSuppliers = async () => {
+    if (DEV_MODE) {
+      const state = useMockStore.getState();
+      let list = [...state.suppliers];
+      
+      if (searchTerm) {
+        const s = searchTerm.toLowerCase();
+        list = list.filter(sup => sup.name.toLowerCase().includes(s) || sup.contact_name?.toLowerCase().includes(s));
+      }
+      
+      setSuppliers(list);
+      setTotal(list.length);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await api.get('/suppliers', { params: { page, limit: 12, search: searchTerm } });

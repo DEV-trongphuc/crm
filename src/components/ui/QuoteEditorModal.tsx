@@ -92,7 +92,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      api.get('/products').then(r => setProducts(r.data.data || [])).catch(() => {});
+      api.get('/products').then(r => setProducts(r.data.data?.items || r.data.data || [])).catch(() => {});
       api.get('/contacts').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => {});
       api.get('/deals').then(r => setDeals(r.data.data?.items || r.data.data || [])).catch(() => {});
       
@@ -146,18 +146,21 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
 
   const filteredProducts = useMemo(() => {
     if (!showProductDropdown) return [];
-    if (!searchProduct) return products.slice(0, 12);
-    return products.filter(p => `${p.name} ${p.sku || ''}`.toLowerCase().includes(searchProduct.toLowerCase())).slice(0, 12);
+    const prodList = Array.isArray(products) ? products : [];
+    if (!searchProduct) return prodList.slice(0, 12);
+    return prodList.filter(p => `${p.name} ${p.sku || ''}`.toLowerCase().includes(searchProduct.toLowerCase())).slice(0, 12);
   }, [products, searchProduct, showProductDropdown]);
 
   const filteredDeals = useMemo(() => {
-    if (!searchDeal) return deals.slice(0, 8);
-    return deals.filter(d => d.title?.toLowerCase().includes(searchDeal.toLowerCase())).slice(0, 8);
+    const dealList = Array.isArray(deals) ? deals : [];
+    if (!searchDeal) return dealList.slice(0, 8);
+    return dealList.filter(d => d.title?.toLowerCase().includes(searchDeal.toLowerCase())).slice(0, 8);
   }, [deals, searchDeal]);
 
   const filteredContacts = useMemo(() => {
+    const contactList = Array.isArray(contacts) ? contacts : [];
     if (!searchContact) return [];
-    return contacts.filter(c => `${c.first_name} ${c.last_name} ${c.phone} ${c.email}`.toLowerCase().includes(searchContact.toLowerCase())).slice(0, 8);
+    return contactList.filter(c => `${c.first_name} ${c.last_name} ${c.phone} ${c.email}`.toLowerCase().includes(searchContact.toLowerCase())).slice(0, 8);
   }, [contacts, searchContact]);
 
   const addItem = (p: Product) => {
@@ -182,14 +185,17 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
   const updateItem = (index: number, fields: Partial<QuoteItem>) => {
     const newItems = [...items];
     const item = { ...newItems[index], ...fields };
-    item.subtotal = (item.unit_price * item.quantity) * (1 - (item.discount / 100));
+    const up = Number(item.unit_price) || 0;
+    const qty = Number(item.quantity) || 0;
+    const disc = Number(item.discount) || 0;
+    item.subtotal = (up * qty) * (1 - (disc / 100));
     newItems[index] = item;
     setItems(newItems);
   };
 
-  const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
-  const taxAmount = (subtotal - form.discount) * (form.tax_rate / 100);
-  const total = subtotal - form.discount + taxAmount;
+  const subtotal = items.reduce((sum, i) => sum + (Number(i.subtotal) || 0), 0);
+  const taxAmount = (subtotal - (Number(form.discount) || 0)) * ((Number(form.tax_rate) || 0) / 100);
+  const total = subtotal - (Number(form.discount) || 0) + taxAmount;
 
   const handleSave = async () => {
     if (!form.title) return addToast('Vui lòng nhập tiêu đề báo giá', 'warning');
@@ -242,7 +248,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
             <button className="btn-icon sm" onClick={onClose}><X size={20} /></button>
           </div>
 
-          <div className="modal-body" style={{ background: '#f8fafc', padding: '1.5rem 2rem', maxHeight: 'calc(95vh - 140px)', overflowY: 'auto' }}>
+          <div className="modal-body" style={{ background: '#f8fafc', padding: '1.5rem 2rem 4rem', maxHeight: 'calc(95vh - 140px)', overflowY: 'auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }}>
               
               {/* Left Column */}
@@ -494,8 +500,9 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                                     type="number" 
                                     style={{ width: '48px', height: '28px', border: '1px solid var(--color-border)', background: 'white', borderRadius: '8px', outline: 'none', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', transition: 'border 0.2s' }}
                                     value={item.quantity}
-                                    min={0.01}
-                                    onChange={e => updateItem(idx, { quantity: Number(e.target.value) })}
+                                    min={1}
+                                    step={1}
+                                    onChange={e => updateItem(idx, { quantity: Math.max(1, Math.floor(Number(e.target.value))) })}
                                     onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
                                     onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                                   />
@@ -515,7 +522,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                                     onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                                   />
                                   {item.unit_price > 0 && (
-                                    <div style={{ position: 'absolute', bottom: '-16px', right: '0', fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                                    <div style={{ position: 'absolute', top: 'calc(100% + 8px)', right: '0', fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic', whiteSpace: 'nowrap' }}>
                                       {numberToText(item.unit_price)}
                                     </div>
                                   )}
@@ -635,6 +642,11 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                       <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '4px' }}>Tổng cộng báo giá</div>
                       <div style={{ fontSize: '1.625rem', fontWeight: 900, color: 'var(--color-primary)', letterSpacing: '-0.03em', lineHeight: 1 }}>{FMT(total)}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>Đã bao gồm thuế & chiết khấu</div>
+                      {total > 0 && (
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 700, fontStyle: 'italic', marginTop: '10px', lineHeight: 1.4, borderTop: '1px solid rgba(99, 102, 241, 0.1)', paddingTop: '8px' }}>
+                          {numberToText(total)}
+                        </div>
+                      )}
                     </div>
 
                     {/* Status toggle */}
@@ -642,8 +654,8 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                       <div style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--color-text-muted)', marginBottom: '8px' }}>Trạng thái</div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                         {[
-                          { id: 'draft', label: '📝 Lưu Nháp' },
-                          { id: 'sent',  label: '📤 Gửi Khách' },
+                          { id: 'draft', label: 'Lưu Nháp' },
+                          { id: 'sent',  label: 'Gửi Khách' },
                         ].map(s => (
                           <button
                             key={s.id}

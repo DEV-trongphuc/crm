@@ -91,14 +91,35 @@ export default function InventoryPage() {
   };
 
   const fetchBatches = async () => {
-    setLoading(true);
     if (DEV_MODE) {
-      const all = useMockStore.getState().batches;
-      setBatches(all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE));
-      setTotal(all.length);
+      const state = useMockStore.getState();
+      let list = [...state.batches];
+
+      if (debouncedSearch) {
+        const s = debouncedSearch.toLowerCase();
+        list = list.filter(b => b.product_name.toLowerCase().includes(s) || b.sku?.toLowerCase().includes(s) || b.batch_code.toLowerCase().includes(s));
+      }
+
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'in_stock') list = list.filter(b => b.current_qty > 0);
+        else if (statusFilter === 'out_of_stock') list = list.filter(b => b.current_qty <= 0);
+        else if (statusFilter === 'low_stock') list = list.filter(b => b.current_qty > 0 && b.current_qty <= 5);
+      }
+
+      setBatches(list);
+      setTotal(list.length);
+      // Mock summary
+      setSummary({
+        total_items: list.reduce((acc, b) => acc + b.current_qty, 0),
+        out_of_stock: list.filter(b => b.current_qty <= 0).length,
+        capital_value: list.reduce((acc, b) => acc + (b.current_qty * b.import_price), 0)
+      });
       setLoading(false);
       return;
     }
+
+    setLoading(true);
+    // Always fetch from API
     try {
       const params: any = { 
         page, 
@@ -121,6 +142,11 @@ export default function InventoryPage() {
   };
 
   const fetchBatchLogs = async (batchId: number) => {
+    if (DEV_MODE) {
+      // Logic for batch logs from mock store if available
+      setLogs([]); 
+      return;
+    }
     try {
       const res = await api.get(`/inventory/logs/${batchId}`);
       if (res.data.success) setLogs(res.data.data);
@@ -130,6 +156,11 @@ export default function InventoryPage() {
   };
 
   const fetchGlobalLogs = async () => {
+    if (DEV_MODE) {
+      // Mock global logs could be derived from activities or just static
+      setGlobalLogs([]);
+      return;
+    }
     try {
       const res = await api.get('/inventory/global-logs');
       if (res.data.success) setGlobalLogs(res.data.data);

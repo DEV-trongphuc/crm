@@ -76,7 +76,7 @@ class CompanyController {
             json_encode($b['tags']??[]), $b['notes']??null, $stageId
         ]);
         $id = (int)$this->db->lastInsertId();
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Thêm Công ty mới', "Công ty \"{$b['name']}\" đã được tạo.", 'company', $id);
+        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Thêm Công ty mới', "Công ty \"{$b['name']}\" đã được tạo.", 'company', $id);
         $this->show($auth, $id);
     }
 
@@ -139,7 +139,7 @@ class CompanyController {
         if (!$stmt->rowCount()) respond(403, null, 'Không có quyền di chuyển', false);
         
         $note = $b['note'] ?? "Công ty đã được chuyển trạng thái.";
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'company', $id);
+        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'company', $id);
         respond(200, null, 'Đã cập nhật stage thành công');
     }
 
@@ -153,7 +153,7 @@ class CompanyController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy công ty', false);
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Công ty', "Một công ty đã bị đưa vào thùng rác.", 'company', $id);
+        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Công ty', "Một công ty đã bị đưa vào thùng rác.", 'company', $id);
         respond(200, null, 'Đã xóa công ty (vào thùng rác)');
     }
 

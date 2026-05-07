@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   FileText, Plus, Search, Download, CheckCircle2, Clock, AlertCircle,
   Eye, Trash2, Printer, X, Loader2, ArrowUpRight, TrendingUp, DollarSign,
-  Pencil, Copy, Send, FileCheck, XCircle, Calendar, RefreshCw
+  Pencil, Copy, Send, FileCheck, XCircle, Calendar, RefreshCw, User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
@@ -12,8 +12,10 @@ import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
 import { QuoteEditorModal } from '../components/ui/QuoteEditorModal.tsx';
+import { CustomModal } from '../components/ui/CustomModal';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 
 const PAGE_SIZE = 20;
 
@@ -37,6 +39,33 @@ export const QuotesPage: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<any>(null);
 
   const fetchQuotes = useCallback(async () => {
+    if (DEV_MODE) {
+      setLoading(true);
+      const state = useMockStore.getState();
+      let list = [...state.quotes];
+
+      if (search) {
+        const s = search.toLowerCase();
+        list = list.filter(q => q.quote_number.toLowerCase().includes(s) || q.title.toLowerCase().includes(s) || q.contact_name?.toLowerCase().includes(s));
+      }
+
+      if (statusFilter) {
+        list = list.filter(q => q.status === statusFilter);
+      }
+
+      setItems(list);
+      setTotal(list.length);
+      setSummary({
+        total_val: list.reduce((sum, q) => sum + q.total, 0),
+        accepted_val: list.filter(q => q.status === 'accepted').reduce((sum, q) => sum + q.total, 0),
+        sent_count: list.filter(q => q.status === 'sent').length,
+        accepted_count: list.filter(q => q.status === 'accepted').length,
+        total_count: list.length
+      });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const params = {
@@ -265,7 +294,7 @@ export const QuotesPage: React.FC = () => {
                     </td>
                     <td><span className="text-xs text-light">{fmtDate(q.created_at)}</span></td>
                     <td style={{ textAlign: 'right' }} onClick={e => e.stopPropagation()}>
-                      <div className="flex gap-1 justify-end">
+                      <div className="flex gap-3 justify-end">
                         {q.status === 'accepted' && (
                           <button className="btn-icon sm" title="Chuyển thành Hóa đơn" onClick={() => handleConvertToInvoice(q.id)} style={{ color: 'var(--color-success)', background: 'var(--color-success-light)' }}><FileCheck size={14} /></button>
                         )}
@@ -293,6 +322,67 @@ export const QuotesPage: React.FC = () => {
           fetchQuotes();
         }}
       />
+
+      {/* Preview Modal */}
+      <CustomModal 
+        isOpen={!!previewItem} 
+        onClose={() => setPreviewItem(null)}
+        title={`Chi tiết báo giá: ${previewItem?.quote_number || ''}`}
+      >
+        {previewItem && (
+          <div className="p-2">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-xl font-black mb-1">{previewItem.title}</h2>
+                <div className="flex items-center gap-2 text-sm text-light">
+                  <User size={14} /> {previewItem.contact_name || 'Khách lẻ'}
+                  {previewItem.company_name && <span>• {previewItem.company_name}</span>}
+                </div>
+              </div>
+              <div className={`badge ${STATUS_CONFIG[previewItem.status]?.class || 'info'}`}>
+                {STATUS_CONFIG[previewItem.status]?.icon} {STATUS_CONFIG[previewItem.status]?.label}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 mb-8">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-muted block mb-1">Mã báo giá</label>
+                  <p className="font-mono font-bold text-primary">{previewItem.quote_number}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-muted block mb-1">Ngày tạo</label>
+                  <p className="font-bold">{fmtDate(previewItem.created_at)}</p>
+                </div>
+                <div>
+                  <label className="text-[10px] uppercase tracking-widest text-muted block mb-1">Hạn hiệu lực</label>
+                  <p className={`font-bold ${new Date(previewItem.valid_until) < new Date() ? 'text-danger' : ''}`}>
+                    {fmtDate(previewItem.valid_until)}
+                  </p>
+                </div>
+              </div>
+              <div className="bg-primary-light rounded-2xl p-6 flex flex-col justify-center">
+                <label className="text-[10px] uppercase tracking-widest text-primary block mb-1">Tổng cộng (Đã thuế)</label>
+                <p className="text-3xl font-black text-primary tracking-tighter">{FMT(previewItem.total)}</p>
+              </div>
+            </div>
+
+            {previewItem.notes && (
+              <div className="mb-6">
+                <label className="text-[10px] uppercase tracking-widest text-muted block mb-1">Ghi chú</label>
+                <div className="bg-bg p-4 rounded-xl text-sm italic">{previewItem.notes}</div>
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end mt-8 border-t pt-6">
+              <button className="btn outline" onClick={() => setPreviewItem(null)}>Đóng</button>
+              <button className="btn primary" onClick={() => { handleOpenEditor(previewItem); setPreviewItem(null); }}>
+                <Pencil size={18} /> Chỉnh sửa báo giá
+              </button>
+            </div>
+          </div>
+        )}
+      </CustomModal>
     </div>
   );
 };

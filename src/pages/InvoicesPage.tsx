@@ -38,14 +38,37 @@ export const InvoicesPage: React.FC = () => {
   const [summary, setSummary] = useState({ total_rev: 0, paid_amt: 0, pending_amt: 0, overdue_amt: 0 });
 
   const fetchInvoices = useCallback(async () => {
-    setLoading(true);
-    if (DEV_MODE) { 
-      const all = useMockStore.getState().invoices;
-      setItems(all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)); 
-      setTotal(all.length);
-      setLoading(false); 
-      return; 
+    if (DEV_MODE) {
+      const state = useMockStore.getState();
+      let list = [...state.invoices];
+      
+      if (search) {
+        const s = search.toLowerCase();
+        list = list.filter(i => 
+          i.invoice_number.toLowerCase().includes(s) || 
+          i.contact_name?.toLowerCase().includes(s) || 
+          i.company_name?.toLowerCase().includes(s)
+        );
+      }
+      
+      if (statusFilter) {
+        list = list.filter(i => i.status === statusFilter);
+      }
+      
+      setItems(list);
+      setTotal(list.length);
+      // Mock summary
+      setSummary({
+        total_rev: list.reduce((acc, i) => acc + Number(i.total), 0),
+        paid_amt: list.filter(i => i.status === 'paid').reduce((acc, i) => acc + Number(i.total), 0),
+        pending_amt: list.filter(i => i.status === 'pending').reduce((acc, i) => acc + Number(i.total), 0),
+        overdue_amt: list.filter(i => i.status === 'overdue').reduce((acc, i) => acc + Number(i.total), 0)
+      });
+      setLoading(false);
+      return;
     }
+
+    setLoading(true);
     try {
       const params: any = { 
         page, 

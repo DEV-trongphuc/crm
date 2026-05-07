@@ -57,14 +57,25 @@ export const ActivitiesPage: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
   const fetchActivities = useCallback(async () => {
-    setLoading(true);
     if (DEV_MODE) {
-      const stateActivities = useMockStore.getState().activities;
-      setItems(stateActivities);
-      setTotal(stateActivities.length);
+      const state = useMockStore.getState();
+      let list = [...state.activities];
+      
+      if (debouncedSearch) {
+        const s = debouncedSearch.toLowerCase();
+        list = list.filter(a => a.subject.toLowerCase().includes(s) || a.notes?.toLowerCase().includes(s));
+      }
+      
+      if (filterType) list = list.filter(a => a.type === filterType);
+      if (filterStatus) list = list.filter(a => a.status === filterStatus);
+      
+      setItems(list);
+      setTotal(list.length);
       setLoading(false);
       return;
     }
+
+    setLoading(true);
     try {
       const params: any = { page, limit: PAGE_SIZE, search: debouncedSearch };
       if (filterType) params.type = filterType;
@@ -358,12 +369,17 @@ export const ActivitiesPage: React.FC = () => {
                                     <button onClick={e => navigateToRelated(act, e)}
                                       style={{ fontSize: '0.75rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '3px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                                       <Link2 size={11} />
-                                      {act.related_type === 'contact' ? act.contact_name : 
-                                       act.related_type === 'company' ? act.company_name : 
-                                       act.related_type === 'deal' ? act.deal_name : act.related_id}
+                                      {act.related_type === 'contact' ? (act.contact_name || act.contact_id) : 
+                                       act.related_type === 'company' ? (act.company_name || act.company_id) : 
+                                       act.related_type === 'deal' ? (act.deal_name || act.deal_id) : act.related_id}
                                     </button>
                                   )}
                                 </div>
+                                {act.body && (
+                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '500px' }}>
+                                    {act.body}
+                                  </p>
+                                )}
                               </div>
 
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>

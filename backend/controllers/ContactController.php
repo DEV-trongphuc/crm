@@ -145,6 +145,7 @@ class ContactController {
             $b['last_contact'] ?? null, $b['lead_score'] ?? 0
         ]);
         $id = (int)$this->db->lastInsertId();
+        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Tạo Khách hàng mới', "Khách hàng \"{$b['first_name']} " . ($b['last_name'] ?? '') . "\" đã được thêm vào hệ thống.", 'contact', $id);
         $this->show($auth, $id);
     }
 
@@ -248,7 +249,7 @@ class ContactController {
         if (!$stmt->rowCount()) respond(403, null, 'Bạn không có quyền di chuyển liên hệ này', false);
         
         $note = $b['note'] ?? "Khách hàng đã được chuyển trạng thái.";
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'contact', $id);
+        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Cập nhật Pipeline', $note, 'contact', $id);
         respond(200, null, 'Đã cập nhật stage thành công');
     }
 
@@ -262,7 +263,7 @@ class ContactController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy liên hệ', false);
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Liên hệ', "Một liên hệ đã bị đưa vào thùng rác.", 'contact', $id);
+        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Liên hệ', "Một liên hệ đã bị đưa vào thùng rác.", 'contact', $id);
         respond(200, null, 'Đã xóa liên hệ (vào thùng rác)');
     }
 

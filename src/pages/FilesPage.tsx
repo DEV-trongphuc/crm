@@ -12,6 +12,8 @@ import { useUIStore } from '../store/uiStore';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
 import { Pagination } from '../components/ui/Pagination';
+import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 
 export const FilesPage: React.FC = () => {
   const { addToast, showConfirm } = useUIStore();
@@ -46,6 +48,26 @@ export const FilesPage: React.FC = () => {
   const [total, setTotal] = useState(0);
 
   const fetchFiles = async () => {
+    if (DEV_MODE) {
+      setLoading(true);
+      const state = useMockStore.getState();
+      let list = [...state.files];
+
+      if (searchTerm) {
+        const s = searchTerm.toLowerCase();
+        list = list.filter(f => f.name.toLowerCase().includes(s));
+      }
+
+      if (category !== 'all') {
+        list = list.filter(f => f.category === category);
+      }
+
+      setFiles(list);
+      setTotal(list.length);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await api.get('/cloud-files', { 

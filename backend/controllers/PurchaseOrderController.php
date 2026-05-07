@@ -48,6 +48,7 @@ class PurchaseOrderController {
             }
 
             $this->db->commit();
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'Tạo đơn nhập hàng', 'purchase_order', $poId, $po_number);
             $this->show($auth, $poId);
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -133,6 +134,7 @@ class PurchaseOrderController {
                  ->execute([$poInfo['total'], $poInfo['supplier_id'], $auth['tenant_id']]);
 
             $this->db->commit();
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'Nhập kho từ PO', 'purchase_order', $id, $poInfo['po_number']);
             respond(200, null, 'Đã nhập kho thành công, đã tạo lô hàng và cập nhật số lượng tồn kho');
         } catch (Exception $e) {
             $this->db->rollBack();

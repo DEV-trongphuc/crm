@@ -8,6 +8,8 @@ import { useUIStore } from '../store/uiStore';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { CompanyDrawer } from './CompanyDrawer';
 import api from '../api/axios';
+import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { useDebounce } from '../hooks/useDebounce';
@@ -210,6 +212,36 @@ export const DealsPage: React.FC = () => {
   };
 
   const fetchData = async () => {
+    if (DEV_MODE) {
+      const state = useMockStore.getState();
+      let list = pipelineView === 'contacts' ? [...state.contacts] : [...state.companies];
+      
+      if (debouncedSearch) {
+        const s = debouncedSearch.toLowerCase();
+        if (pipelineView === 'contacts') {
+          list = list.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(s) || c.email?.toLowerCase().includes(s));
+        } else {
+          list = list.filter(c => c.name.toLowerCase().includes(s) || c.email?.toLowerCase().includes(s));
+        }
+      }
+      
+      if (filterAssignee) {
+        list = list.filter(c => String(c.owner_id) === String(filterAssignee));
+      }
+      
+      const grouped: Record<number, any[]> = {};
+      list.forEach((d: any) => {
+        const sid = d.stage_id || (stages.length > 0 ? stages[0].id : 0);
+        if (!grouped[sid]) grouped[sid] = [];
+        grouped[sid].push(d);
+      });
+      
+      setItems(grouped);
+      setTotal(list.length);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const endpoint = pipelineView === 'contacts' ? '/contacts' : '/companies';

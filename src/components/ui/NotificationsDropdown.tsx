@@ -3,6 +3,7 @@ import { Bell, Check, CheckCheck, X, Info, AlertTriangle, CheckCircle2, XCircle 
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../../api/axios';
 import { DEV_MODE } from '../../config/env';
+import { useMockStore } from '../../store/mockStore';
 
 interface Notification {
   id: number;
@@ -41,12 +42,10 @@ export const NotificationsDropdown: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   const fetchNotifications = async () => {
-    // ── DEV MODE: skip API ───────────────────────────────────────
     if (DEV_MODE) {
-      setNotifications(MOCK_NOTIFS as any);
+      setNotifications(useMockStore.getState().notifications);
       return;
     }
-    // ─────────────────────────────────────────────────────────────
     setLoading(true);
     try {
       const r = await api.get('/notifications');

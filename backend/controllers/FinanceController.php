@@ -14,7 +14,7 @@ class FinanceController {
         $offset = ($page - 1) * $limit;
         $status = $_GET['status'] ?? '';
         $search = $_GET['search'] ?? '';
-        $where  = ['i.tenant_id=?']; $params = [$tid];
+        $where  = ['i.tenant_id=?', 'i.deleted_at IS NULL']; $params = [$tid];
         if ($auth['role'] === 'sale') {
             $where[] = 'i.created_by = ?';
             $params[] = $auth['user_id'];
@@ -52,7 +52,7 @@ class FinanceController {
             FROM invoices i
             LEFT JOIN contacts ct ON i.contact_id = ct.id
             LEFT JOIN companies c ON i.company_id = c.id
-            WHERE i.id=? AND i.tenant_id=?
+            WHERE i.id=? AND i.tenant_id=? AND i.deleted_at IS NULL
         ";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') {
@@ -128,6 +128,13 @@ class FinanceController {
                 }
             }
             $this->db->commit();
+
+            if (!empty($data['contact_id'])) {
+                logInteraction($this->db, $tid, $uid, 'email', "Phát hành Hóa đơn #{$data['invoice_number']}", "Hóa đơn \"{$data['title']}\" trị giá " . number_format($data['total']??0, 0, ',', '.') . "đ đã được khởi tạo.", 'invoice', $invId);
+            }
+
+            logActivity($this->db, $tid, $uid, 'CREATE', 'invoice', (int)$invId, json_encode(['invoice_number' => $data['invoice_number'], 'total' => $data['total']]));
+
             $this->showInvoice($auth, $invId);
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -167,6 +174,7 @@ class FinanceController {
                 $this->db->prepare("UPDATE invoices SET is_inventory_deducted=1 WHERE id=?")->execute([$id]);
             }
 
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'invoice', $id, json_encode($data));
             $this->db->commit();
             $this->showInvoice($auth, $id);
         } catch (Exception $e) {
@@ -191,7 +199,7 @@ class FinanceController {
     }
 
     public function deleteInvoice(array $auth, int $id): void {
-        $sql = "DELETE FROM invoices WHERE id=? AND tenant_id=?";
+        $sql = "UPDATE invoices SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') {
             $sql .= " AND created_by=?";
@@ -200,6 +208,7 @@ class FinanceController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy hóa đơn hoặc không có quyền', false);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'invoice', $id);
         respond(200, null, 'Đã xóa hóa đơn');
     }
 
@@ -239,6 +248,7 @@ class FinanceController {
                      ->execute([(int)$cId, $auth['tenant_id']]);
             }
             
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'PAYMENT', 'invoice', $id, json_encode(['amount' => $inv['total'] ?? 0]));
             $this->db->commit();
             respond(200, null, 'Hóa đơn đã được thanh toán và tồn kho đã được cập nhật');
         } catch (Exception $e) {
@@ -258,7 +268,7 @@ class FinanceController {
         $category = $_GET['category'] ?? '';
         $from     = $_GET['from'] ?? '';
         $to       = $_GET['to'] ?? '';
-        $where    = ['e.tenant_id=?']; $params = [$tid];
+        $where    = ['e.tenant_id=?', 'e.deleted_at IS NULL']; $params = [$tid];
         if ($auth['role'] === 'sale') {
             $where[] = 'e.created_by = ?';
             $params[] = $auth['user_id'];
@@ -309,7 +319,7 @@ class FinanceController {
     }
 
     public function showExpense(array $auth, int $id): void {
-        $sql = "SELECT e.*, u.full_name as creator_name FROM expenses e LEFT JOIN users u ON e.created_by=u.id WHERE e.id=? AND e.tenant_id=?";
+        $sql = "SELECT e.*, u.full_name as creator_name FROM expenses e LEFT JOIN users u ON e.created_by=u.id WHERE e.id=? AND e.tenant_id=? AND e.deleted_at IS NULL";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') {
             $sql .= " AND e.created_by=?";
@@ -375,6 +385,18 @@ class FinanceController {
             }
 
             $this->db->commit();
+
+            // Log interaction for entities
+            if (!empty($entities)) {
+                foreach ($entities as $ee) {
+                    if ($ee['entity_type'] === 'contact') {
+                        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', "Ghi nhận Chi phí: {$data['title']}", "Khoản chi phí trị giá " . number_format($ee['amount']??0, 0, ',', '.') . "đ đã được liên kết với khách hàng.", 'contact', (int)$ee['entity_id']);
+                    }
+                }
+            }
+
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'expense', $expId, json_encode(['title' => $data['title'], 'amount' => $totalAmount]));
+            
             $this->showExpense($auth, $expId);
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -427,6 +449,7 @@ class FinanceController {
                 }
             }
 
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'expense', $id, json_encode($data));
             $this->db->commit();
             $this->showExpense($auth, $id);
         } catch (Exception $e) {
@@ -455,7 +478,7 @@ class FinanceController {
     }
 
     public function deleteExpense(array $auth, int $id): void {
-        $sql = "DELETE FROM expenses WHERE id=? AND tenant_id=?";
+        $sql = "UPDATE expenses SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') {
             $sql .= " AND created_by=?";
@@ -464,6 +487,7 @@ class FinanceController {
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy chi phí hoặc không có quyền', false);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'expense', $id);
         respond(200, null, 'Đã xóa chi phí');
     }
 
@@ -478,6 +502,7 @@ class FinanceController {
             $this->db->prepare("UPDATE expenses SET status=?, approver_id=NULL, approved_at=NULL WHERE id=? AND tenant_id=?")
                 ->execute([$status, $id, $auth['tenant_id']]);
         }
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'APPROVE', 'expense', $id, json_encode(['status' => $status]));
         respond(200, null, 'Đã cập nhật trạng thái');
     }
 

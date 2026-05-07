@@ -7,6 +7,7 @@ import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useMockStore } from '../store/mockStore';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 
 const ROLES = ['admin', 'manager', 'sales', 'viewer'];
@@ -44,8 +45,14 @@ export const SettingsPage: React.FC = () => {
   ]);
 
   const fetchUsers = async () => {
+    if (DEV_MODE) {
+      const state = useMockStore.getState();
+      setUsers([...state.users]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    if (DEV_MODE) { setUsers(MOCK_USERS); setLoading(false); return; }
     try {
       const r = await api.get('/users');
       setUsers(r.data.data || []);
@@ -58,6 +65,13 @@ export const SettingsPage: React.FC = () => {
   };
 
   const fetchPipelines = async () => {
+    if (DEV_MODE) {
+      const state = useMockStore.getState();
+      setPipelines([...state.pipeline_stages].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)));
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const r = await api.get('/pipeline-stages');
@@ -70,6 +84,13 @@ export const SettingsPage: React.FC = () => {
   };
 
   const fetchTags = async () => {
+    if (DEV_MODE) {
+      const state = useMockStore.getState();
+      setTags([...state.tags]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const r = await api.get('/tags');

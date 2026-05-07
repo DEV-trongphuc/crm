@@ -45,6 +45,7 @@ class POSController {
             ]);
             $invId = $this->db->lastInsertId();
 
+
             // 2. Add Invoice Items and Deduct Stock
             $sItem = $this->db->prepare("INSERT INTO invoice_items (invoice_id, product_id, name, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?, ?)");
             foreach ($data['cart'] as $item) {
@@ -75,12 +76,15 @@ class POSController {
             ");
             $sCust->execute([$data['total_amount'], $data['customer_id'], $tid]);
 
-            // 4. Audit Trail Activity
-            logActivity(
+            // 4. Activity log (Internal Audit)
+            logActivity($this->db, $tid, $uid, 'Tạo đơn hàng POS', 'invoice', (int)$invId, $invNum);
+
+            // 5. Interaction History (Customer Timeline)
+            logInteraction(
                 $this->db, $tid, $uid, 'task', 
-                "Tạo đơn hàng POS #$invNum", 
-                "Đơn hàng trị giá " . number_format($data['total_amount'], 0, ',', '.') . " đ cho khách hàng.",
-                'contact', $data['customer_id']
+                "Đơn hàng POS #$invNum", 
+                "Đơn hàng trị giá " . number_format($data['total_amount'], 0, ',', '.') . " đ đã hoàn tất.",
+                'contact', (int)$data['customer_id']
             );
 
             $this->db->commit();

@@ -102,6 +102,14 @@ class TicketController {
             isset($data['related_users']) ? json_encode($data['related_users']) : null
         ]);
         $id = $this->db->lastInsertId();
+
+        // Log interaction for related contacts
+        if (!empty($data['related_contacts']) && is_array($data['related_contacts'])) {
+            foreach ($data['related_contacts'] as $cId) {
+                logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'task', "Tạo Ticket mới: {$data['subject']}", "Ticket #$id đã được khởi tạo cho khách hàng.", 'contact', (int)$cId);
+            }
+        }
+
         $this->show($auth, (int)$id);
     }
 
@@ -131,6 +139,21 @@ class TicketController {
         
         $stmt = $this->db->prepare("UPDATE tickets SET " . implode(',', $sets) . " WHERE id=? AND tenant_id=?");
         $stmt->execute($params);
+
+        // Log if resolved
+        if (isset($data['status']) && $data['status'] === 'resolved') {
+            $tick = $this->db->prepare("SELECT subject, related_contacts FROM tickets WHERE id=?");
+            $tick->execute([$id]);
+            $tData = $tick->fetch();
+            if ($tData && !empty($tData['related_contacts'])) {
+                $cIds = json_decode($tData['related_contacts'], true);
+                if (is_array($cIds)) {
+                    foreach ($cIds as $cId) {
+                        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'task', "Hoàn thành Ticket #$id", "Vấn đề \"{$tData['subject']}\" đã được xử lý xong.", 'contact', (int)$cId);
+                    }
+                }
+            }
+        }
         
         $this->show($auth, $id);
     }
@@ -140,5 +163,32 @@ class TicketController {
         $stmt->execute([$id, $auth['tenant_id']]);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy ticket', false);
         respond(200, null, 'Đã xóa ticket thành công');
+    }
+
+    public function getComments(array $auth, int $ticketId): void {
+        $stmt = $this->db->prepare("
+            SELECT tc.*, u.full_name as user_name, u.avatar_url
+            FROM ticket_comments tc
+            LEFT JOIN users u ON tc.user_id = u.id
+            JOIN tickets t ON tc.ticket_id = t.id
+            WHERE tc.ticket_id = ? AND t.tenant_id = ?
+            ORDER BY tc.created_at ASC
+        ");
+        $stmt->execute([$ticketId, $auth['tenant_id']]);
+        respond(200, $stmt->fetchAll());
+    }
+
+    public function addComment(array $auth, int $ticketId): void {
+        $data = getBody();
+        if (empty($data['body'])) respond(400, null, 'Nội dung ghi chú không được để trống', false);
+
+        $check = $this->db->prepare("SELECT id FROM tickets WHERE id=? AND tenant_id=?");
+        $check->execute([$ticketId, $auth['tenant_id']]);
+        if (!$check->fetch()) respond(404, null, 'Không tìm thấy ticket', false);
+
+        $stmt = $this->db->prepare("INSERT INTO ticket_comments (ticket_id, user_id, body) VALUES (?, ?, ?)");
+        $stmt->execute([$ticketId, $auth['user_id'], $data['body']]);
+        
+        $this->getComments($auth, $ticketId);
     }
 }

@@ -2,7 +2,8 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   TrendingUp, Users, DollarSign, Download, Trophy,
   AlertTriangle, Tag as TagIcon, ShoppingCart, RefreshCw,
-  Zap, CheckCircle2, Clock, ArrowUpRight, ArrowDownRight
+  Zap, CheckCircle2, Clock, ArrowUpRight, ArrowDownRight,
+  ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon
 } from 'lucide-react';
 import {
   Bar, BarChart, XAxis, YAxis, CartesianGrid,
@@ -45,66 +46,76 @@ export const DashboardPage: React.FC = () => {
   const [period, setPeriod] = useState<Period>('this_month');
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_month'));
   const [loadingStats, setLoadingStats] = useState(true);
+  const [activityIndex, setActivityIndex] = useState(0);
+  const ITEMS_PER_PAGE = 4;
 
   const fetchAll = useCallback(async () => {
-    setLoadingStats(true);
-
     if (DEV_MODE) {
-      const { expenses, contacts, companies, invoices } = useMockStore.getState();
-      const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-      const totalWon = invoices.filter((i: any) => i.status === 'paid').reduce((sum, i) => sum + i.total, 0);
-
+      setLoadingStats(true);
+      const state = useMockStore.getState();
+      
+      // Compute stats from mock data
+      const wonDeals = state.contacts.filter(c => state.pipeline_stages.find(s => s.id === c.stage_id)?.is_won);
+      const wonValue = wonDeals.reduce((sum, c) => sum + (Number(c.expected_revenue) || 0), 0);
+      const expenses = state.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+      
       setStats({
-        ...MOCK_STATS,
-        expenses: totalExpenses,
-        won_value: totalWon,
-        profit: totalWon - totalExpenses,
-        new_contacts: contacts.length,
-        tasks_due_today: 0
+        won_value: wonValue,
+        gross_profit: wonValue * 0.4, // Mock 40% gross profit
+        profit: wonValue - expenses,
+        new_contacts: state.contacts.length,
+        total_contacts: state.contacts.length * 12, // Mock total
+        expenses: expenses,
+        tasks_due_today: state.activities.length,
+        revenue_change: '+15.2%',
+        profit_change: '+8.4%',
+        contacts_change: '+12.5%',
+        expenses_change: '+2.1%',
+        today_tasks: state.activities
       });
+
       setRevenueChart([
-        { month: 'T10', revenue: 450000000, cost: 30000000 },
-        { month: 'T11', revenue: 520000000, cost: 35000000 },
-        { month: 'T12', revenue: 480000000, cost: 32000000 },
-        { month: 'T1', revenue: 610000000, cost: 38000000 },
-        { month: 'T2', revenue: 550000000, cost: 40000000 },
-        { month: 'T3', revenue: 670000000, cost: 42000000 },
-        { month: 'T4', revenue: 1250000000, cost: 80000000 },
-        { month: 'T5', revenue: totalWon, cost: totalExpenses },
+        { month: 'T10', revenue: wonValue * 0.7, cost: expenses * 0.8 },
+        { month: 'T11', revenue: wonValue * 0.8, cost: expenses * 0.9 },
+        { month: 'T12', revenue: wonValue * 0.9, cost: expenses * 0.85 },
+        { month: 'T01', revenue: wonValue, cost: expenses }
       ]);
-      const funnelStages = [
-        { id: 1, name: 'Khách hàng tiềm năng', color: '#3b82f6' },
-        { id: 2, name: 'Giai đoạn mới', color: '#6366f1' },
-        { id: 3, name: 'Đã liên hệ', color: '#8b5cf6' },
-        { id: 4, name: 'Đang thương lượng', color: '#f59e0b' },
-        { id: 5, name: 'Gửi báo giá', color: '#10b981' },
-        { id: 6, name: 'Đã chốt — Thành công', color: '#22c55e' },
-        { id: 7, name: 'Đã chốt — Thất bại', color: '#ef4444' },
-      ];
-      setPipelineFunnel(funnelStages.map(s => {
-        const contactCount = contacts.filter((c: any) => Number(c.stage_id) === s.id).length;
-        const companyCount = companies.filter((c: any) => Number(c.stage_id) === s.id).length;
-        const contactValue = contacts.filter((c: any) => Number(c.stage_id) === s.id).reduce((sum, c) => sum + (c.expected_revenue || 0), 0);
-        const companyValue = companies.filter((c: any) => Number(c.stage_id) === s.id).reduce((sum, c) => sum + (c.expected_revenue || 0), 0);
-        
-        return {
-          ...s,
-          deal_count: contactCount + companyCount,
-          total_value: contactValue + companyValue
-        };
-      }));
+
+      setPipelineFunnel(state.pipeline_stages.map(s => ({
+        ...s,
+        deal_count: state.contacts.filter(c => c.stage_id === s.id).length,
+        total_value: state.contacts.filter(c => c.stage_id === s.id).reduce((sum, c) => sum + (Number(c.expected_revenue) || 0), 0)
+      })));
+
       setLeadSources([
-        { source: 'Website', count: 12, color: '#3b82f6' },
-        { source: 'Facebook', count: 8, color: '#8b5cf6' },
-        { source: 'Referral', count: 5, color: '#10b981' },
+        { source: 'Facebook', count: 45, color: '#3b82f6' },
+        { source: 'Website', count: 32, color: '#10b981' },
+        { source: 'Referral', count: 18, color: '#8b5cf6' },
+        { source: 'Other', count: 5, color: '#6b7280' }
       ]);
-      setLeaderboard([
-        { id: 1, full_name: 'Admin Sales', won_count: 5, won_value: totalWon * 0.6 },
-        { id: 2, full_name: 'Sale Manager', won_count: 3, won_value: totalWon * 0.4 },
-      ]);
+
+      setLeaderboard(state.users.slice(0, 3).map((u, i) => ({
+        ...u,
+        won_value: wonValue * (0.5 - i * 0.1),
+        won_count: 5 - i
+      })));
+
+      setTagStats(state.tags.map(t => ({
+        tag: t.name,
+        count: t.count || 0,
+        color: t.color
+      })));
+
+      setInventoryStats({
+        total_value: 1250000000,
+        total_batches: 45
+      });
+
       setLoadingStats(false);
       return;
     }
+
+    setLoadingStats(true);
 
     try {
       const [s, rev, pipe, src, lead, tags, inventory] = await Promise.all([
@@ -138,6 +149,7 @@ export const DashboardPage: React.FC = () => {
   }, [dateRange]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { setActivityIndex(0); }, [dateRange]);
 
   const margin = stats?.won_value > 0 ? (stats?.profit / stats?.won_value) * 100 : 0;
 
@@ -149,7 +161,15 @@ export const DashboardPage: React.FC = () => {
       icon: Users,
       color: '#3b82f6',
       change: stats?.contacts_change,
-      up: (stats?.contacts_change || '').startsWith('+')
+      up: (stats?.contacts_change || '').startsWith('+'),
+      extra: (
+        <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+            <span>Tổng khách hàng:</span>
+            <span style={{ fontWeight: 600 }}>{stats?.total_contacts ?? 0}</span>
+          </div>
+        </div>
+      )
     },
     {
       id: 'revenue',
@@ -158,7 +178,15 @@ export const DashboardPage: React.FC = () => {
       icon: DollarSign,
       color: '#7c3aed',
       change: stats?.revenue_change,
-      up: (stats?.revenue_change || '').startsWith('+')
+      up: (stats?.revenue_change || '').startsWith('+'),
+      extra: (
+        <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: 'var(--color-text-muted)' }}>
+            <span>Lợi nhuận gộp:</span>
+            <span style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{FMT_VND(stats?.gross_profit ?? 0)}</span>
+          </div>
+        </div>
+      )
     },
     {
       id: 'profit',
@@ -243,9 +271,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* Alert / Today's Focus */}
       {(() => {
-        const tasksToday = DEV_MODE
-          ? useMockStore.getState().activities.filter((a: any) => a.status === 'planned' && a.due_date && new Date(a.due_date).toDateString() === new Date().toDateString())
-          : (stats?.today_tasks || []);
+        const tasksToday = (stats?.today_tasks || []);
 
         if (tasksToday.length === 0 && (stats?.tasks_due_today ?? 0) === 0) return null;
 
@@ -258,16 +284,34 @@ export const DashboardPage: React.FC = () => {
               <div style={{ flex: 1 }}>
                 <p style={{ fontWeight: 800, fontSize: '0.9375rem', color: 'var(--color-primary)' }}>Tiêu điểm công việc hôm nay</p>
                 <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>
-                  Có <strong>{tasksToday.length || stats?.tasks_due_today}</strong> hoạt động cần bạn xử lý trong ngày {new Date().toLocaleDateString('vi-VN')}
+                  Có <strong>{tasksToday.length}</strong> hoạt động cần bạn xử lý trong ngày {new Date().toLocaleDateString('vi-VN')}
                   {stats?.overdue_tasks > 0 && <span style={{ color: 'var(--color-danger)', fontWeight: 700, marginLeft: '8px' }}>• {stats.overdue_tasks} việc quá hạn cần xử lý gấp!</span>}
                 </p>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginRight: '1rem' }}>
+                <button 
+                  className="btn outline sm icon-only" 
+                  disabled={activityIndex === 0}
+                  onClick={() => setActivityIndex(Math.max(0, activityIndex - 1))}
+                  style={{ borderRadius: '50%', width: 32, height: 32, padding: 0 }}
+                >
+                  <ChevronLeftIcon size={16} />
+                </button>
+                <button 
+                  className="btn outline sm icon-only" 
+                  disabled={activityIndex + ITEMS_PER_PAGE >= tasksToday.length}
+                  onClick={() => setActivityIndex(Math.min(tasksToday.length - ITEMS_PER_PAGE, activityIndex + 1))}
+                  style={{ borderRadius: '50%', width: 32, height: 32, padding: 0 }}
+                >
+                  <ChevronRightIcon size={16} />
+                </button>
               </div>
               <button className="btn ghost sm" onClick={() => navigate('/activities')} style={{ color: 'var(--color-primary)', fontWeight: 700 }}>Tất cả hoạt động →</button>
             </div>
 
             {tasksToday.length > 0 && (
-              <div className="no-scrollbar" style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '8px', scrollbarWidth: 'none' }}>
-                {tasksToday.map((task: any) => (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+                {tasksToday.slice(activityIndex, activityIndex + ITEMS_PER_PAGE).map((task: any) => (
                   <motion.div
                     key={task.id}
                     whileHover={{ y: -4, boxShadow: 'var(--shadow-lg)' }}

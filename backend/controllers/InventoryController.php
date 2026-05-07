@@ -122,8 +122,12 @@ class InventoryController {
                 ")->execute([
                     $auth['tenant_id'], $expenseId, $receiverType, $receiverId, $expenseAmount
                 ]);
+
+                // Log interaction in contact timeline
+                logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', "Nhận quà tặng: $pName", "Quà tặng từ kho (Lô #{$b['batch_id']}). Số lượng: {$b['qty']} {$batch['unit']}. Lý do: {$b['reason']}", 'contact', $receiverId);
             }
 
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'EXPORT_INTERNAL', 'inventory', $b['batch_id'], json_encode(['qty' => $b['qty'], 'reason' => $b['reason']]));
             $this->db->commit();
             respond(200, null, 'Xuất kho nội bộ thành công');
         } catch (Exception $e) {
@@ -178,6 +182,7 @@ class InventoryController {
             $this->db->prepare("UPDATE products p JOIN batches b ON p.id = b.product_id SET p.stock_quantity = p.stock_quantity + ? WHERE b.id = ?")
                  ->execute([$qtyChange, $b['batch_id']]);
 
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'ADJUST', 'inventory', $b['batch_id'], json_encode(['new_qty' => $b['new_qty'], 'reason' => $b['reason'] ?? '']));
             $this->db->commit();
             respond(200, null, 'Điều chỉnh kho thành công');
         } catch (Exception $e) {

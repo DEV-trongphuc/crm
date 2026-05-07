@@ -51,7 +51,9 @@ class SupplierController {
             $b['contact_name'] ?? null, $b['email'] ?? null, $b['phone'] ?? null,
             $b['address'] ?? null, $b['tax_code'] ?? null, $b['notes'] ?? null
         ]);
-        $this->show($auth, (int)$this->db->lastInsertId());
+        $id = (int)$this->db->lastInsertId();
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'Thêm nhà cung cấp mới', 'supplier', $id, $b['name']);
+        $this->show($auth, $id);
     }
 
     public function show(array $auth, int $id): void {
@@ -83,6 +85,7 @@ class SupplierController {
     public function destroy(array $auth, int $id): void {
         $stmt = $this->db->prepare("UPDATE suppliers SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $auth['tenant_id']]);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'Xóa nhà cung cấp', 'supplier', $id);
         respond(200, null, 'Đã xóa nhà cung cấp');
     }
 }

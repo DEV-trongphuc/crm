@@ -106,16 +106,16 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
       if (entity.id) {
         if (DEV_MODE) {
           const { contacts, deals } = useMockStore.getState();
-          const compContacts = contacts.filter((c: any) => c.company_name === entity.name);
+          const compContacts = contacts.filter((c: any) => c.company_id === entity.id || c.company_name === entity.name);
           setSubContacts(compContacts.map((c: any) => ({
             id: c.id,
             name: `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Chưa có tên',
             role: c.job_title || '',
             phone: c.phone || '',
             email: c.email || '',
-            isPrimary: c.id % 2 === 0, // Mock primary
+            isPrimary: c.is_primary || false,
           })));
-          setDeals(deals.filter((d: any) => d.company_name === entity.name || (!d.company_name && Math.random() > 0.5)));
+          setDeals(deals.filter((d: any) => d.company_id === entity.id || d.company_name === entity.name));
         } else {
           setSubLoading(true);
           api.get('/contacts', { params: { company_id: entity.id, limit: 50 } })

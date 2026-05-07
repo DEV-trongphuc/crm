@@ -12,6 +12,7 @@ import { MentionInput } from '../components/ui/MentionInput';
 import { CreateExpenseModal } from '../components/ui/CreateExpenseModal';
 import { QuoteEditorModal } from '../components/ui/QuoteEditorModal.tsx';
 import { Avatar } from '../components/ui/Avatar';
+import { TicketDrawer } from './TicketDrawer';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { numberToText } from '../utils/numberToText';
 import { useUIStore } from '../store/uiStore';
@@ -83,6 +84,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [selectedTicketDetail, setSelectedTicketDetail] = useState<any>(null);
   const [newNote, setNewNote] = useState('');
   const [notes, setNotes] = useState<{ id: number; text: string; time: string; user: string }[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
@@ -90,6 +92,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const [users, setUsers] = useState<any[]>([]);
   const [allTags, setAllTags] = useState<any[]>([]);
   const [pipelineStages, setPipelineStages] = useState<any[]>(DEFAULT_PIPELINE_STAGES);
+  const [contacts, setContacts] = useState<any[]>([]);
 
   const [ticketForm, setTicketForm] = useState({ subject: '', priority: 'medium', description: '' });
   const [dealForm, setDealForm] = useState({ title: '', value: '', stage: 'lead', probability: 50, expected_close: '' });
@@ -164,6 +167,34 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const fetchData = useCallback(async () => {
     if (!contact?.id) return;
+    if (DEV_MODE) {
+      const state = useMockStore.getState();
+      // Load from mock store
+      setNotes([]); // No notes in mock store yet
+      setDrawerActivities(state.activities.filter((a: any) => a.contact_id === contact.id));
+      setTasks(state.activities.filter((a: any) => a.contact_id === contact.id && a.type === 'task').map((a: any) => ({
+        id: a.id,
+        title: a.subject,
+        done: a.status === 'completed',
+        priority: a.priority || 'medium',
+        due: a.due_date ? new Date(a.due_date).toLocaleDateString('vi-VN') : '—'
+      })));
+      setDeals(state.deals.filter((d: any) => d.contact_id === contact.id).map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        value: d.value,
+        stage: d.stage,
+        prob: d.probability,
+        close: d.expected_close,
+        stage_color: d.stage_color || '#3b82f6'
+      })));
+      setDrawerInvoices(state.invoices.filter((i: any) => i.contact_id === contact.id));
+      setDrawerQuotes([]); // No quotes in mock store yet
+      setDrawerExpenses(state.expenses.filter((e: any) => e.contact_id === contact.id)); // Note: mock store expenses don't have contact_id yet, but I'll add logic or just show empty
+      setDrawerTickets(state.tickets.filter((t: any) => t.customer_name === `${contact.first_name} ${contact.last_name}`.trim()));
+      setLoadingRelated(false);
+      return;
+    }
     setLoadingRelated(true);
     try {
       // Fetch Notes
@@ -246,6 +277,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (isOpen) {
       api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => { });
       api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
+      api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => { });
       api.get('/pipeline-stages')
         .then(r => {
           const stages = r.data.data || [];
@@ -303,7 +335,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   const timeline = useMemo(() => {
     if (!contact?.id) return [];
-    const source = DEV_MODE ? mockStore.activities.filter((a: any) => a.contact_id === contact.id) : drawerActivities;
+    const source = drawerActivities;
     return source.map((a: any) => ({
       id: a.id,
       title: a.subject,
@@ -1030,26 +1062,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   {/* TIMELINE TAB */}
                   {activeTab === 'timeline' && (
                     <div className="animate-fade">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', paddingBottom: '1rem', borderBottom: '1px solid var(--color-border-light)' }}>
                         <div>
                           <h3 style={{ fontWeight: 700, fontSize: '1.125rem', marginBottom: '0.25rem' }}>Nhật ký tương tác</h3>
                           <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Lưu vết toàn bộ quá trình chăm sóc khách hàng</p>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                          <button
-                            className="btn sm"
-                            onClick={() => setShowCallLogger(true)}
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-primary-light)', fontWeight: 600 }}
-                          >
-                            <Phone size={14} /> Ghi nhận gọi
-                          </button>
-                          <button className="btn primary sm" style={{ display: 'flex', alignItems: 'center', gap: '8px' }} onClick={() => setShowActivityModal(true)}><Plus size={14} /> Thêm log</button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button className="btn outline sm" onClick={() => setShowCallLogger(true)} style={{ color: '#3b82f6', borderColor: '#3b82f630', background: '#3b82f608', fontWeight: 600 }}><Phone size={14} /> Log Call</button>
+                          <button className="btn outline sm" onClick={() => setShowActivityModal(true)} style={{ color: '#8b5cf6', borderColor: '#8b5cf630', background: '#8b5cf608', fontWeight: 600 }}><Mail size={14} /> Email</button>
+                          <button className="btn outline sm" onClick={() => setShowTaskModal(true)} style={{ color: '#f59e0b', borderColor: '#f59e0b30', background: '#f59e0b08', fontWeight: 600 }}><CheckSquare size={14} /> Task</button>
+                          <button className="btn primary sm" onClick={() => setShowActivityModal(true)} style={{ fontWeight: 600 }}><Plus size={14} /> Tương tác</button>
                         </div>
                       </div>
+
                       <div className="timeline-stepper" style={{ position: 'relative', marginTop: '1rem', marginLeft: '0.5rem', paddingBottom: '1.5rem' }}>
                         <div style={{ position: 'absolute', left: 18, top: 10, bottom: 0, width: 2, background: 'linear-gradient(to bottom, var(--color-border) 0%, rgba(0,0,0,0) 100%)' }} />
 
-                        {timeline.map((ev, index) => (
+                        {timeline.map((ev: any, index) => (
                           <motion.div
                             key={ev.id}
                             initial={{ opacity: 0, x: -10 }}
@@ -1095,8 +1124,37 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 </div>
                               </div>
                               {ev.note && (
-                                <div style={{ padding: '0.75rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-md)' }}>
-                                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.6 }}>{ev.note}</p>
+                                <div style={{ padding: '0.875rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', marginTop: '0.5rem', border: '1px solid var(--color-border-light)' }}>
+                                  <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.6 }}>{formatNote(ev.note)}</p>
+                                  
+                                  {/* Rich Metadata Rendering */}
+                                  {ev.type === 'call' && (ev as any).metadata?.recording_url && (
+                                    <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'white', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      <button className="btn-icon sm" style={{ background: 'var(--color-primary)', color: 'white' }}><Activity size={14} /></button>
+                                      <div style={{ flex: 1, height: '4px', background: '#e2e8f0', borderRadius: '2px', position: 'relative' }}>
+                                        <div style={{ width: '60%', height: '100%', background: 'var(--color-primary)', borderRadius: '2px' }} />
+                                      </div>
+                                      <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{(ev as any).metadata.duration || '0:00'}</span>
+                                    </div>
+                                  )}
+
+                                  {ev.type === 'email' && (ev as any).metadata?.email_subject && (
+                                    <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem' }}>
+                                      <span className="badge info" style={{ fontSize: '0.65rem' }}>{(ev as any).metadata.status === 'opened' ? 'Đã mở' : 'Đã gửi'}</span>
+                                      <span style={{ color: 'var(--color-text-muted)' }}>{(ev as any).metadata.opens || 0} lượt mở • Lần cuối: {new Date((ev as any).metadata.last_open).toLocaleTimeString('vi-VN')}</span>
+                                    </div>
+                                  )}
+
+                                  {ev.type === 'meeting' && (ev as any).metadata?.zoom_link && (
+                                    <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                      <a href={(ev as any).metadata.zoom_link} target="_blank" rel="noreferrer" className="btn outline sm" style={{ fontSize: '0.7rem', height: '28px', padding: '0 8px' }}>Tham gia Zoom</a>
+                                      <div style={{ display: 'flex', gap: '-4px' }}>
+                                        {((ev as any).metadata.participants || []).map((p: string, pi: number) => (
+                                          <Avatar key={pi} name={p} size={20} style={{ border: '2px solid white' }} />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -1619,7 +1677,12 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             </thead>
                             <tbody>
                               {drawerTickets.map((t: any) => (
-                                <tr key={t.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
+                                <tr 
+                                  key={t.id} 
+                                  style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer' }}
+                                  onClick={() => setSelectedTicketDetail(t)}
+                                  className="table-row-hover"
+                                >
                                   <td style={{ padding: '0.875rem 1rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
                                       <AlertCircle size={14} color={t.priority === 'high' || t.priority === 'urgent' ? '#ef4444' : t.priority === 'medium' ? '#f59e0b' : '#10b981'} style={{ marginTop: '2px' }} />
@@ -1946,6 +2009,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           setShowQuoteEditor(false);
           fetchData();
         }}
+      />
+      <TicketDrawer
+        isOpen={!!selectedTicketDetail}
+        onClose={() => setSelectedTicketDetail(null)}
+        ticket={selectedTicketDetail}
+        onUpdate={async (updated) => {
+          try {
+            await api.put(`/tickets/${updated.id}`, updated);
+            setDrawerTickets(prev => prev.map(t => t.id === updated.id ? updated : t));
+          } catch (e: any) {
+            addToast(e.response?.data?.message || 'Không thể cập nhật Ticket', 'error');
+          }
+        }}
+        contacts={contacts}
+        users={users}
       />
     </>
   );

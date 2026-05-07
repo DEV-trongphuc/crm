@@ -4,7 +4,8 @@ import { X, MessageSquare, Clock, AlertCircle, User, Paperclip, Send, CheckCircl
 import { Avatar } from '../components/ui/Avatar';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useUIStore } from '../store/uiStore';
-import styles from './EntityDrawer.module.css'; // Reuse existing styles
+import api from '../api/axios';
+import styles from './EntityDrawer.module.css'; 
 
 interface Props {
   isOpen: boolean;
@@ -37,26 +38,40 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
   const [newComment, setNewComment] = useState('');
   const [isInternal, setIsInternal] = useState(false);
 
+  const [loading, setLoading] = useState(false);
+
   useEffect(() => {
-    if (ticket) {
+    if (ticket?.id) {
       setFormData(ticket);
-      // Initialize with ticket description or empty, actual comments should come from API
-      setComments(ticket.activities || []);
+      fetchComments();
     }
   }, [ticket]);
 
+  const fetchComments = async () => {
+    if (!ticket?.id) return;
+    setLoading(true);
+    try {
+      const r = await api.get(`/tickets/${ticket.id}/comments`);
+      setComments(r.data.data || []);
+    } catch (err) {
+      console.error('Failed to fetch ticket comments', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!ticket) return null;
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!newComment.trim()) return;
-    setComments([...comments, {
-      id: Date.now(),
-      user: formData.assignee_name || 'Admin Support',
-      text: newComment,
-      time: new Date().toISOString()
-    }]);
-    setNewComment('');
-    addToast('Đã thêm ghi chú', 'success');
+    try {
+      const r = await api.post(`/tickets/${ticket.id}/comments`, { body: newComment });
+      setComments(r.data.data || []);
+      setNewComment('');
+      addToast('Đã thêm ghi chú', 'success');
+    } catch (err) {
+      addToast('Lỗi khi lưu ghi chú', 'error');
+    }
   };
 
   const handleStatusChange = (newStatus: string) => {
@@ -125,28 +140,37 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
               {/* Left: Activity Thread */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--color-border)' }}>
                 <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {comments.map((msg, i) => (
-                    <div key={i} style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
-                      <Avatar name={msg.user} size={32} />
-                      <div style={{ maxWidth: '85%' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{msg.user}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{new Date(msg.time).toLocaleString('vi-VN')}</span>
-                        </div>
-                        <div style={{ 
-                          padding: '0.875rem 1.25rem', 
-                          borderRadius: '16px', 
-                          background: 'white',
-                          border: '1px solid var(--color-border)',
-                          color: 'var(--color-text)',
-                          fontSize: '0.9375rem', lineHeight: 1.5,
-                          borderTopLeftRadius: '4px'
-                        }}>
-                          {msg.text}
+                  {loading ? (
+                    <div style={{ textAlign: 'center', padding: '2rem' }}>Đang tải ghi chú...</div>
+                  ) : comments.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', background: 'white', borderRadius: '16px', border: '1px dashed var(--color-border)' }}>
+                      <MessageSquare size={32} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
+                      Chưa có ghi chú nào. Hãy bắt đầu thảo luận!
+                    </div>
+                  ) : (
+                    comments.map((msg, i) => (
+                      <div key={msg.id || i} style={{ display: 'flex', gap: '1rem', flexDirection: 'row' }}>
+                        <Avatar name={msg.user_name || msg.user} src={msg.avatar_url} size={32} />
+                        <div style={{ maxWidth: '85%' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{msg.user_name || msg.user}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{new Date(msg.created_at || msg.time).toLocaleString('vi-VN')}</span>
+                          </div>
+                          <div style={{ 
+                            padding: '0.875rem 1.25rem', 
+                            borderRadius: '16px', 
+                            background: msg.is_internal ? 'var(--color-warning-light)' : 'white',
+                            border: '1px solid var(--color-border)',
+                            color: 'var(--color-text)',
+                            fontSize: '0.9375rem', lineHeight: 1.5,
+                            borderTopLeftRadius: '4px'
+                          }}>
+                            {msg.body || msg.text}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
 
                 {/* Reply Box */}

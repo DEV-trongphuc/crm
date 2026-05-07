@@ -36,14 +36,26 @@ export const CompaniesPage: React.FC = () => {
   const [showImportExport, setShowImportExport] = useState(false);
 
   const fetchCompanies = useCallback(async () => {
-    setLoading(true);
-    if (DEV_MODE) { 
-      const { companies: all } = useMockStore.getState();
-      setCompanies(all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)); 
-      setTotal(all.length); 
-      setLoading(false); 
-      return; 
+    if (DEV_MODE) {
+      const state = useMockStore.getState();
+      let list = [...state.companies];
+      
+      if (debouncedSearch) {
+        const s = debouncedSearch.toLowerCase();
+        list = list.filter(c => c.name.toLowerCase().includes(s) || c.industry?.toLowerCase().includes(s));
+      }
+      
+      if (statusFilter) {
+        list = list.filter(c => c.status === statusFilter);
+      }
+      
+      setCompanies(list);
+      setTotal(list.length);
+      setLoading(false);
+      return;
     }
+
+    setLoading(true);
     try {
       const params: any = { page, limit: PAGE_SIZE };
       if (debouncedSearch) params.search = debouncedSearch;

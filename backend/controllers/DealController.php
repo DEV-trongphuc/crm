@@ -126,7 +126,7 @@ class DealController {
         $this->db->prepare("INSERT INTO deal_stage_history (deal_id,from_stage,to_stage,moved_by) VALUES (?,NULL,?,?)")
             ->execute([$id, $stageId, $auth['user_id']]);
         
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Tạo Deal mới', "Deal \"{$b['title']}\" được tạo thành công.", 'deal', $id);
+        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Tạo Deal mới', "Deal \"{$b['title']}\" được tạo thành công.", 'deal', $id);
         $this->show($auth, $id);
     }
 
@@ -189,7 +189,7 @@ class DealController {
                 $this->db->prepare("INSERT INTO deal_stage_history (deal_id,from_stage,to_stage,moved_by) VALUES (?,?,?,?)")
                     ->execute([$id, $old, $b['stage_id'], $auth['user_id']]);
                 
-                logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Chuyển giai đoạn Deal', "Deal đã được chuyển sang giai đoạn mới.", 'deal', $id);
+                logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Chuyển giai đoạn Deal', "Deal đã được chuyển sang giai đoạn mới.", 'deal', $id);
             }
             
             $this->db->commit();
@@ -233,7 +233,7 @@ class DealController {
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy deal', false);
         
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Deal', "Một cơ hội bán hàng đã bị xóa.", 'deal', $id);
+        logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Xóa Deal', "Một cơ hội bán hàng đã bị xóa.", 'deal', $id);
         respond(200, null, 'Đã xóa deal (vào thùng rác)');
     }
 

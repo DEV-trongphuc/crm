@@ -17,7 +17,7 @@ class ActivityController {
         $sortBy = $_GET['sort']  ?? 'due_date';
         $order  = $_GET['order'] ?? 'ASC';
 
-        $where=['a.tenant_id=?']; $params=[$tid];
+        $where=['a.tenant_id=?', 'a.deleted_at IS NULL']; $params=[$tid];
 
         if ($search) {
             $where[] = '(a.subject LIKE ? OR a.description LIKE ?)';
@@ -110,11 +110,13 @@ class ActivityController {
             }
         }
 
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'activity', $actId, json_encode(['subject' => $b['subject'], 'type' => $b['type']]));
+
         $this->show($auth,$actId);
     }
 
     public function show(array $auth,int $id): void {
-        $sql = "SELECT a.*,u.full_name as user_name FROM activities a LEFT JOIN users u ON a.user_id=u.id WHERE a.id=? AND a.tenant_id=?";
+        $sql = "SELECT a.*,u.full_name as user_name FROM activities a LEFT JOIN users u ON a.user_id=u.id WHERE a.id=? AND a.tenant_id=? AND a.deleted_at IS NULL";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') {
             $sql .= " AND a.user_id=?";
@@ -186,11 +188,13 @@ class ActivityController {
             }
         }
 
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'activity', $id, json_encode($b));
+
         $this->show($auth,$id);
     }
 
     public function destroy(array $auth,int $id): void {
-        $sql = "DELETE FROM activities WHERE id=? AND tenant_id=?";
+        $sql = "UPDATE activities SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') {
             $sql .= " AND user_id=?";
@@ -198,7 +202,8 @@ class ActivityController {
         }
         $stmt=$this->db->prepare($sql);
         $stmt->execute($p);
-        if(!$stmt->rowCount()) respond(404,null,'Không tìm thấy',false);
-        respond(200,null,'Đã xóa thành công');
+        if(!$stmt->rowCount()) respond(404,null,'Không tìm thấy hoặc không có quyền',false);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'activity', $id);
+        respond(200,null,'Đã xóa hoạt động');
     }
 }

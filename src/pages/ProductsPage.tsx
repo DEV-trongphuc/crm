@@ -42,14 +42,26 @@ export const ProductsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
 
   const fetchProducts = () => {
-    setLoading(true);
-    if (DEV_MODE) { 
-      const all = useMockStore.getState().products;
-      setProducts(all.slice((page - 1) * 20, page * 20)); 
-      setTotal(all.length);
-      setLoading(false); 
-      return; 
+    if (DEV_MODE) {
+      const state = useMockStore.getState();
+      let list = [...state.products];
+      
+      if (debouncedSearch) {
+        const s = debouncedSearch.toLowerCase();
+        list = list.filter(p => p.name.toLowerCase().includes(s) || p.sku?.toLowerCase().includes(s));
+      }
+      
+      if (categoryFilter) {
+        list = list.filter(p => String(p.category_id) === String(categoryFilter));
+      }
+      
+      setProducts(list);
+      setTotal(list.length);
+      setLoading(false);
+      return;
     }
+
+    setLoading(true);
     const params = {
       page,
       limit: 20,
@@ -102,21 +114,6 @@ export const ProductsPage: React.FC = () => {
       stock_quantity: Number(form.stock_quantity)
     };
     try {
-      if (DEV_MODE) {
-        if (editItem) {
-          useMockStore.setState(state => ({
-            products: state.products.map(p => p.id === editItem.id ? { ...editItem, ...payload } : p)
-          }));
-          addToast('Đã cập nhật sản phẩm', 'success');
-        } else {
-          useMockStore.getState().addProduct(payload);
-          addToast('Đã thêm sản phẩm mới', 'success');
-        }
-        fetchProducts();
-        setShowModal(false);
-        setSaving(false);
-        return;
-      }
 
       if (editItem) {
         await api.put(`/products/${editItem.id}`, payload);

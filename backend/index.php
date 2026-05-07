@@ -59,23 +59,42 @@ function requireRole(array $payload, array $roles): void {
     }
 }
 
-function logActivity(PDO $db, int $tid, int $uid, string $type, string $subject, string $body = null, string $relType = null, int $relId = null): void {
-    // Redirecting automatic system activities to audit_logs instead of the activities table
-    // to prevent cluttering the "Hoạt động & Lịch" UI as per user request.
+function logActivity(PDO $db, int $tid, int $uid, string $action, ?string $resource = null, ?int $resourceId = null, ?string $data = null): void {
+    // Audit logging (Internal/System only)
     $stmt = $db->prepare("
         INSERT INTO audit_logs (tenant_id, user_id, action, resource, resource_id, new_data, ip_address, user_agent)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
-        $tid, 
-        $uid, 
-        $subject, 
-        $relType ?? 'system', 
-        $relId, 
-        $body, 
-        $_SERVER['REMOTE_ADDR'] ?? null, 
-        $_SERVER['HTTP_USER_AGENT'] ?? null
+        $tid, $uid, $action, $resource ?? 'system', $resourceId, $data, 
+        $_SERVER['REMOTE_ADDR'] ?? null, $_SERVER['HTTP_USER_AGENT'] ?? null
     ]);
+}
+
+function logInteraction(PDO $db, int $tid, int $uid, string $type, string $subject, ?string $body = null, ?string $relType = null, ?int $relId = null): void {
+    // Timeline logging (Visible to users in Interaction History)
+    $cid = ($relType === 'contact') ? $relId : null;
+    
+    // If it's a deal/invoice/etc, try to find the contact_id if cid is not set
+    if (!$cid && $relType && $relId) {
+        $table = '';
+        if ($relType === 'deal') $table = 'deals';
+        elseif ($relType === 'invoice') $table = 'invoices';
+        elseif ($relType === 'quote') $table = 'quotes';
+        elseif ($relType === 'ticket') $table = 'tickets';
+        
+        if ($table) {
+            $s = $db->prepare("SELECT contact_id FROM $table WHERE id = ?");
+            $s->execute([$relId]);
+            $cid = $s->fetchColumn() ?: null;
+        }
+    }
+
+    $stmt = $db->prepare("
+        INSERT INTO activities (tenant_id, user_id, contact_id, type, subject, description, status, priority, due_date, done_at, related_type, related_id)
+        VALUES (?, ?, ?, ?, ?, ?, 'done', 'medium', NOW(), NOW(), ?, ?)
+    ");
+    $stmt->execute([$tid, $uid, $cid, $type, $subject, $body, $relType, $relId]);
 }
 
 /**
@@ -391,7 +410,9 @@ switch ($resource) {
     case 'tickets':
         $auth = requireAuth();
         $ctrl = new TicketController($db);
-        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        if ($subResource === 'comments' && $method === 'GET') $ctrl->getComments($auth, (int)$resourceId);
+        elseif ($subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
+        elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);

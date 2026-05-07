@@ -41,6 +41,41 @@ export const ReportsPage: React.FC = () => {
   const [activityData, setActivityData] = useState<any>(null);
 
   const fetchSales = async () => {
+    if (DEV_MODE) {
+      setLoading(true);
+      const state = useMockStore.getState();
+      const wonValue = state.contacts.filter(c => state.pipeline_stages.find(s => s.id === c.stage_id)?.is_won)
+        .reduce((sum, c) => sum + (Number(c.expected_revenue) || 0), 0);
+      
+      setSalesData({
+        summary: {
+          total_revenue: wonValue,
+          revenue_change: '+12.4%',
+          deals: 45,
+          deals_change: '+5.2%',
+          contacts: state.contacts.length,
+          contacts_change: '+8.1%',
+          win_rate: 68,
+          win_rate_change: '+2.5%'
+        },
+        by_month: [
+          { month: 'T08', revenue: wonValue * 0.7, target: wonValue * 0.8 },
+          { month: 'T09', revenue: wonValue * 0.85, target: wonValue * 0.8 },
+          { month: 'T10', revenue: wonValue * 0.9, target: wonValue * 1.0 },
+          { month: 'T11', revenue: wonValue * 1.1, target: wonValue * 1.0 },
+          { month: 'T12', revenue: wonValue, target: wonValue * 1.1 }
+        ],
+        by_owner: state.users.slice(0, 4).map((u, i) => ({
+          id: u.id,
+          name: u.full_name,
+          deals: 12 - i,
+          revenue: wonValue * (0.4 - i * 0.1)
+        }))
+      });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const r = await api.get('/reports/sales', { params: { from: dateRange.from, to: dateRange.to } });
@@ -53,6 +88,19 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchPipeline = async () => {
+    if (DEV_MODE) {
+      setLoading(true);
+      const state = useMockStore.getState();
+      setPipelineData(state.pipeline_stages.map(s => ({
+        stage: s.name,
+        count: state.contacts.filter(c => c.stage_id === s.id).length,
+        total_value: state.contacts.filter(c => c.stage_id === s.id).reduce((sum, c) => sum + (Number(c.expected_revenue) || 0), 0),
+        color: s.color
+      })));
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const r = await api.get('/reports/pipeline', { params: { from: dateRange.from, to: dateRange.to } });
@@ -63,6 +111,27 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchActivities = async () => {
+    if (DEV_MODE) {
+      setLoading(true);
+      const state = useMockStore.getState();
+      const types = ['call', 'email', 'meeting', 'task', 'note'];
+      setActivityData({
+        by_type: types.map(t => ({
+          type: t,
+          total: state.activities.filter(a => a.type === t).length
+        })),
+        by_user_type: state.users.slice(0, 3).flatMap(u => 
+          types.map(t => ({
+            user_name: u.full_name,
+            type: t,
+            total: Math.floor(Math.random() * 10) + 2
+          }))
+        )
+      });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const r = await api.get('/reports/activities', { params: { from: dateRange.from, to: dateRange.to } });
@@ -73,6 +142,34 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchCustomers = async () => {
+    if (DEV_MODE) {
+      setLoading(true);
+      const state = useMockStore.getState();
+      setCustomerData({
+        by_source: [
+          { source: 'Facebook', count: 45 },
+          { source: 'Website', count: 32 },
+          { source: 'Referral', count: 18 },
+          { source: 'Other', count: 5 }
+        ],
+        trend: [
+          { date: '01/01', count: 5 },
+          { date: '05/01', count: 12 },
+          { date: '10/01', count: 8 },
+          { date: '15/01', count: 15 }
+        ],
+        by_score: [
+          { bucket: '0-20', count: 10 },
+          { bucket: '21-40', count: 25 },
+          { bucket: '41-60', count: 45 },
+          { bucket: '61-80', count: 30 },
+          { bucket: '81-100', count: 15 }
+        ]
+      });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const r = await api.get('/reports/customers', { params: { from: dateRange.from, to: dateRange.to } });
@@ -83,6 +180,32 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchCompanies = async () => {
+    if (DEV_MODE) {
+      setLoading(true);
+      const state = useMockStore.getState();
+      setCompanyData({
+        by_industry: [
+          { industry: 'Công nghệ', count: 25 },
+          { industry: 'Sản xuất', count: 18 },
+          { industry: 'Dịch vụ', count: 15 },
+          { industry: 'Bán lẻ', count: 12 }
+        ],
+        by_size: [
+          { size: 'Nhỏ (1-10)', count: 35 },
+          { size: 'Vừa (11-50)', count: 20 },
+          { size: 'Lớn (>50)', count: 15 }
+        ],
+        by_city: [
+          { city: 'Hà Nội', count: 30 },
+          { city: 'TP. HCM', count: 45 },
+          { city: 'Đà Nẵng', count: 12 },
+          { city: 'Hải Phòng', count: 8 }
+        ]
+      });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const r = await api.get('/reports/companies');
@@ -93,6 +216,28 @@ export const ReportsPage: React.FC = () => {
   };
 
   const fetchExpenses = async () => {
+    if (DEV_MODE) {
+      setLoading(true);
+      const state = useMockStore.getState();
+      const totalExp = state.expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      setExpenseData({
+        by_category: [
+          { category: 'Marketing', total: totalExp * 0.4 },
+          { category: 'Vận hành', total: totalExp * 0.3 },
+          { category: 'Nhân sự', total: totalExp * 0.2 },
+          { category: 'Khác', total: totalExp * 0.1 }
+        ],
+        trend: [
+          { date: '01/01', total: totalExp * 0.1 },
+          { date: '05/01', total: totalExp * 0.2 },
+          { date: '10/01', total: totalExp * 0.15 },
+          { date: '15/01', total: totalExp * 0.25 }
+        ]
+      });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const r = await api.get('/reports/expenses', { params: { from: dateRange.from, to: dateRange.to } });

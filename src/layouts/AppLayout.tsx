@@ -9,6 +9,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
+import { DEV_MODE } from '../config/env';
 import { AlertToast } from '../components/ui/AlertToast';
 import { POSModal } from '../components/ui/POSModal';
 import { NotificationsDropdown } from '../components/ui/NotificationsDropdown';
@@ -38,8 +39,18 @@ const NAV_ITEMS = [
   { to: '/reports', icon: BarChart3, label: 'Báo cáo' },
 ];
 
+const MOCK_ADMIN = {
+  id: 1,
+  full_name: 'Phúc Trọng (Demo)',
+  email: 'admin@minth.io',
+  role: 'admin',
+  tenant_name: 'Minth Corp',
+  avatar_url: null
+};
+
 export const AppLayout: React.FC = () => {
-  const { user, clearAuth } = useAuthStore();
+  const { user: realUser, clearAuth } = useAuthStore();
+  const user = DEV_MODE ? (realUser || MOCK_ADMIN) : realUser;
   const { addToast, showPOS, setShowPOS } = useUIStore();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(true);

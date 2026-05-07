@@ -94,15 +94,34 @@ export const ContactsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
 
   const fetchData = async () => {
-    setLoading(true);
     if (DEV_MODE) {
-      const all = useMockStore.getState().contacts.map(c => ({ ...c, score: calcScore(c) }));
-      setContacts(all.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE));
-      setTotal(all.length);
+      const state = useMockStore.getState();
+      let list = [...state.contacts];
+      
+      // Basic search
+      if (debouncedSearch) {
+        const s = debouncedSearch.toLowerCase();
+        list = list.filter(c => 
+          (c.first_name + ' ' + c.last_name).toLowerCase().includes(s) || 
+          c.email?.toLowerCase().includes(s) || 
+          c.phone?.includes(s)
+        );
+      }
+
+      // Segment filtering
+      if (segment !== 'all') {
+        if (segment === 'hot') list = list.filter(c => (c.lead_score || calcScore(c)) >= 80);
+        else if (segment === 'customer') list = list.filter(c => c.status === 'customer');
+        else if (segment === 'has_deal') list = list.filter(c => (c.open_deal_value || 0) > 0);
+      }
+
+      setContacts(list.map(c => ({ ...c, score: c.lead_score || calcScore(c) })));
+      setTotal(list.length);
       setLoading(false);
       return;
     }
 
+    setLoading(true);
     try {
       const params: any = { 
         page, 
@@ -200,24 +219,6 @@ export const ContactsPage: React.FC = () => {
 
     setCreating(true);
     try {
-      if (DEV_MODE) {
-        const newContact = { 
-          id: Date.now(), 
-          ...createForm, 
-          status: 'lead', 
-          source: 'website', 
-          last_contact: new Date().toISOString().split('T')[0], 
-          open_deal_value: 0, 
-          owner_name: 'Quản trị viên' 
-        };
-        useMockStore.getState().addContact(newContact);
-        setContacts([...useMockStore.getState().contacts]);
-        setShowCreateModal(false);
-        setCreateForm({ first_name: '', last_name: '', email: '', phone: '', company_name: '', job_title: '', status: 'lead', source: 'other', owner_id: '', city: '', ward: '', address: '' });
-        addToast('Đã thêm liên hệ thành công', 'success');
-        return;
-      }
-      
       const r = await api.post('/contacts', createForm);
       const newContact = r.data.data;
       setContacts(prev => [newContact, ...prev]);

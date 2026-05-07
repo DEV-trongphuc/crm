@@ -71,6 +71,7 @@ class ProductController {
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
             $id = (int)$this->db->lastInsertId();
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'Tạo sản phẩm mới', 'product', $id, $b['name']);
             $this->show($auth, $id);
         } catch (PDOException $e) {
             respond(500, null, 'Lỗi cơ sở dữ liệu: ' . $e->getMessage(), false);
@@ -108,6 +109,7 @@ class ProductController {
     }
     public function destroy(array $auth,int $id): void {
         $this->db->prepare("UPDATE products SET deleted_at=NOW() WHERE id=? AND tenant_id=?")->execute([$id,$auth['tenant_id']]);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'Xóa sản phẩm', 'product', $id);
         respond(200,null,'Đã xóa sản phẩm (vào thùng rác)');
     }
 

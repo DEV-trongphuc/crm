@@ -91,18 +91,30 @@ export const ExpensesPage: React.FC = () => {
   const [summary, setSummary] = useState({ total: 0, approved: 0 });
 
   const fetchExpenses = useCallback(async () => {
-    setLoading(true);
     if (DEV_MODE) {
-      const { expenses } = useMockStore.getState();
-      setItems(expenses);
-      setTotal(expenses.length);
-      setSummary({ 
-        total: expenses.reduce((s, e) => s + Number(e.amount), 0),
-        approved: expenses.filter(e => e.status === 'approved').reduce((s, e) => s + Number(e.amount), 0)
+      const state = useMockStore.getState();
+      let list = [...state.expenses];
+      
+      if (search) {
+        const s = search.toLowerCase();
+        list = list.filter(e => e.title.toLowerCase().includes(s) || e.notes?.toLowerCase().includes(s));
+      }
+      
+      if (catFilter) list = list.filter(e => e.category === catFilter);
+      if (statusFilter) list = list.filter(e => e.status === statusFilter);
+      
+      setItems(list);
+      setTotal(list.length);
+      // Mock summary
+      setSummary({
+        total: list.reduce((acc, e) => acc + Number(e.amount), 0),
+        approved: list.filter(e => e.status === 'approved').reduce((acc, e) => acc + Number(e.amount), 0)
       });
       setLoading(false);
       return;
     }
+
+    setLoading(true);
     try {
       const params: any = { 
         page, 
@@ -139,20 +151,12 @@ export const ExpensesPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (DEV_MODE) {
-      setUsers(useMockStore.getState().users);
-      // Mock contacts if needed
-      return;
-    }
     api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => {});
     api.get('/contacts').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => {});
     api.get('/suppliers').then(r => setSuppliers(r.data.data?.items || r.data.data || [])).catch(() => {});
   }, []);
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
-
-  // Client-side filter + paginate
-  // Client-side items match server-paginated data
 
   // KPIs from server-side summary
   const totalAmt = Number(summary.total);
@@ -193,30 +197,6 @@ export const ExpensesPage: React.FC = () => {
     if (form.approver_id === null) { addToast('Vui lòng chọn người duyệt', 'error'); return; }
     setSaving(true);
     try {
-      if (DEV_MODE) {
-        if (editItem) {
-          const updated = { ...editItem, ...form, amount: Number(form.amount) };
-          useMockStore.setState((state) => ({
-            expenses: state.expenses.map(e => e.id === editItem.id ? updated : e)
-          }));
-        } else {
-          const newExp = { 
-            id: Date.now(), 
-            ...form, 
-            amount: Number(form.amount), 
-            date: new Date().toISOString().split('T')[0], 
-            creator_name: 'Quản trị viên', 
-            status: 'pending' 
-          };
-          useMockStore.getState().addExpense(newExp);
-        }
-        setShowModal(false);
-        fetchExpenses();
-        setSaving(false);
-        addToast(editItem ? 'Đã cập nhật chi phí' : 'Đã nhập chi phí mới – chờ phê duyệt', 'success');
-        return;
-      }
-
       let payloadEntities = form.entities;
       if (form.entities.length > 0) {
         const splitAmt = Number(form.amount) / form.entities.length;
@@ -804,11 +784,7 @@ export const ExpensesPage: React.FC = () => {
                 {viewItem.status === 'pending' && (
                   <button className="btn success" style={{ flex: 1, background: 'var(--color-success)', color: 'white', border: 'none' }} onClick={async () => {
                     try {
-                      if (DEV_MODE) {
-                        useMockStore.setState(s => ({ expenses: s.expenses.map(e => e.id === viewItem.id ? {...e, status: 'approved'} : e) }));
-                      } else {
-                        await api.patch(`/expenses/${viewItem.id}`, { status: 'approved' });
-                      }
+                      await api.patch(`/expenses/${viewItem.id}`, { status: 'approved' });
                       setItems(prev => prev.map(e => e.id === viewItem.id ? {...e, status: 'approved'} : e));
                       addToast('Đã phê duyệt chi phí', 'success');
                       setViewItem(null);

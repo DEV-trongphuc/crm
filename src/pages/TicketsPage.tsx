@@ -56,12 +56,27 @@ export const TicketsPage: React.FC = () => {
   const [total, setTotal] = useState(0);
 
   const fetchTickets = async () => {
-    setLoading(true);
     if (DEV_MODE) {
-      setTickets(MOCK_TICKETS);
+      const state = useMockStore.getState();
+      let list = [...state.tickets];
+      
+      if (debouncedSearch) {
+        const s = debouncedSearch.toLowerCase();
+        list = list.filter(t => t.subject.toLowerCase().includes(s) || t.customer_name?.toLowerCase().includes(s) || String(t.id).includes(s));
+      }
+      
+      if (filterStatus !== 'all') {
+        list = list.filter(t => t.status === filterStatus);
+      }
+      
+      setTickets(list);
+      setTotal(list.length);
       setLoading(false);
       return;
     }
+
+    setLoading(true);
+    // Always fetch from API
     try {
       const r = await api.get('/tickets', { 
         params: { 
