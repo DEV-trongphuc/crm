@@ -380,8 +380,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       setNewNote('');
       fetchData(); // Reload all to stay in sync
       addToast('Đã lưu ghi chú', 'success');
-    } catch {
-      addToast('Lỗi khi lưu ghi chú', 'error');
+    } catch (err: any) {
+      addToast(err.response?.data?.message || 'Lỗi khi lưu ghi chú', 'error');
     }
   };
 
@@ -1746,8 +1746,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
             addToast('Đã ghi nhận cuộc gọi và thêm vào Timeline', 'success');
             fetchData();
-          } catch (err) {
-            addToast('Lỗi khi lưu nhật ký cuộc gọi', 'error');
+          } catch (err: any) {
+            addToast(err.response?.data?.message || 'Lỗi khi lưu nhật ký cuộc gọi', 'error');
           }
         }}
       />

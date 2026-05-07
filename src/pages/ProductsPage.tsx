@@ -185,8 +185,8 @@ export const ProductsPage: React.FC = () => {
                   addToast(`Đã xóa ${selectedIds.length} sản phẩm`, 'success');
                   setSelectedIds([]);
                   fetchProducts();
-                } catch { 
-                  addToast('Lỗi khi xóa hàng loạt (Demo Mode)', 'error'); 
+                } catch (err: any) { 
+                  addToast(err.response?.data?.message || 'Lỗi khi xóa hàng loạt', 'error'); 
                   setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
                   setSelectedIds([]);
                 }

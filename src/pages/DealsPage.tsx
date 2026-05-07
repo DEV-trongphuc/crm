@@ -186,8 +186,8 @@ export const DealsPage: React.FC = () => {
       addToast(`Đã chuyển ${selected.size} thẻ sang giai đoạn mới`, 'success');
       setSelected(new Set());
       setShowBulkMove(false);
-    } catch {
-      addToast('Lỗi khi chuyển giai đoạn', 'error');
+    } catch (err: any) {
+      addToast(err.response?.data?.message || 'Lỗi khi chuyển giai đoạn', 'error');
     }
   };
 
@@ -340,7 +340,7 @@ export const DealsPage: React.FC = () => {
       } else {
         addToast('Đã chuyển trạng thái & lưu Audit Log', 'success');
       }
-    } catch { addToast('Lỗi khi di chuyển thẻ', 'error'); }
+    } catch (err: any) { addToast(err.response?.data?.message || 'Lỗi khi di chuyển thẻ', 'error'); }
     
     setTransitionModal(null);
   };

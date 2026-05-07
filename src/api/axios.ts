@@ -99,7 +99,13 @@ api.interceptors.request.use((config) => {
   if (DEV_MODE && config.method && ['post', 'put', 'delete', 'patch'].includes(config.method.toLowerCase())) {
     console.warn(`DEV_MODE ACTIVE: Blocking ${config.method.toUpperCase()} request to ${config.url}`);
     return Promise.reject({ 
-      message: 'Hệ thống đang ở chế độ DEMO. Không thể thực hiện thay đổi dữ liệu.',
+      message: 'Không thể thực hiện khi đang ở DEMO MODE',
+      response: {
+        data: {
+          success: false,
+          message: 'Không thể thực hiện khi đang ở DEMO MODE'
+        }
+      },
       isMockBlock: true 
     });
   }
