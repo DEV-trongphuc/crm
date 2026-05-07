@@ -75,9 +75,13 @@ export const DashboardPage: React.FC = () => {
       });
 
       setRevenueChart([
-        { month: 'T10', revenue: wonValue * 0.7, cost: expenses * 0.8 },
-        { month: 'T11', revenue: wonValue * 0.8, cost: expenses * 0.9 },
-        { month: 'T12', revenue: wonValue * 0.9, cost: expenses * 0.85 },
+        { month: 'T06', revenue: wonValue * 0.45, cost: expenses * 0.5 },
+        { month: 'T07', revenue: wonValue * 0.55, cost: expenses * 0.6 },
+        { month: 'T08', revenue: wonValue * 0.5, cost: expenses * 0.55 },
+        { month: 'T09', revenue: wonValue * 0.65, cost: expenses * 0.7 },
+        { month: 'T10', revenue: wonValue * 0.75, cost: expenses * 0.8 },
+        { month: 'T11', revenue: wonValue * 0.85, cost: expenses * 0.9 },
+        { month: 'T12', revenue: wonValue * 0.95, cost: expenses * 0.85 },
         { month: 'T01', revenue: wonValue, cost: expenses }
       ]);
 
