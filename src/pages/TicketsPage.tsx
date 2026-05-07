@@ -356,13 +356,27 @@ export const TicketsPage: React.FC = () => {
                   
                   <div className="form-group">
                     <label className="form-label">Khách hàng liên quan (Tag)</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem', marginBottom: '0.75rem' }}>
                       {createForm.related_contacts.map(cid => {
                         const c = contacts.find(x => String(x.id) === cid);
                         return (
-                          <div key={cid} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', background: 'var(--color-bg-subtle)', borderRadius: '4px', fontSize: '0.75rem' }}>
+                          <div key={cid} style={{ 
+                            display: 'flex', alignItems: 'center', gap: '8px', 
+                            padding: '4px 10px', paddingRight: '6px',
+                            background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+                            borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600,
+                            boxShadow: 'var(--shadow-xs)'
+                          }}>
+                            <Avatar src={c?.avatar_url} name={c ? `${c.first_name} ${c.last_name || ''}` : cid} size={20} />
                             <span>{c ? `${c.first_name} ${c.last_name || ''}` : cid}</span>
-                            <X size={12} style={{ cursor: 'pointer' }} onClick={() => setCreateForm({...createForm, related_contacts: createForm.related_contacts.filter(id => id !== cid)})} />
+                            <button 
+                              onClick={() => setCreateForm({...createForm, related_contacts: createForm.related_contacts.filter(id => id !== cid)})}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '4px', color: 'var(--color-text-muted)' }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.05)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <X size={14} />
+                            </button>
                           </div>
                         );
                       })}
@@ -383,13 +397,27 @@ export const TicketsPage: React.FC = () => {
 
                   <div className="form-group">
                     <label className="form-label">Nhân viên liên quan (Tag)</label>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.625rem', marginBottom: '0.75rem' }}>
                       {createForm.related_users.map(uid => {
                         const u = users.find(x => String(x.id) === uid);
                         return (
-                          <div key={uid} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.25rem 0.5rem', background: 'var(--color-bg-subtle)', borderRadius: '4px', fontSize: '0.75rem' }}>
+                          <div key={uid} style={{ 
+                            display: 'flex', alignItems: 'center', gap: '8px', 
+                            padding: '4px 10px', paddingRight: '6px',
+                            background: 'rgba(124, 58, 237, 0.05)', border: '1px solid rgba(124, 58, 237, 0.15)',
+                            borderRadius: '10px', fontSize: '0.8125rem', fontWeight: 600,
+                            color: 'var(--color-primary)'
+                          }}>
+                            <Avatar src={u?.avatar_url} name={u?.full_name || uid} size={20} />
                             <span>{u?.full_name || uid}</span>
-                            <X size={12} style={{ cursor: 'pointer' }} onClick={() => setCreateForm({...createForm, related_users: createForm.related_users.filter(id => id !== uid)})} />
+                            <button 
+                              onClick={() => setCreateForm({...createForm, related_users: createForm.related_users.filter(id => id !== uid)})}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', borderRadius: '4px', color: 'var(--color-primary)' }}
+                              onMouseEnter={e => e.currentTarget.style.background = 'rgba(124, 58, 237, 0.1)'}
+                              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                            >
+                              <X size={14} />
+                            </button>
                           </div>
                         );
                       })}

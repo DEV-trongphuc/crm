@@ -201,7 +201,9 @@ export const DealsPage: React.FC = () => {
   const fetchStages = async () => {
     try {
       const r = await api.get('/pipeline-stages');
-      setStages(r.data.data || []);
+      const stagesData = r.data.data || [];
+      const sorted = [...stagesData].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      setStages(sorted);
     } catch {
       setStages([]);
     }
@@ -819,6 +821,7 @@ export const DealsPage: React.FC = () => {
                   placeholder="Ghi chú bắt buộc lý do chuyển..."
                   value={transitionModal.note}
                   onChange={e => setTransitionModal({ ...transitionModal, note: e.target.value })}
+                  style={{ minHeight: '120px', padding: '12px 16px', lineHeight: 1.5, resize: 'vertical' }}
                   autoFocus
                 />
               </div>

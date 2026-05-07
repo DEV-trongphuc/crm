@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -249,7 +249,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         .then(r => {
           const stages = r.data.data || [];
           if (stages.length > 0) {
-            setPipelineStages(stages.map((s: any) => ({ id: s.id, name: s.name, color: s.color || '#6366f1', order_index: s.order_index })));
+            const sorted = [...stages].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+            setPipelineStages(sorted.map((s: any) => ({ id: s.id, name: s.name, color: s.color || '#6366f1', order_index: s.order_index })));
           }
         })
         .catch(() => { });
@@ -710,56 +711,59 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </div>
 
               {/* ── Pipeline Stepper Bar ── */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'white', borderBottom: '1px solid var(--color-border-light)' }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'white', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
                 <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '1rem', zIndex: 10, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
                   <ChevronLeft size={16} />
                 </button>
-                <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: '1.25rem 3.5rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                  <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
-                  {pipelineStages.map((st, i) => {
-                    // contacts.status is always an enum string (lead/qualified/customer/churned)
-                    // Map the current status to an index position in pipelineStages by order
-                    const STATUS_ORDER: Record<string, number> = { lead: 0, qualified: 1, customer: 2, churned: 3 };
-                    const currentStatus = formData.status || 'lead';
-                    const currentIndex = STATUS_ORDER[currentStatus] ?? 0;
-                    const isActive = i <= currentIndex;
-                    const isCurrent = i === currentIndex;
-                    const stColor = st.color || '#6366f1';
-                    return (
-                      <div
-                        key={st.id}
-                        onClick={() => {
-                          if (isCurrent) return;
-                          setPipelineModal({ isOpen: true, targetId: String(st.id), targetLabel: st.name, note: '' });
-                        }}
-                        style={{
-                          flex: '0 0 auto', width: 'calc(25% - 9px)', position: 'relative', height: '40px', cursor: isCurrent ? 'default' : 'pointer',
-                          display: 'flex', alignItems: 'center', transition: 'all 0.3s'
-                        }}
-                      >
-                        {/* Connection Line */}
-                        {i < pipelineStages.length - 1 && (
-                          <div style={{ position: 'absolute', top: '50%', left: '50%', right: '-50%', height: '3px', background: i < currentIndex ? stColor : '#e2e8f0', transform: 'translateY(-50%)', zIndex: 1, borderRadius: '4px' }} />
-                        )}
 
-                        <div style={{
-                          position: 'relative', zIndex: 2, flex: 1,
-                          background: isCurrent ? stColor : 'white',
-                          color: isCurrent ? '#fff' : (isActive ? stColor : '#94a3b8'),
-                          border: `2px solid ${isActive ? stColor : '#f1f5f9'}`,
-                          padding: '6px 12px', borderRadius: '12px', fontSize: '0.8125rem', fontWeight: 800,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-                          whiteSpace: 'nowrap',
-                          boxShadow: isCurrent ? `0 4px 12px ${stColor}40` : 'none',
-                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}>
-                          {isActive && <UserCheck size={14} />}
-                          {st.name}
+                <div id="pipeline-scroll-container" className="no-scrollbar" style={{ display: 'flex', padding: '1.25rem 3.5rem', gap: '12px', overflowX: 'auto', flex: 1, scrollBehavior: 'smooth', scrollbarWidth: 'none', msOverflowStyle: 'none', position: 'relative' }}>
+                  <style dangerouslySetInnerHTML={{ __html: `#pipeline-scroll-container::-webkit-scrollbar { display: none; }` }} />
+                  {(() => {
+                    const currentIdx = pipelineStages.findIndex(s => String(s.id) === String(formData.stage_id || formData.status));
+                    const safeIndex = currentIdx === -1 ? 0 : currentIdx;
+
+                    return pipelineStages.map((st, i) => {
+                      const isActive = i <= safeIndex;
+                      const isCurrent = i === safeIndex;
+                      const stColor = st.color || '#6366f1';
+                      return (
+                        <div
+                          key={st.id}
+                          onClick={() => {
+                            if (isCurrent) return;
+                            setPipelineModal({ isOpen: true, targetId: String(st.id), targetLabel: st.name, note: '' });
+                          }}
+                          style={{
+                            flex: '0 0 auto', width: 'calc(25% - 9px)', position: 'relative', height: '40px', cursor: isCurrent ? 'default' : 'pointer',
+                            display: 'flex', alignItems: 'center', transition: 'all 0.3s'
+                          }}
+                        >
+                          {/* Connection Line */}
+                          {i < pipelineStages.length - 1 && (
+                            <div style={{ position: 'absolute', top: '50%', left: '50%', right: '-50%', height: '3px', background: i < safeIndex ? stColor : '#e2e8f0', transform: 'translateY(-50%)', zIndex: 1, borderRadius: '4px' }} />
+                          )}
+
+                          <div style={{
+                            position: 'relative', zIndex: 2, flex: 1,
+                            background: isCurrent ? stColor : 'white',
+                            color: isCurrent ? '#fff' : (isActive ? stColor : '#94a3b8'),
+                            border: `2px solid ${isActive ? stColor : '#f1f5f9'}`,
+                            padding: '6px 12px', borderRadius: '12px', fontSize: '0.8125rem', fontWeight: 800,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                            whiteSpace: 'nowrap',
+                            boxShadow: isCurrent ? `0 4px 12px ${stColor}40` : 'none',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}>
+                            {isActive && !isCurrent && <Check size={14} />}
+                            {isCurrent && <UserCheck size={14} />}
+                            {st.name}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    });
+                  })()}
                 </div>
+
                 <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '1rem', zIndex: 10, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
                   <ChevronRight size={16} />
                 </button>
@@ -1278,7 +1282,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           value={newNote || ''}
                           onChange={e => setNewNote(e.target.value)}
                           placeholder="Nhập nội dung ghi chú về khách hàng này (Sử dụng @ để tag user/sale)..."
-                          style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', resize: 'vertical', minHeight: 100, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)', marginBottom: '1rem' }}
+                          style={{ width: '100%', padding: '12px 16px', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', lineHeight: 1.6, resize: 'vertical', minHeight: 140, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)', marginBottom: '1rem' }}
                           onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
                           onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                         />
@@ -1715,7 +1719,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   placeholder="Ghi chú bắt buộc lý do hoặc tóm tắt trước khi chuyển bước..."
                   value={pipelineModal.note || ''}
                   onChange={e => setPipelineModal({ ...pipelineModal, note: e.target.value })}
-                  style={{ minHeight: '80px', resize: 'vertical' }}
+                  style={{ minHeight: '120px', padding: '12px 16px', lineHeight: 1.5, resize: 'vertical' }}
                   autoFocus
                 />
               </div>

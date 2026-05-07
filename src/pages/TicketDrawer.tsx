@@ -40,11 +40,8 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
   useEffect(() => {
     if (ticket) {
       setFormData(ticket);
-      // Mock comments
-      setComments([
-        { id: 1, user: 'Hệ thống', text: 'Ticket được tạo từ form', time: ticket.created_at },
-        { id: 3, user: 'Admin Support', text: 'Đã tiếp nhận yêu cầu, đang kiểm tra kỹ thuật.', time: new Date(Date.now() - 3600000).toISOString() }
-      ]);
+      // Initialize with ticket description or empty, actual comments should come from API
+      setComments(ticket.activities || []);
     }
   }, [ticket]);
 
