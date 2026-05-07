@@ -9,6 +9,7 @@ class ReportController
 
     public function sales(array $auth): void
     {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xem báo cáo', false);
         $tid = $auth['tenant_id'];
         $from = $_GET['from'] ?? date('Y-m-d', strtotime('-11 months'));
         $to = $_GET['to'] ?? date('Y-m-d');
@@ -65,13 +66,15 @@ class ReportController
             ];
         }
 
-        // Performance by Owner
+        // Performance by Owner: Split between Won Revenue and Pipeline Value
         $stmt2 = $this->db->prepare("
-            SELECT u.full_name as name, 
+            SELECT u.id, u.full_name as name, 
                    COUNT(d.id) as deals, 
-                   COALESCE(SUM(d.value),0) as revenue
+                   COALESCE(SUM(CASE WHEN ps.is_won = 1 THEN d.value ELSE 0 END), 0) as revenue,
+                   COALESCE(SUM(CASE WHEN ps.is_won = 0 AND ps.is_lost = 0 THEN d.value ELSE 0 END), 0) as pipeline_value
             FROM users u
             LEFT JOIN deals d ON u.id = d.owner_id AND d.tenant_id = u.tenant_id AND d.deleted_at IS NULL
+            LEFT JOIN pipeline_stages ps ON d.stage_id = ps.id
             WHERE u.tenant_id = ? ".($auth['role'] === 'sale' ? " AND u.id=?" : "")."
             GROUP BY u.id
             ORDER BY revenue DESC
@@ -137,6 +140,7 @@ class ReportController
 
     public function pipeline(array $auth): void
     {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xem báo cáo', false);
         $tid = $auth['tenant_id'];
         $from = ($_GET['from'] ?? date('Y-m-01')) . ' 00:00:00';
         $to = ($_GET['to'] ?? date('Y-m-t')) . ' 23:59:59';
@@ -342,6 +346,7 @@ class ReportController
 
     public function inventory(array $auth): void
     {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xem báo cáo', false);
         $tid = $auth['tenant_id'];
         
         // 1. Total Inventory Value
@@ -349,15 +354,16 @@ class ReportController
         $stmtVal->execute([$tid]);
         $totalValue = (float)$stmtVal->fetchColumn();
 
-        // 2. Batch Status Counts
+        // 2. Batch Status Counts (Using product-specific min_stock_level)
         $stmtStats = $this->db->prepare("
             SELECT 
                 COUNT(*) as total_batches,
-                SUM(CASE WHEN current_qty <= 0 THEN 1 ELSE 0 END) as out_of_stock,
-                SUM(CASE WHEN current_qty > 0 AND current_qty <= 5 THEN 1 ELSE 0 END) as low_stock,
-                SUM(CASE WHEN expiry_date IS NOT NULL AND expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as expiring_soon
-            FROM batches 
-            WHERE tenant_id = ? AND status = 'active'
+                SUM(CASE WHEN b.current_qty <= 0 THEN 1 ELSE 0 END) as out_of_stock,
+                SUM(CASE WHEN b.current_qty > 0 AND b.current_qty <= p.min_stock_level THEN 1 ELSE 0 END) as low_stock,
+                SUM(CASE WHEN b.expiry_date IS NOT NULL AND b.expiry_date <= DATE_ADD(CURDATE(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as expiring_soon
+            FROM batches b
+            JOIN products p ON b.product_id = p.id
+            WHERE b.tenant_id = ? AND b.status = 'active'
         ");
         $stmtStats->execute([$tid]);
         $batchStats = $stmtStats->fetch();

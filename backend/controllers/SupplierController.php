@@ -39,6 +39,7 @@ class SupplierController {
     }
 
     public function store(array $auth): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền quản lý nhà cung cấp', false);
         $b = getBody();
         if (empty($b['name'])) respond(422, null, 'Tên nhà cung cấp là bắt buộc', false);
 
@@ -65,6 +66,7 @@ class SupplierController {
     }
 
     public function update(array $auth, int $id): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền quản lý nhà cung cấp', false);
         $b = getBody();
         $fields = ['name', 'contact_name', 'email', 'phone', 'address', 'tax_code', 'notes'];
         $sets = []; $params = [];
@@ -83,6 +85,7 @@ class SupplierController {
     }
 
     public function destroy(array $auth, int $id): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền quản lý nhà cung cấp', false);
         $stmt = $this->db->prepare("UPDATE suppliers SET deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $auth['tenant_id']]);
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'Xóa nhà cung cấp', 'supplier', $id);

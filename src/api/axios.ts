@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { DEV_MODE } from '../config/env';
+import { DEV_MODE, API_BASE } from '../config/env';
 import { useMockStore } from '../store/mockStore';
 
 // Auto-detect: local dev uses Vite proxy, production uses real URL
-const BASE_URL = import.meta.env.VITE_API_URL ?? '/backend';
+const BASE_URL = API_BASE;
 
 // Custom Mock Adapter for PURE DEMO MODE
 const mockAdapter = (config: any): Promise<any> => {
@@ -97,17 +97,18 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   // Block mutations in DEV_MODE
   if (DEV_MODE && config.method && ['post', 'put', 'delete', 'patch'].includes(config.method.toLowerCase())) {
-    console.warn(`DEV_MODE ACTIVE: Blocking ${config.method.toUpperCase()} request to ${config.url}`);
-    return Promise.reject({ 
-      message: 'Không thể thực hiện khi đang ở DEMO MODE',
-      response: {
-        data: {
-          success: false,
-          message: 'Không thể thực hiện khi đang ở DEMO MODE'
-        }
-      },
-      isMockBlock: true 
-    });
+    console.warn(`DEV_MODE ACTIVE: Action ${config.method.toUpperCase()} blocked for ${config.url}`);
+    // Create a structured error that components can easily catch and display
+    const mockError = new Error('Tính năng này bị hạn chế ở chế độ DEMO MODE');
+    (mockError as any).response = {
+      status: 403,
+      data: {
+        success: false,
+        message: 'Tính năng này bị hạn chế ở chế độ DEMO MODE (Dữ liệu mẫu không được thay đổi)'
+      }
+    };
+    (mockError as any).isMockBlock = true;
+    return Promise.reject(mockError);
   }
 
   const token = localStorage.getItem('access_token');

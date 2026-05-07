@@ -1,9 +1,15 @@
 <?php
 require_once __DIR__ . '/config.php';          // DB constants + CORS origins
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+if (defined('APP_ENV') && APP_ENV === 'production') {
+    ini_set('display_errors', 0);
+    ini_set('display_startup_errors', 0);
+    error_reporting(0);
+} else {
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+}
 
 // require_once __DIR__ . '/config/Config.php';   // Removed to prevent 'already defined' warnings
 require_once __DIR__ . '/config/Database.php';
@@ -30,10 +36,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 // ── Helper functions ──────────────────────────────────────────
 function respond(int $code, $data = null, string $message = '', bool $success = true): void {
-    http_response_code($code);
+    if (!headers_sent()) {
+        http_response_code($code);
+        header('Content-Type: application/json; charset=UTF-8');
+    }
     echo json_encode(['success' => $success, 'data' => $data, 'message' => $message], JSON_UNESCAPED_UNICODE);
     exit;
 }
+
+// ── Global Exception Handler ──────────────────────────────────
+set_exception_handler(function (Throwable $e) {
+    $msg = (defined('APP_ENV') && APP_ENV === 'production') 
+           ? 'Đã có lỗi hệ thống xảy ra. Vui lòng thử lại sau.' 
+           : $e->getMessage() . " in " . $e->getFile() . " line " . $e->getLine();
+    respond(500, null, $msg, false);
+});
 
 function getBody(): array {
     return json_decode(file_get_contents('php://input'), true) ?? [];
@@ -59,19 +76,23 @@ function requireRole(array $payload, array $roles): void {
     }
 }
 
-function logActivity(PDO $db, int $tid, int $uid, string $action, ?string $resource = null, ?int $resourceId = null, ?string $data = null): void {
-    // Audit logging (Internal/System only)
-    $stmt = $db->prepare("
-        INSERT INTO audit_logs (tenant_id, user_id, action, resource, resource_id, new_data, ip_address, user_agent)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ");
-    $stmt->execute([
-        $tid, $uid, $action, $resource ?? 'system', $resourceId, $data, 
-        $_SERVER['REMOTE_ADDR'] ?? null, $_SERVER['HTTP_USER_AGENT'] ?? null
-    ]);
+function logActivity(PDO $db, $tid, $uid, string $action, ?string $resource = null, $resourceId = null, ?string $data = null): void {
+    try {
+        $stmt = $db->prepare("
+            INSERT INTO audit_logs (tenant_id, user_id, action, resource, resource_id, new_data, ip_address, user_agent)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $tid, $uid, $action, $resource ?? 'system', $resourceId, $data, 
+            $_SERVER['REMOTE_ADDR'] ?? null, $_SERVER['HTTP_USER_AGENT'] ?? null
+        ]);
+    } catch (Throwable $e) {
+        // Fallback to error_log in production, don't crash the app
+        error_log("Audit Log Failure: " . $e->getMessage());
+    }
 }
 
-function logInteraction(PDO $db, int $tid, int $uid, string $type, string $subject, ?string $body = null, ?string $relType = null, ?int $relId = null): void {
+function logInteraction(PDO $db, $tid, $uid, string $type, string $subject, ?string $body = null, ?string $relType = null, $relId = null): void {
     // Timeline logging (Visible to users in Interaction History)
     $cid = ($relType === 'contact') ? $relId : null;
     
@@ -91,7 +112,7 @@ function logInteraction(PDO $db, int $tid, int $uid, string $type, string $subje
     }
 
     $stmt = $db->prepare("
-        INSERT INTO activities (tenant_id, user_id, contact_id, type, subject, description, status, priority, due_date, done_at, related_type, related_id)
+        INSERT INTO activities (tenant_id, user_id, contact_id, type, subject, body, status, priority, due_date, done_at, related_type, related_id)
         VALUES (?, ?, ?, ?, ?, ?, 'done', 'medium', NOW(), NOW(), ?, ?)
     ");
     $stmt->execute([$tid, $uid, $cid, $type, $subject, $body, $relType, $relId]);
@@ -100,7 +121,7 @@ function logInteraction(PDO $db, int $tid, int $uid, string $type, string $subje
 /**
  * Shared Inventory Deduction Logic (FIFO)
  */
-function deductStockFIFO(PDO $db, int $tid, int $uid, int $productId, int $qty, string $invNum): void {
+function deductStockFIFO(PDO $db, $tid, $uid, $productId, $qty, string $invNum): void {
     // 1. Get batches sorted by import date (FIFO)
     $stmtBatches = $db->prepare("
         SELECT id, current_qty 
@@ -133,10 +154,40 @@ function deductStockFIFO(PDO $db, int $tid, int $uid, int $productId, int $qty, 
 
         $remainingToDeduct -= $deductFromThisBatch;
     }
+    
+    if ($remainingToDeduct > 0) {
+        throw new Exception("Không đủ hàng trong kho để thực hiện giao dịch (Thiếu $remainingToDeduct đơn vị)");
+    }
 
     // Update overall product stock
     $db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id=? AND tenant_id=?")
          ->execute([$qty, $productId, $tid]);
+}
+
+/**
+ * Reverses stock deduction for a specific invoice number
+ */
+function returnStock(PDO $db, int $tid, int $uid, string $invNum): void {
+    // 1. Find logs related to this invoice
+    $stmt = $db->prepare("SELECT batch_id, ABS(qty_change) as qty FROM inventory_logs WHERE tenant_id=? AND reason LIKE ? AND action_type='SALE'");
+    $stmt->execute([$tid, "%Hóa đơn #$invNum"]);
+    $logs = $stmt->fetchAll();
+
+    foreach ($logs as $log) {
+        $bid = (int)$log['batch_id'];
+        $qty = (int)$log['qty'];
+
+        // 2. Put stock back into batch
+        $db->prepare("UPDATE batches SET current_qty = current_qty + ? WHERE id=?")->execute([$qty, $bid]);
+
+        // 3. Update overall product stock
+        $db->prepare("UPDATE products p JOIN batches b ON p.id = b.product_id SET p.stock_quantity = p.stock_quantity + ? WHERE b.id = ?")
+             ->execute([$qty, $bid]);
+
+        // 4. Create reversal log
+        $db->prepare("INSERT INTO inventory_logs (tenant_id, batch_id, action_type, qty_change, reason, created_by) VALUES (?, ?, 'ADJUST', ?, ?, ?)")
+             ->execute([$tid, $bid, $qty, "Hoàn kho từ hóa đơn bị xóa #$invNum", $uid]);
+    }
 }
 
 // ── Load controllers ──────────────────────────────────────────
@@ -482,6 +533,8 @@ switch ($resource) {
         break;
 
     case 'system':
+        $auth = requireAuth();
+        requireRole($auth, ['admin', 'super_admin']);
         if ($resourceId === 'patch' && $method === 'POST') {
             $sqlFiles = ['migrate_2026_05_06_v3_files.sql'];
             $results = [];

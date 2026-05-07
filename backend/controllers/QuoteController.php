@@ -84,6 +84,13 @@ class QuoteController {
             if (!$c->fetch()) $b['contact_id'] = null;
         }
 
+        // Verify deal belongs to tenant
+        if (!empty($b['deal_id'])) {
+            $d = $this->db->prepare("SELECT id FROM deals WHERE id=? AND tenant_id=?");
+            $d->execute([(int)$b['deal_id'], $tid]);
+            if (!$d->fetch()) $b['deal_id'] = null;
+        }
+
         // Generate robust quote number
         $qNum = 'QT-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(2)));
         $this->db->prepare("INSERT INTO quotes (tenant_id,deal_id,contact_id,created_by,quote_number,title,status,subtotal,discount,tax,total,valid_until,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
@@ -154,9 +161,15 @@ class QuoteController {
         
         $this->db->beginTransaction();
         try {
-            // 1. Get quote and items
-            $stmt = $this->db->prepare("SELECT * FROM quotes WHERE id=? AND tenant_id=? FOR UPDATE");
-            $stmt->execute([$id, $tid]);
+            // 1. Get quote and items with permission check
+            $sql = "SELECT * FROM quotes WHERE id=? AND tenant_id=?";
+            $p = [$id, $tid];
+            if ($auth['role'] === 'sale') {
+                $sql .= " AND created_by=?";
+                $p[] = $uid;
+            }
+            $stmt = $this->db->prepare($sql . " FOR UPDATE");
+            $stmt->execute($p);
             $q = $stmt->fetch();
             if (!$q) throw new Exception('Không tìm thấy báo giá');
             if ($q['status'] === 'invoiced') throw new Exception('Báo giá này đã được chuyển thành hóa đơn trước đó');
@@ -200,12 +213,9 @@ class QuoteController {
     }
 
     public function destroy(array $auth,int $id): void {
+        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa báo giá', false);
         $sql = "DELETE FROM quotes WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND created_by=?";
-            $p[] = $auth['user_id'];
-        }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);

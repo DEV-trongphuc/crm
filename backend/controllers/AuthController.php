@@ -13,17 +13,41 @@ class AuthController {
 
         if (!$email || !$password) respond(422, null, 'Email và mật khẩu là bắt buộc', false);
 
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        
+        // 1. Brute force check: Limit to 10 failed attempts per 15 mins per IP
+        $stmtLimit = $this->db->prepare("
+            SELECT COUNT(*) FROM login_attempts 
+            WHERE ip_address = ? AND is_successful = 0 AND attempt_time > DATE_SUB(NOW(), INTERVAL 15 MINUTE)
+        ");
+        $stmtLimit->execute([$ip]);
+        if ((int)$stmtLimit->fetchColumn() >= 10) {
+            respond(429, null, 'Bạn đã thử đăng nhập sai quá nhiều lần. Vui lòng quay lại sau 15 phút.', false);
+        }
+
         $stmt = $this->db->prepare(
             'SELECT u.*, t.name as tenant_name, t.slug as tenant_slug, t.logo_url as tenant_logo
              FROM users u JOIN tenants t ON u.tenant_id = t.id
-             WHERE u.email = ? AND u.is_active = 1 LIMIT 1'
+             WHERE u.email = ? AND u.is_active = 1 AND t.is_active = 1 LIMIT 1'
         );
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if (!$user || !password_verify($password, $user['password_hash'])) {
+            // Record failed attempt
+            $this->db->prepare("INSERT INTO login_attempts (ip_address, email, is_successful) VALUES (?, ?, 0)")
+                 ->execute([$ip, $email]);
+            
+            // Log for security audit
+            logActivity($this->db, $user['tenant_id'] ?? null, null, 'LOGIN_FAIL', 'auth', null, "Thất bại: $email từ IP $ip");
+
             respond(401, null, 'Email hoặc mật khẩu không đúng', false);
         }
+
+        // Record successful attempt & Clear old failures for this IP
+        $this->db->prepare("INSERT INTO login_attempts (ip_address, email, is_successful) VALUES (?, ?, 1)")
+             ->execute([$ip, $email]);
+        $this->db->prepare("DELETE FROM login_attempts WHERE ip_address = ? AND attempt_time < NOW()")->execute([$ip]);
 
         // Update last login
         $this->db->prepare('UPDATE users SET last_login_at = NOW() WHERE id = ?')->execute([$user['id']]);
@@ -57,7 +81,7 @@ class AuthController {
         }
 
         // Log activity
-        logActivity($this->db, $user['tenant_id'], $user['id'], 'system', 'Đăng nhập hệ thống', "Người dùng {$user['full_name']} đã đăng nhập thành công từ {$_SERVER['REMOTE_ADDR']}");
+        logActivity($this->db, $user['tenant_id'], $user['id'], 'login', 'auth', $user['id'], "Người dùng {$user['full_name']} đã đăng nhập thành công từ {$_SERVER['REMOTE_ADDR']}");
 
         respond(200, [
             'access_token'  => $accessToken,

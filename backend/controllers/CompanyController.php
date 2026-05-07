@@ -58,7 +58,13 @@ class CompanyController {
     public function store(array $auth): void {
         $b = getBody();
         if (empty($b['name'])) respond(422, null, 'Tên công ty là bắt buộc', false);
+        // Verify stage belongs to tenant
         $stageId = $b['stage_id'] ?? null;
+        if ($stageId) {
+            $checkStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
+            $checkStage->execute([$stageId, $auth['tenant_id']]);
+            if (!$checkStage->fetch()) $stageId = null;
+        }
         if (!$stageId) {
             $s = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id=? ORDER BY order_index LIMIT 1");
             $s->execute([$auth['tenant_id']]); $stageId = $s->fetchColumn();
@@ -92,7 +98,9 @@ class CompanyController {
         
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') {
-            $sql .= " AND c.owner_id=?";
+            // Can see company if owner OR manages a contact in that company
+            $sql .= " AND (c.owner_id=? OR EXISTS (SELECT 1 FROM contacts ct2 WHERE ct2.company_id=c.id AND ct2.owner_id=? AND ct2.deleted_at IS NULL))";
+            $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);
@@ -144,12 +152,9 @@ class CompanyController {
     }
 
     public function destroy(array $auth, int $id): void {
+        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa công ty', false);
         $sql = "UPDATE companies SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND owner_id=?";
-            $p[] = $auth['user_id'];
-        }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy công ty', false);
@@ -158,6 +163,7 @@ class CompanyController {
     }
 
     public function bulkDelete(array $auth): void {
+        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa công ty', false);
         $b = getBody();
         $ids = $b['ids'] ?? [];
         if (empty($ids)) respond(400, null, 'ID không hợp lệ', false);
@@ -165,10 +171,6 @@ class CompanyController {
         
         $sql = "UPDATE companies SET deleted_at=NOW() WHERE tenant_id=? AND id IN ($placeholders)";
         $p = array_merge([$auth['tenant_id']], $ids);
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND owner_id=?";
-            $p[] = $auth['user_id'];
-        }
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);

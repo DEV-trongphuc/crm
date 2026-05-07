@@ -83,11 +83,16 @@ class ActivityController {
             }
         }
 
+        $targetUserId = $b['user_id'] ?? $auth['user_id'];
+        if ($auth['role'] === 'sale' && (int)$targetUserId !== (int)$auth['user_id']) {
+            $targetUserId = $auth['user_id']; // Force self for sale role
+        }
+
         $this->db->prepare("
             INSERT INTO activities (tenant_id,user_id,type,subject,body,status,priority,due_date,related_type,related_id)
             VALUES (?,?,?,?,?,?,?,?,?,?)
         ")->execute([
-            $auth['tenant_id'], $b['user_id']??$auth['user_id'], $b['type'],
+            $auth['tenant_id'], $targetUserId, $b['type'],
             $b['subject'], $b['body']??null, $b['status']??'planned', $b['priority']??'medium',
             $b['due_date']??null, $b['related_type']??null, $b['related_id']??null,
         ]);

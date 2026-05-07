@@ -44,6 +44,10 @@ const DEALS = [
   { id: 6, title: 'Cung cấp 500 Licenses CRM MWG', value: 1500000000, stage: 'negotiation', contact_id: 6, company_id: 6, company_name: 'Thế Giới Di Động', probability: 70, expected_close: '2026-07-05', owner_id: 2, stage_color: '#3b82f6' },
   { id: 7, title: 'Hợp tác Chiến lược Marketing Shopee', value: 2800000000, stage: 'proposal', contact_id: 7, company_id: 7, company_name: 'Shopee', probability: 55, expected_close: '2026-06-20', owner_id: 1, stage_color: '#f59e0b' },
   { id: 8, title: 'Gói hạ tầng Game VNG Tầng 5', value: 1800000000, stage: 'won', contact_id: 8, company_id: 8, company_name: 'VNG', probability: 100, expected_close: '2026-05-01', owner_id: 3, stage_color: '#10b981' },
+  { id: 9, title: 'Chuỗi cung ứng thông minh Grab', value: 4200000000, stage: 'contacted', contact_id: 10, company_id: 10, company_name: 'Grab Vietnam', probability: 40, expected_close: '2026-09-12', owner_id: 1, stage_color: '#6366f1' },
+  { id: 10, title: 'Bảo mật dữ liệu Vietjet Air', value: 650000000, stage: 'lead', contact_id: 9, company_id: 9, company_name: 'Vietjet Air', probability: 15, expected_close: '2026-11-20', owner_id: 2, stage_color: '#94a3b8' },
+  { id: 11, title: 'Tối ưu hóa CRM - Vinamilk', value: 350000000, stage: 'negotiation', contact_id: 4, company_id: 4, company_name: 'Vinamilk', probability: 60, expected_close: '2026-08-15', owner_id: 2, stage_color: '#3b82f6' },
+  { id: 12, title: 'Bảo trì hệ thống MWG Q3/2026', value: 500000000, stage: 'proposal', contact_id: 6, company_id: 6, company_name: 'Thế Giới Di Động', probability: 45, expected_close: '2026-10-01', owner_id: 1, stage_color: '#f59e0b' },
 ];
 
 const ACTIVITIES = [
@@ -121,6 +125,8 @@ const EXPENSES = [
   { id: 3, title: 'Team Building Vũng Tàu', amount: 32000000, date: '2026-05-04', category: 'Nhân sự', creator_name: 'Thế Anh', status: 'pending', vendor_name: 'Pullman Vung Tau', has_vat_invoice: true, is_vat_inclusive: true, approver_id: 1 },
   { id: 4, title: 'Mua sắm Laptop Dell XPS (x3)', amount: 120000000, date: '2026-05-06', category: 'Thiết bị', creator_name: 'Phúc Trọng', status: 'approved', vendor_name: 'Phong Vũ IT', has_vat_invoice: true, is_vat_inclusive: true, approver_id: 1 },
   { id: 5, title: 'Tiền Grab Business (Toàn team T4)', amount: 8500000, date: '2026-05-03', category: 'Vận chuyển', creator_name: 'Admin', status: 'approved', vendor_name: 'Grab Vietnam', has_vat_invoice: true, is_vat_inclusive: true, approver_id: 1 },
+  { id: 6, title: 'Chi phí tiếp khách Shopee (Buffet Nikko)', amount: 4200000, date: '2026-05-07', category: 'Tiếp khách', creator_name: 'Minh Khôi', status: 'pending', vendor_name: 'Hotel Nikko Saigon', has_vat_invoice: true, is_vat_inclusive: true, approver_id: 1 },
+  { id: 7, title: 'Gói tài trợ giải đấu Game VNG', amount: 25000000, date: '2026-05-08', category: 'Marketing', creator_name: 'Phúc Trọng', status: 'pending', vendor_name: 'VNG Corp', has_vat_invoice: true, is_vat_inclusive: true, approver_id: 1 },
 ];
 
 const INVOICES = [

@@ -29,6 +29,7 @@ class DealController {
     }
 
     public function storeStage(array $auth): void {
+        if ($auth['role'] !== 'admin') respond(403, null, 'Chỉ admin mới có quyền quản lý pipeline', false);
         $b = getBody();
         if (empty($b['name'])) respond(422, null, 'Tên stage là bắt buộc', false);
         $maxIdx = $this->db->prepare("SELECT COALESCE(MAX(order_index),0)+1 FROM pipeline_stages WHERE tenant_id=?");
@@ -40,6 +41,7 @@ class DealController {
     }
 
     public function updateStage(array $auth, int $id): void {
+        if ($auth['role'] !== 'admin') respond(403, null, 'Chỉ admin mới có quyền quản lý pipeline', false);
         $b = getBody();
         $fields = ['name','color','order_index','is_won','is_lost'];
         $sets=[]; $params=[];
@@ -51,6 +53,7 @@ class DealController {
     }
 
     public function destroyStage(array $auth, int $id): void {
+        if ($auth['role'] !== 'admin') respond(403, null, 'Chỉ admin mới có quyền quản lý pipeline', false);
         // Prevent deleting stages that have deals
         $cnt = $this->db->prepare("SELECT COUNT(*) FROM deals WHERE stage_id=? AND tenant_id=?");
         $cnt->execute([$id, $auth['tenant_id']]);
@@ -61,6 +64,7 @@ class DealController {
     }
 
     public function index(array $auth): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xem deal', false);
         $tid    = $auth['tenant_id'];
         $page   = max(1,(int)($_GET['page']??1));
         $limit  = min(100,max(10,(int)($_GET['limit']??50)));
@@ -101,6 +105,7 @@ class DealController {
     }
 
     public function store(array $auth): void {
+        if (in_array($auth['role'], ['viewer'])) respond(403, null, 'Bạn không có quyền tạo deal', false);
         $b = getBody();
         if (empty($b['title'])) respond(422, null, 'Tiêu đề deal là bắt buộc', false);
         // Get first stage
@@ -201,6 +206,7 @@ class DealController {
     }
 
     public function update(array $auth, int $id): void {
+        if (in_array($auth['role'], ['viewer'])) respond(403, null, 'Bạn không có quyền cập nhật deal', false);
         $b = getBody();
         $fields = ['stage_id','contact_id','company_id','owner_id','title','description','priority','value',
                    'probability','expected_close_date','source','lost_reason'];
@@ -223,12 +229,9 @@ class DealController {
     }
 
     public function destroy(array $auth, int $id): void {
+        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa deal', false);
         $sql = "UPDATE deals SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND owner_id=?";
-            $p[] = $auth['user_id'];
-        }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy deal', false);
@@ -238,6 +241,7 @@ class DealController {
     }
 
     public function bulkDelete(array $auth): void {
+        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa deal', false);
         $b = getBody();
         $ids = $b['ids'] ?? [];
         if (empty($ids)) respond(400, null, 'ID không hợp lệ', false);
@@ -245,10 +249,6 @@ class DealController {
         
         $sql = "UPDATE deals SET deleted_at=NOW() WHERE tenant_id=? AND id IN ($placeholders)";
         $p = array_merge([$auth['tenant_id']], $ids);
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND owner_id=?";
-            $p[] = $auth['user_id'];
-        }
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);

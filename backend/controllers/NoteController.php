@@ -44,9 +44,9 @@ class NoteController {
             $repliesStmt = $this->db->prepare("
                 SELECT n.*, u.full_name as author_name, u.avatar_url as author_avatar
                 FROM notes n LEFT JOIN users u ON n.user_id=u.id
-                WHERE n.parent_id IN ($in) ORDER BY n.created_at ASC
+                WHERE n.tenant_id=? AND n.parent_id IN ($in) ORDER BY n.created_at ASC
             ");
-            $repliesStmt->execute($noteIds);
+            $repliesStmt->execute(array_merge([$auth['tenant_id']], $noteIds));
             $allReplies = $repliesStmt->fetchAll();
 
             $repliesByParent = [];
@@ -127,17 +127,27 @@ class NoteController {
     }
 
     public function destroy(array $auth, int $id): void {
-        $sql = "DELETE FROM notes WHERE id=? AND tenant_id=?";
-        $p = [$id, $auth['tenant_id']];
-        
-        if ($auth['role'] !== 'admin' && $auth['role'] !== 'manager') {
-            $sql .= " AND user_id=?";
-            $p[] = $auth['user_id'];
+        // 1. Verify existence and permission
+        $check = $this->db->prepare("SELECT id FROM notes WHERE id=? AND tenant_id=?" . ($auth['role'] !== 'admin' && $auth['role'] !== 'manager' ? " AND user_id=?" : ""));
+        $cp = [$id, $auth['tenant_id']];
+        if ($auth['role'] !== 'admin' && $auth['role'] !== 'manager') $cp[] = $auth['user_id'];
+        $check->execute($cp);
+        if (!$check->fetch()) respond(404, null, 'Không tìm thấy ghi chú hoặc không có quyền', false);
+
+        $this->db->beginTransaction();
+        try {
+            // 2. Delete the note
+            $this->db->prepare("DELETE FROM notes WHERE id=?")->execute([$id]);
+            
+            // 3. Delete associated notifications
+            $this->db->prepare("DELETE FROM notifications WHERE tenant_id=? AND link LIKE ?")
+                 ->execute([$auth['tenant_id'], "%/notes/$id%"]);
+
+            $this->db->commit();
+            respond(200, null, 'Đã xóa ghi chú và các thông báo liên quan');
+        } catch (Exception $e) {
+            $this->db->rollBack();
+            respond(500, null, $e->getMessage(), false);
         }
-        
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($p);
-        if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy ghi chú hoặc không có quyền', false);
-        respond(200, null, 'Đã xóa ghi chú');
     }
 }

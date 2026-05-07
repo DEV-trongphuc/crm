@@ -20,7 +20,11 @@ class UserController {
         $hash=password_hash($b['password'],PASSWORD_BCRYPT,['cost'=>12]);
         $this->db->prepare("INSERT INTO users (tenant_id,email,password_hash,full_name,role,phone) VALUES (?,?,?,?,?,?)")
             ->execute([$auth['tenant_id'],$b['email'],$hash,$b['full_name'],$b['role']??'sales',$b['phone']??null]);
-        $this->show($auth,(int)$this->db->lastInsertId());
+        $newId = (int)$this->db->lastInsertId();
+        
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'CREATE', 'user', $newId, json_encode(['email' => $b['email'], 'role' => $b['role']??'sales']));
+        
+        $this->show($auth, $newId);
     }
     public function show(array $auth,int $id): void {
         if ($auth['role'] !== 'admin' && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền xem thông tin người khác', false);
@@ -31,19 +35,30 @@ class UserController {
     }
     public function update(array $auth,int $id): void {
         if ($auth['role'] !== 'admin' && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
-        $b=getBody(); $fields=['full_name','role','phone','is_active'];
+        $b=getBody(); $fields=['full_name','phone']; // Fields anyone can update on themselves
+        if ($auth['role'] === 'admin') {
+            $fields[] = 'role';
+            $fields[] = 'is_active';
+        }
         $sets=[];$params=[];
         foreach($fields as $f){if(array_key_exists($f,$b)){$sets[]="$f=?";$params[]=$b[$f];}}
         if(!empty($b['password'])){$sets[]='password_hash=?';$params[]=password_hash($b['password'],PASSWORD_BCRYPT,['cost'=>12]);}
         if(!$sets) respond(422,null,'Không có dữ liệu',false);
         $params[]=$id;$params[]=$auth['tenant_id'];
         $this->db->prepare("UPDATE users SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?")->execute($params);
+        
+        // Log changes (Masking password)
+        $logData = $b;
+        if (isset($logData['password'])) unset($logData['password']);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'user', $id, json_encode($logData));
+        
         $this->show($auth,$id);
     }
     public function destroy(array $auth,int $id): void {
         if ($auth['role'] !== 'admin') respond(403, null, 'Quyền admin là bắt buộc', false);
         if($id===$auth['user_id']) respond(403,null,'Không thể xóa tài khoản của chính mình',false);
         $this->db->prepare("DELETE FROM users WHERE id=? AND tenant_id=?")->execute([$id,$auth['tenant_id']]);
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'user', $id);
         respond(200,null,'Đã xóa người dùng');
     }
 }

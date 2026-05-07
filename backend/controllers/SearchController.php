@@ -26,10 +26,25 @@ class SearchController {
         $s->execute($pComp);
         foreach ($s->fetchAll() as $r) $results[] = $r;
 
-        // Notes (full-text content search)
-        $sqlN = "SELECT n.id, SUBSTRING(n.body,1,80) as label, n.entity_type as sublabel, 'note' as type, 'note' as status FROM notes n WHERE n.tenant_id=? AND n.body LIKE ?";
+        // Notes (filtered by entity access for sales)
+        $sqlN = "SELECT n.id, SUBSTRING(n.body,1,80) as label, n.entity_type as sublabel, 'note' as type, 'note' as status 
+                 FROM notes n 
+                 WHERE n.tenant_id=? AND n.body LIKE ?";
         $pN = [$tid, $like];
-        if ($auth['role'] === 'sale') { $sqlN .= " AND n.user_id=?"; $pN[] = $auth['user_id']; }
+        if ($auth['role'] === 'sale') {
+            // Only search notes on entities owned by the salesperson OR created by them
+            $sqlN .= " AND (n.user_id=? OR EXISTS (
+                SELECT 1 FROM contacts c WHERE c.id=n.entity_id AND n.entity_type='contact' AND c.owner_id=?
+                UNION ALL
+                SELECT 1 FROM companies co WHERE co.id=n.entity_id AND n.entity_type='company' AND co.owner_id=?
+                UNION ALL
+                SELECT 1 FROM deals d WHERE d.id=n.entity_id AND n.entity_type='deal' AND d.owner_id=?
+            ))";
+            $pN[] = $auth['user_id'];
+            $pN[] = $auth['user_id'];
+            $pN[] = $auth['user_id'];
+            $pN[] = $auth['user_id'];
+        }
         $s = $this->db->prepare($sqlN . " LIMIT 5");
         $s->execute($pN);
         foreach ($s->fetchAll() as $r) $results[] = $r;

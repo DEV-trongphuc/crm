@@ -603,12 +603,23 @@ CREATE TABLE `products` (
   `currency` char(3) NOT NULL DEFAULT 'VND',
   `unit` varchar(50) DEFAULT 'cái',
   `stock_quantity` int(11) NOT NULL DEFAULT 0,
-  `is_active` tinyint(1) NOT NULL DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `deleted_at` datetime DEFAULT NULL,
+  `min_stock_level` int(11) NOT NULL DEFAULT 5,
   `track_inventory` tinyint(1) DEFAULT 1,
   `track_cost` tinyint(1) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Cấu trúc bảng cho bảng `login_attempts`
+--
+
+CREATE TABLE `login_attempts` (
+  `id` int(11) NOT NULL,
+  `ip_address` varchar(45) NOT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `attempt_time` timestamp NOT NULL DEFAULT current_timestamp(),
+  `is_successful` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

@@ -11,15 +11,31 @@ class POSController {
         $uid = $auth['user_id'];
         $data = getBody();
 
-        if (empty($data['cart']) || empty($data['customer_id'])) {
-            respond(400, null, "Thiếu giỏ hàng hoặc thông tin khách hàng", false);
+        if (empty($data['cart'])) {
+            respond(400, null, "Giỏ hàng không được để trống", false);
         }
 
-        // Verify customer belongs to tenant
-        $checkCust = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
-        $checkCust->execute([(int)$data['customer_id'], $tid]);
-        if (!$checkCust->fetch()) {
-            respond(403, null, "Khách hàng không hợp lệ hoặc không thuộc quyền quản lý", false);
+        $customerId = !empty($data['customer_id']) ? (int)$data['customer_id'] : null;
+        
+        // Server-side validation of total_amount
+        $calculatedTotal = 0;
+        foreach ($data['cart'] as $item) {
+            $calculatedTotal += (float)$item['price'] * (int)$item['quantity'];
+        }
+        $shipping = (float)($data['shipping_fee'] ?? 0);
+        $totalWithShipping = $calculatedTotal + $shipping;
+
+        if (abs($totalWithShipping - (float)$data['total_amount']) > 1) {
+             respond(422, null, "Tổng tiền không khớp với dữ liệu giỏ hàng. Vui lòng kiểm tra lại.", false);
+        }
+
+        if ($customerId) {
+            // Verify customer belongs to tenant
+            $checkCust = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
+            $checkCust->execute([$customerId, $tid]);
+            if (!$checkCust->fetch()) {
+                respond(403, null, "Khách hàng không hợp lệ hoặc không thuộc quyền quản lý", false);
+            }
         }
 
         $this->db->beginTransaction();
@@ -35,7 +51,7 @@ class POSController {
             ");
             $sInv->execute([
                 $tid, 
-                $data['customer_id'], 
+                $customerId, 
                 $uid, 
                 $invNum, 
                 $title, 
@@ -64,28 +80,29 @@ class POSController {
                 }
             }
 
-            // 3. Update Customer Stats
-            $sCust = $this->db->prepare("
-                UPDATE contacts 
-                SET total_spent = total_spent + ?, 
-                    order_count = order_count + 1, 
-                    last_order_at = NOW(),
-                    last_contact = CURRENT_DATE,
-                    status = 'customer'
-                WHERE id = ? AND tenant_id = ?
-            ");
-            $sCust->execute([$data['total_amount'], $data['customer_id'], $tid]);
+            // 3. Update Customer Stats & Timeline
+            if ($customerId) {
+                $sCust = $this->db->prepare("
+                    UPDATE contacts 
+                    SET total_spent = total_spent + ?, 
+                        order_count = order_count + 1, 
+                        last_order_at = NOW(),
+                        last_contact = CURRENT_DATE,
+                        status = 'customer'
+                    WHERE id = ? AND tenant_id = ?
+                ");
+                $sCust->execute([$data['total_amount'], $customerId, $tid]);
+
+                logInteraction(
+                    $this->db, $tid, $uid, 'task', 
+                    "Đơn hàng POS #$invNum", 
+                    "Đơn hàng trị giá " . number_format($data['total_amount'], 0, ',', '.') . " đ đã hoàn tất.",
+                    'contact', $customerId
+                );
+            }
 
             // 4. Activity log (Internal Audit)
             logActivity($this->db, $tid, $uid, 'Tạo đơn hàng POS', 'invoice', (int)$invId, $invNum);
-
-            // 5. Interaction History (Customer Timeline)
-            logInteraction(
-                $this->db, $tid, $uid, 'task', 
-                "Đơn hàng POS #$invNum", 
-                "Đơn hàng trị giá " . number_format($data['total_amount'], 0, ',', '.') . " đ đã hoàn tất.",
-                'contact', (int)$data['customer_id']
-            );
 
             $this->db->commit();
             respond(201, ["invoice_id" => $invId, "message" => "Đơn hàng hoàn tất thành công"]);

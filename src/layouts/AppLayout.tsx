@@ -53,7 +53,7 @@ export const AppLayout: React.FC = () => {
   const user = DEV_MODE ? (realUser || MOCK_ADMIN) : realUser;
   const { addToast, showPOS, setShowPOS } = useUIStore();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.getAttribute('data-theme') === 'dark');
   const [searchOpen, setSearchOpen] = useState(false);

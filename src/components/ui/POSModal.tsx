@@ -361,7 +361,10 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                     style={{ border: 'none', background: 'transparent', outline: 'none', flex: 1, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }} 
                     placeholder="0" 
                     value={shippingFee || ''} 
-                    onChange={e => setShippingFee(Number(e.target.value))} 
+                    onChange={e => {
+                      const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
+                      setShippingFee(isNaN(val) ? 0 : val);
+                    }} 
                   />
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>VND</span>
                 </div>

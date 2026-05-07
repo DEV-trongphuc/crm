@@ -1,6 +1,9 @@
 <?php
 // f:\CRM\backend\check_data.php
-require_once __DIR__ . '/config/Database.php';
+require_once __DIR__ . '/index.php'; // Get helpers
+$auth = requireAuth();
+if ($auth['role'] !== 'admin') respond(403, null, 'Không có quyền truy cập', false);
+
 $db = Database::getInstance();
 
 echo "<h3>--- KIỂM TRA DỮ LIỆU CRM ---</h3>";

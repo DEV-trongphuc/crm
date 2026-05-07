@@ -44,11 +44,12 @@ class ProductController {
         respond(200, ['items' => $stmt->fetchAll(), 'total' => $total, 'page' => $page, 'limit' => $limit]);
     }
     public function store(array $auth): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền thêm sản phẩm', false);
         $b=getBody();
         if(empty($b['name'])) respond(422,null,'Tên sản phẩm là bắt buộc',false);
         
-        $sql = "INSERT INTO products (tenant_id, created_by, category_id, name, sku, category, description, price, cost, unit, stock_quantity, track_inventory, track_cost, is_active) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO products (tenant_id, created_by, category_id, name, sku, category, description, price, cost, unit, track_inventory, track_cost, is_active) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $params = [
             $auth['tenant_id'],
@@ -61,7 +62,6 @@ class ProductController {
             (float)($b['price'] ?? 0),
             (float)($b['cost'] ?? 0),
             $b['unit'] ?? 'cái',
-            (int)($b['stock_quantity'] ?? 0),
             isset($b['track_inventory']) ? ($b['track_inventory'] ? 1 : 0) : 1,
             isset($b['track_cost']) ? ($b['track_cost'] ? 1 : 0) : 1,
             isset($b['is_active']) ? ($b['is_active'] ? 1 : 0) : 1
@@ -84,7 +84,8 @@ class ProductController {
         respond(200,$row);
     }
     public function update(array $auth,int $id): void {
-        $b=getBody(); $fields=['name','sku','category','category_id','description','price','cost','unit','stock_quantity','track_inventory','track_cost','is_active'];
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền cập nhật sản phẩm', false);
+        $b=getBody(); $fields=['name','sku','category','category_id','description','price','cost','unit','track_inventory','track_cost','is_active','min_stock_level'];
         $sets=[];$params=[];
         foreach($fields as $f){
             if(array_key_exists($f,$b)){
@@ -108,12 +109,14 @@ class ProductController {
         }
     }
     public function destroy(array $auth,int $id): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền xóa sản phẩm', false);
         $this->db->prepare("UPDATE products SET deleted_at=NOW() WHERE id=? AND tenant_id=?")->execute([$id,$auth['tenant_id']]);
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'Xóa sản phẩm', 'product', $id);
         respond(200,null,'Đã xóa sản phẩm (vào thùng rác)');
     }
 
     public function bulkDelete(array $auth): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền xóa sản phẩm', false);
         $b = getBody();
         $ids = $b['ids'] ?? [];
         if (empty($ids)) respond(400, null, 'ID không hợp lệ', false);

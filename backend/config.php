@@ -20,4 +20,5 @@ if (!defined('ALLOWED_ORIGINS'))
 if (!defined('UPLOAD_DIR')) define('UPLOAD_DIR', __DIR__ . '/uploads');
 
 // ── Environment ─────────────────────────────────
-if (!defined('APP_ENV')) define('APP_ENV', 'production'); // 'development' or 'production'
+// ── Environment ─────────────────────────────────
+if (!defined('APP_ENV')) define('APP_ENV', 'development');

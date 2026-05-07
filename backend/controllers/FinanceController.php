@@ -5,6 +5,27 @@ class FinanceController {
     private PDO $db;
     public function __construct(PDO $db) { $this->db = $db; }
 
+    private function syncContactStats(int $tid, ?int $contactId): void {
+        if (!$contactId) return;
+        $stmt = $this->db->prepare("
+            UPDATE contacts c
+            SET 
+                total_spent = (SELECT COALESCE(SUM(total),0) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL),
+                order_count = (SELECT COUNT(*) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL),
+                last_order_at = (SELECT MAX(paid_at) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL),
+                status = CASE WHEN (SELECT COUNT(*) FROM invoices WHERE contact_id = c.id AND status = 'paid' AND deleted_at IS NULL) > 0 THEN 'customer' ELSE status END
+            WHERE id = ? AND tenant_id = ?
+        ");
+        $stmt->execute([$contactId, $tid]);
+    }
+
+    private function syncInvoiceContact(int $tid, int $invId): void {
+        $stmt = $this->db->prepare("SELECT contact_id FROM invoices WHERE id = ?");
+        $stmt->execute([$invId]);
+        $cid = $stmt->fetchColumn();
+        if ($cid) $this->syncContactStats($tid, (int)$cid);
+    }
+
     // ─────────────────────── INVOICES ───────────────────────────
 
     public function listInvoices(array $auth): void {
@@ -29,7 +50,8 @@ class FinanceController {
 
         $stmt = $this->db->prepare("
             SELECT i.*, c.name as company_name,
-                   CONCAT(ct.first_name,' ',ct.last_name) as contact_name,
+                   CASE WHEN ct.deleted_at IS NULL THEN CONCAT(ct.first_name,' ',ct.last_name) 
+                        ELSE CONCAT(ct.first_name,' ',ct.last_name, ' (Đã xóa)') END as contact_name,
                    u.full_name as creator_name
             FROM invoices i
             LEFT JOIN companies c  ON i.company_id  = c.id
@@ -128,6 +150,7 @@ class FinanceController {
                 }
             }
             $this->db->commit();
+            $this->syncInvoiceContact($tid, $invId);
 
             if (!empty($data['contact_id'])) {
                 logInteraction($this->db, $tid, $uid, 'email', "Phát hành Hóa đơn #{$data['invoice_number']}", "Hóa đơn \"{$data['title']}\" trị giá " . number_format($data['total']??0, 0, ',', '.') . "đ đã được khởi tạo.", 'invoice', $invId);
@@ -176,6 +199,7 @@ class FinanceController {
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'invoice', $id, json_encode($data));
             $this->db->commit();
+            $this->syncInvoiceContact($auth['tenant_id'], $id);
             $this->showInvoice($auth, $id);
         } catch (Exception $e) {
             $this->db->rollBack();
@@ -206,8 +230,25 @@ class FinanceController {
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);
+        
+        // Get details before deletion for side effects
+        $cCheck = $this->db->prepare("SELECT contact_id, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=?");
+        $cCheck->execute([$id, $auth['tenant_id']]);
+        $inv = $cCheck->fetch();
+        $oldContactId = $inv['contact_id'] ?? null;
+
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy hóa đơn hoặc không có quyền', false);
+        
+        // REVERSE SIDE EFFECTS
+        // 1. Return stock if it was deducted
+        if ($inv && $inv['is_inventory_deducted']) {
+            returnStock($this->db, $auth['tenant_id'], $auth['user_id'], $inv['invoice_number']);
+        }
+        
+        // 2. Sync contact stats
+        if ($oldContactId) $this->syncContactStats($auth['tenant_id'], (int)$oldContactId);
+        
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'invoice', $id);
         respond(200, null, 'Đã xóa hóa đơn');
     }
@@ -250,6 +291,7 @@ class FinanceController {
             
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'PAYMENT', 'invoice', $id, json_encode(['amount' => $inv['total'] ?? 0]));
             $this->db->commit();
+            $this->syncInvoiceContact($auth['tenant_id'], $id);
             respond(200, null, 'Hóa đơn đã được thanh toán và tồn kho đã được cập nhật');
         } catch (Exception $e) {
             if ($this->db->inTransaction()) $this->db->rollBack();

@@ -98,12 +98,18 @@ class CloudFileController {
     public function destroy(array $auth, int $id): void {
         $tid = $auth['tenant_id'];
         
-        // 1. Get file path first
-        $stmt = $this->db->prepare("SELECT file_path FROM cloud_files WHERE id = ? AND tenant_id = ?");
+        // 1. Get file details first
+        $stmt = $this->db->prepare("SELECT file_path, uploaded_by FROM cloud_files WHERE id = ? AND tenant_id = ?");
         $stmt->execute([$id, $tid]);
-        $path = $stmt->fetchColumn();
+        $file = $stmt->fetch();
         
-        if (!$path) respond(404, null, 'Không tìm thấy tệp tin', false);
+        if (!$file) respond(404, null, 'Không tìm thấy tệp tin', false);
+
+        // Permission check: Only uploader or admin/manager
+        if ($auth['role'] === 'sale' && (int)$file['uploaded_by'] !== (int)$auth['user_id']) {
+            respond(403, null, 'Bạn không có quyền xóa tệp tin của người khác', false);
+        }
+        $path = $file['file_path'];
 
         // 2. Delete from DB
         $this->db->prepare("DELETE FROM cloud_files WHERE id = ? AND tenant_id = ?")->execute([$id, $tid]);

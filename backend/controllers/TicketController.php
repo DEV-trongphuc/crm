@@ -64,13 +64,18 @@ class TicketController {
     }
 
     public function show(array $auth, int $id): void {
-        $stmt = $this->db->prepare("
-            SELECT t.*, u.full_name as assignee_name
+        $sql = "SELECT t.*, u.full_name as assignee_name
             FROM tickets t
             LEFT JOIN users u ON t.assignee_id = u.id
-            WHERE t.id=? AND t.tenant_id=?
-        ");
-        $stmt->execute([$id, $auth['tenant_id']]);
+            WHERE t.id=? AND t.tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND (t.created_by = ? OR t.assignee_id = ?)";
+            $p[] = $auth['user_id'];
+            $p[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($p);
         $ticket = $stmt->fetch();
         if (!$ticket) respond(404, null, 'Không tìm thấy ticket', false);
         $ticket['related_contacts'] = json_decode($ticket['related_contacts'] ?? '[]');
@@ -137,7 +142,13 @@ class TicketController {
         $params[] = $id; 
         $params[] = $auth['tenant_id'];
         
-        $stmt = $this->db->prepare("UPDATE tickets SET " . implode(',', $sets) . " WHERE id=? AND tenant_id=?");
+        $sql = "UPDATE tickets SET " . implode(',', $sets) . " WHERE id=? AND tenant_id=?";
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND (created_by = ? OR assignee_id = ?)";
+            $params[] = $auth['user_id'];
+            $params[] = $auth['user_id'];
+        }
+        $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
 
         // Log if resolved
@@ -159,6 +170,7 @@ class TicketController {
     }
 
     public function destroy(array $auth, int $id): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền xóa ticket', false);
         $stmt = $this->db->prepare("DELETE FROM tickets WHERE id=? AND tenant_id=?");
         $stmt->execute([$id, $auth['tenant_id']]);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy ticket', false);

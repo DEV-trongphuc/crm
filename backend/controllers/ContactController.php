@@ -61,7 +61,10 @@ class ContactController {
 
         $stmt = $this->db->prepare("
             SELECT c.*, 
-                   comp.name as company_name,
+                   CASE 
+                       WHEN comp.deleted_at IS NOT NULL THEN CONCAT(comp.name, ' (Đã xóa)')
+                       ELSE comp.name 
+                   END as company_name,
                    u.full_name as owner_name,
                    ps.name as stage_name, ps.color as stage_color
             FROM contacts c
@@ -101,6 +104,7 @@ class ContactController {
     }
 
     public function store(array $auth): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thêm mới', false);
         $b = getBody();
         $required = ['first_name'];
         foreach ($required as $f) {
@@ -150,7 +154,12 @@ class ContactController {
     }
 
     public function show(array $auth, int $id): void {
-        $sql = "SELECT c.*, comp.name as company_name, u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color,
+        $sql = "SELECT c.*, 
+                    CASE 
+                        WHEN comp.deleted_at IS NOT NULL THEN CONCAT(comp.name, ' (Đã xóa)')
+                        ELSE comp.name 
+                    END as company_name, 
+                    u.full_name as owner_name, ps.name as stage_name, ps.color as stage_color,
                     (SELECT COALESCE(SUM(total),0) FROM invoices WHERE contact_id=c.id AND status='paid') as total_spent,
                     (SELECT COUNT(*) FROM invoices WHERE contact_id=c.id AND status='paid') as order_count,
                     (SELECT MAX(paid_at) FROM invoices WHERE contact_id=c.id AND status='paid') as last_order_at
@@ -175,6 +184,7 @@ class ContactController {
     }
 
     public function update(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật', false);
         $b = getBody();
         $fields = [
             'company_id','owner_id','first_name','last_name','email','phone',
@@ -254,12 +264,9 @@ class ContactController {
     }
 
     public function destroy(array $auth, int $id): void {
+        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
         $sql = "UPDATE contacts SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND owner_id=?";
-            $p[] = $auth['user_id'];
-        }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($p);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy liên hệ', false);
@@ -268,6 +275,7 @@ class ContactController {
     }
 
     public function bulkDelete(array $auth): void {
+        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
         $b = getBody();
         $ids = $b['ids'] ?? [];
         if (empty($ids)) respond(400, null, 'Danh sách ID không hợp lệ', false);
@@ -275,11 +283,6 @@ class ContactController {
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $sql = "UPDATE contacts SET deleted_at=NOW() WHERE tenant_id=? AND id IN ($placeholders)";
         $params = array_merge([$auth['tenant_id']], $ids);
-        
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND owner_id=?";
-            $params[] = $auth['user_id'];
-        }
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);

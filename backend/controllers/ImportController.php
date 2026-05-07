@@ -22,6 +22,7 @@ class ImportController {
 
     /** POST /import/contacts — Upload & process CSV */
     public function contacts(array $auth): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền nhập dữ liệu', false);
         if (empty($_FILES['file'])) respond(422, null, 'Vui lòng upload file CSV', false);
         $file = $_FILES['file'];
         if ($file['error'] !== UPLOAD_ERR_OK) respond(422, null, 'Upload thất bại', false);
@@ -108,6 +109,7 @@ class ImportController {
 
     /** GET /import/export?type=contact — Export contacts as CSV */
     public function export(array $auth): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền xuất dữ liệu', false);
         $type = $_GET['type'] ?? 'contact';
         header('Content-Type: text/csv; charset=UTF-8');
         header('Content-Disposition: attachment; filename="export_' . $type . '_' . date('Ymd') . '.csv"');

@@ -6,6 +6,7 @@ class DashboardController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function stats(array $auth): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xem báo cáo', false);
         $tid  = $auth['tenant_id'];
         $from = $_GET['from'] ?? date('Y-m-01');
         $to   = $_GET['to']   ?? date('Y-m-t');
