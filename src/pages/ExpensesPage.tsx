@@ -11,6 +11,7 @@ import { useUIStore } from '../store/uiStore';
 import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
+import { numberToVietnameseText } from '../utils/numberToText';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import api from '../api/axios';
@@ -144,8 +145,8 @@ export const ExpensesPage: React.FC = () => {
       return;
     }
     api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => {});
-    api.get('/contacts').then(r => setContacts(r.data.data?.items || [])).catch(() => {});
-    api.get('/suppliers').then(r => setSuppliers(r.data.data || [])).catch(() => {});
+    api.get('/contacts').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => {});
+    api.get('/suppliers').then(r => setSuppliers(r.data.data?.items || r.data.data || [])).catch(() => {});
   }, []);
 
   useEffect(() => { fetchExpenses(); }, [fetchExpenses]);
@@ -501,7 +502,7 @@ export const ExpensesPage: React.FC = () => {
 
                     {showVendorDropdown && (
                       <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, background: 'var(--color-surface)', borderRadius: '14px', border: '1px solid var(--color-border-light)', boxShadow: '0 16px 32px -8px rgba(0,0,0,0.12)', zIndex: 200, overflow: 'hidden' }}>
-                        {suppliers.filter(s => (s.name || s.company_name || '').toLowerCase().includes(vendorSearch.toLowerCase())).slice(0, 6).map(s => (
+                        {(Array.isArray(suppliers) ? suppliers : []).filter(s => (s.name || s.company_name || '').toLowerCase().includes(vendorSearch.toLowerCase())).slice(0, 6).map(s => (
                           <div
                             key={s.id}
                             onMouseDown={() => { const n = s.name || s.company_name || ''; setVendorSearch(n); setForm({ ...form, vendor_name: n }); setShowVendorDropdown(false); }}
@@ -536,6 +537,14 @@ export const ExpensesPage: React.FC = () => {
                       <input className="form-input" type="number" min="0" style={{ paddingLeft: '2.5rem', fontWeight: 800, color: 'var(--color-danger)', fontSize: '1.1rem' }} value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0" />
                       <Wallet size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                     </div>
+                    {form.amount && Number(form.amount) > 0 && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                        style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, marginTop: '6px', fontStyle: 'italic', paddingLeft: '4px' }}
+                      >
+                        Bằng chữ: {numberToVietnameseText(form.amount)}
+                      </motion.div>
+                    )}
                   </div>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 600 }}>Ngày chi</label>

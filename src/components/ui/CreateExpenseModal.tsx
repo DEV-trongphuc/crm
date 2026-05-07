@@ -8,6 +8,7 @@ import {
 import api from '../../api/axios';
 import { useUIStore } from '../../store/uiStore';
 import { Avatar } from './Avatar';
+import { numberToVietnameseText } from '../../utils/numberToText';
 
 interface Props {
   isOpen: boolean;
@@ -76,7 +77,7 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
       }).catch(() => {});
 
       api.get('/suppliers').then(res => {
-        setSuppliers(res.data.data || []);
+        setSuppliers(res.data.data?.items || res.data.data || []);
       }).catch(() => {});
     }
   }, [isOpen, initialEntity]);
@@ -257,7 +258,7 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
                         Nhà cung cấp trong hệ thống
                       </span>
                     </div>
-                    {filteredSuppliers.map(s => (
+                    {(Array.isArray(filteredSuppliers) ? filteredSuppliers : []).map(s => (
                       <div
                         key={s.id}
                         onClick={() => {
@@ -329,6 +330,14 @@ export const CreateExpenseModal: React.FC<Props> = ({ isOpen, onClose, initialEn
                     onChange={e => setFormData({ ...formData, amount: e.target.value })}
                   />
                 </div>
+                {formData.amount && Number(formData.amount) > 0 && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }}
+                    style={{ fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 700, marginTop: '6px', fontStyle: 'italic' }}
+                  >
+                    Bằng chữ: {numberToVietnameseText(formData.amount)}
+                  </motion.div>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">Ngày chi</label>

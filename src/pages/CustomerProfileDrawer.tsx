@@ -13,6 +13,7 @@ import { CreateExpenseModal } from '../components/ui/CreateExpenseModal';
 import { QuoteEditorModal } from '../components/ui/QuoteEditorModal.tsx';
 import { Avatar } from '../components/ui/Avatar';
 import { EmptyCard } from '../components/ui/EmptyCard';
+import { numberToText } from '../utils/numberToText';
 import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
@@ -1798,6 +1799,11 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className="form-group">
                   <label className="form-label">Giá trị dự kiến (VNĐ)</label>
                   <input className="form-input" type="number" placeholder="0" value={dealForm.value} onChange={e => setDealForm({ ...dealForm, value: e.target.value })} />
+                  {dealForm.value && Number(dealForm.value) > 0 && (
+                    <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
+                      Bằng chữ: {numberToText(Number(dealForm.value))}
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-2">
                   <div className="form-group">

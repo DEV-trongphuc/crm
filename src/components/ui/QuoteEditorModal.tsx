@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import api from '../../api/axios';
 import { useUIStore } from '../../store/uiStore';
+import { numberToText } from '../../utils/numberToText';
 
 interface Product {
   id: number;
@@ -503,7 +504,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                                 <div style={{ width: 1, height: 16, background: 'var(--color-border)' }} />
                                 
                                 {/* Unit Price */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                   <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đơn giá</span>
                                   <input 
                                     type="number" 
@@ -513,6 +514,11 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                                     onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
                                     onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                                   />
+                                  {item.unit_price > 0 && (
+                                    <div style={{ position: 'absolute', bottom: '-16px', right: '0', fontSize: '0.65rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                                      {numberToText(item.unit_price)}
+                                    </div>
+                                  )}
                                 </div>
                                 
                                 <div style={{ width: 1, height: 16, background: 'var(--color-border)' }} />
@@ -582,7 +588,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                     </div>
 
                     {/* Discount row */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '10px' }}>
                       <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', whiteSpace: 'nowrap' }}>Giảm giá (₫)</span>
                       <input
                         type="number"
@@ -595,6 +601,11 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                         value={form.discount}
                         onChange={e => setForm({ ...form, discount: Number(e.target.value) })}
                       />
+                      {form.discount > 0 && (
+                        <div style={{ position: 'absolute', bottom: '-18px', right: '1.25rem', fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                          {numberToText(form.discount)}
+                        </div>
+                      )}
                     </div>
 
                     {/* Tax row */}

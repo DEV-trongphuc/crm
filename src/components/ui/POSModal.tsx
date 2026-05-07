@@ -14,6 +14,8 @@ interface Product {
   sku?: string;
 }
 
+import { numberToText } from '../../utils/numberToText';
+
 interface Contact {
   id: number;
   first_name?: string;
@@ -363,6 +365,11 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                   />
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)' }}>VND</span>
                 </div>
+                {shippingFee > 0 && (
+                  <div style={{ marginTop: '8px', fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
+                    {numberToText(shippingFee)}
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem' }}>

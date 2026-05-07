@@ -9,6 +9,7 @@ import { useMockStore } from '../store/mockStore';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
+import { numberToText } from '../utils/numberToText';
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style:'currency', currency:'VND', maximumFractionDigits:0 }).format(n);
 
@@ -346,6 +347,11 @@ export const ProductsPage: React.FC = () => {
                       <div style={{ position: 'relative' }}>
                         <input className="form-input" type="number" value={form.price} onChange={e => setForm({...form, price:e.target.value})} style={{ paddingRight: '2.5rem' }} />
                         <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>đ</span>
+                        {form.price && Number(form.price) > 0 && (
+                          <div style={{ marginTop: '4px', fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
+                            {numberToText(Number(form.price))}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {form.track_cost && (
@@ -354,6 +360,11 @@ export const ProductsPage: React.FC = () => {
                         <div style={{ position: 'relative' }}>
                           <input className="form-input" type="number" value={form.cost} onChange={e => setForm({...form, cost:e.target.value})} style={{ paddingRight: '2.5rem' }} />
                           <span style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: 'var(--color-text-muted)', fontSize: '0.75rem' }}>đ</span>
+                          {form.cost && Number(form.cost) > 0 && (
+                            <div style={{ marginTop: '4px', fontSize: '0.7rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
+                              {numberToText(Number(form.cost))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

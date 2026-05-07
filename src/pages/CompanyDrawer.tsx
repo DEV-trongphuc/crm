@@ -12,6 +12,7 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore } from '../store/mockStore';
 import { ActivityModal } from '../components/ui/ActivityModal';
 import styles from './EntityDrawer.module.css'; // Reusing the same drawer CSS
+import { numberToText } from '../utils/numberToText';
 
 interface CompanyDrawerProps {
   isOpen: boolean;
@@ -294,6 +295,11 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                             value={formData?.expected_revenue || ''} 
                             onChange={e => setFormData((prev: any) => ({ ...prev, expected_revenue: e.target.value }))} 
                           />
+                          {formData?.expected_revenue && Number(formData.expected_revenue) > 0 && (
+                            <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
+                              {numberToText(Number(formData.expected_revenue))}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -718,10 +724,15 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                       <input className="form-input" placeholder="VD: Hợp đồng triển khai phần mềm..." value={dealForm.title} onChange={e => setDealForm(prev => ({ ...prev, title: e.target.value }))} autoFocus />
                     </div>
                     <div className="grid grid-2">
-                      <div className="form-group">
-                        <label className="form-label">Giá trị dự kiến (VND)</label>
-                        <input className="form-input" type="number" placeholder="0" value={dealForm.value} onChange={e => setDealForm(prev => ({ ...prev, value: e.target.value }))} />
-                      </div>
+                        <div className="form-group">
+                          <label className="form-label">Giá trị dự kiến (VND)</label>
+                          <input className="form-input" type="number" placeholder="0" value={dealForm.value} onChange={e => setDealForm(prev => ({ ...prev, value: e.target.value }))} />
+                          {dealForm.value && Number(dealForm.value) > 0 && (
+                            <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
+                              {numberToText(Number(dealForm.value))}
+                            </div>
+                          )}
+                        </div>
                       <div className="form-group">
                         <label className="form-label">Giai đoạn</label>
                         <CustomSelect 

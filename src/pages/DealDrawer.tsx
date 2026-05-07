@@ -8,6 +8,7 @@ import api from '../api/axios';
 import styles from './EntityDrawer.module.css';
 import { TagInput } from '../components/ui/TagInput';
 import { MentionInput } from '../components/ui/MentionInput';
+import { numberToText } from '../utils/numberToText';
 
 interface DealDrawerProps {
   isOpen: boolean;
@@ -162,6 +163,11 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                         <div className="form-group">
                           <label className="form-label">Giá trị dự kiến (đ)</label>
                           <input className="form-input" type="number" value={formData?.value || ''} onChange={e => setFormData({...formData, value: Number(e.target.value)})} />
+                          {formData?.value > 0 && (
+                            <div style={{ marginTop: '4px', fontSize: '0.75rem', color: 'var(--color-primary)', fontWeight: 600, fontStyle: 'italic' }}>
+                              {numberToText(formData.value)}
+                            </div>
+                          )}
                         </div>
                         <div className="form-group">
                           <label className="form-label">Xác suất thành công (%)</label>
