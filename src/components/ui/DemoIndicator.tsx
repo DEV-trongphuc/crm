@@ -29,7 +29,7 @@ export const DemoIndicator: React.FC = () => {
     setLoading(true);
     try {
       // URL của Google Apps Script Web App
-      const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyvS_R_9uB-6S5hYqK-uUv6Z_R6Y3-0_V-G_U_v_V_v_V/exec'; 
+      const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwY3J_VJN6lhGHaoJ0zNnOyYxsswyb3I1KqQ7nrdeElMZreXEKO_cigKEOEhtH-0noK/exec'; 
       
       await fetch(SCRIPT_URL, {
         method: 'POST',
