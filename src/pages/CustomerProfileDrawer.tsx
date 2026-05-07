@@ -312,7 +312,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#8b5cf6' : '#10b981',
       icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : <Mail size={16} />,
       note: a.body || a.note || ''
-    }));
+    })).sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
   }, [drawerActivities, mockStore.activities, contact?.id]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
 
@@ -1681,6 +1681,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
             });
 
             addToast('Đã ghi nhận cuộc gọi và thêm vào Timeline', 'success');
+            fetchData();
           } catch (err) {
             addToast('Lỗi khi lưu nhật ký cuộc gọi', 'error');
           }
@@ -1691,6 +1692,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         onClose={() => setShowActivityModal(false)}
         entityType="contact"
         entityId={contact?.id}
+        onSuccess={fetchData}
       />
 
       <AnimatePresence>
