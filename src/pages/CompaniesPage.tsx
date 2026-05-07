@@ -233,7 +233,7 @@ export const CompaniesPage: React.FC = () => {
 
       {/* List View */}
       {!loading && viewMode === 'list' && (
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card" style={{ overflow: 'visible' }}>
           <div className="table-wrap">
             <table style={{ width: '100%' }}>
               <thead>

@@ -58,14 +58,14 @@ const AGO = (iso: string) => {
 const TABS = [
   { id: 'info', label: 'Thông tin chung', icon: <User size={16} /> },
   { id: 'tags', label: 'Tags', icon: <TagIcon size={16} /> },
+  { id: 'notes', label: 'Ghi chú', icon: <FileText size={16} /> },
+  { id: 'tasks', label: 'Công việc', icon: <CheckSquare size={16} /> },
+  { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <FileText size={16} /> },
   { id: 'timeline', label: 'Lịch sử tương tác', icon: <History size={16} /> },
   { id: 'scoring', label: 'Scoring', icon: <Target size={16} /> },
-  { id: 'deals', label: 'Cơ hội (Deals)', icon: <DollarSign size={16} /> },
-  { id: 'tasks', label: 'Công việc (Tasks)', icon: <CheckSquare size={16} /> },
-  { id: 'notes', label: 'Ghi chú nội bộ', icon: <FileText size={16} /> },
-  { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <FileText size={16} /> },
   { id: 'invoices', label: 'Invoices', icon: <DollarSign size={16} /> },
-  { id: 'quotes', label: 'Báo giá (Quotes)', icon: <FileText size={16} /> },
+  { id: 'deals', label: 'Cơ hội', icon: <DollarSign size={16} /> },
+  { id: 'quotes', label: 'Báo giá', icon: <FileText size={16} /> },
   { id: 'expenses', label: 'Chi phí', icon: <DollarSign size={16} /> },
   { id: 'tickets', label: 'Hỗ trợ/Khiếu nại', icon: <LifeBuoy size={16} /> },
 ];
@@ -111,7 +111,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     // In real app, upload to server. For now, use FileReader for preview + update state
     const reader = new FileReader();
     reader.onloadend = async () => {
@@ -148,8 +148,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       if (part.startsWith('@')) {
         const name = part.substring(1);
         return (
-          <span 
-            key={i} 
+          <span
+            key={i}
             onClick={(e) => showUserCard(e, name)}
             style={{ color: '#8b5cf6', fontWeight: 700, cursor: 'pointer', background: '#f5f3ff', padding: '2px 6px', borderRadius: '4px', margin: '0 2px' }}
           >
@@ -200,19 +200,23 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       // Fetch Invoices
       const invoicesRes = await api.get(`/invoices?contact_id=${contact.id}`);
-      setDrawerInvoices(invoicesRes.data.data.items || []);
+      const invData = invoicesRes.data.data;
+      setDrawerInvoices(Array.isArray(invData) ? invData : (invData?.items || []));
 
       // Fetch Quotes
       const quotesRes = await api.get(`/quotes?contact_id=${contact.id}`);
-      setDrawerQuotes(quotesRes.data.data || []);
+      const qData = quotesRes.data.data;
+      setDrawerQuotes(Array.isArray(qData) ? qData : (qData?.items || []));
 
       // Fetch Expenses
       const expensesRes = await api.get(`/expenses/entity/contact/${contact.id}`);
-      setDrawerExpenses(expensesRes.data.data || []);
+      const expData = expensesRes.data.data;
+      setDrawerExpenses(Array.isArray(expData) ? expData : (expData?.items || []));
 
       // Fetch Tickets
       const ticketsRes = await api.get(`/tickets?contact_id=${contact.id}`);
-      setDrawerTickets(ticketsRes.data.data.items || []);
+      const tData = ticketsRes.data.data;
+      setDrawerTickets(Array.isArray(tData) ? tData : (tData?.items || []));
 
     } catch (e) {
       console.error("Error fetching drawer data:", e);
@@ -299,15 +303,15 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
     if (!contact?.id) return [];
     const source = DEV_MODE ? mockStore.activities.filter((a: any) => a.contact_id === contact.id) : drawerActivities;
     return source.map((a: any) => ({
-        id: a.id,
-        title: a.subject,
-        type: a.type,
-        user: a.user_name || 'Hệ thống',
-        time: a.created_at,
-        color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#8b5cf6' : '#10b981',
-        icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : <Mail size={16} />,
-        note: a.body || a.note || ''
-      }));
+      id: a.id,
+      title: a.subject,
+      type: a.type,
+      user: a.user_name || 'Hệ thống',
+      time: a.created_at,
+      color: a.type === 'call' ? '#3b82f6' : a.type === 'meeting' ? '#8b5cf6' : '#10b981',
+      icon: a.type === 'call' ? <Phone size={16} /> : a.type === 'meeting' ? <User size={16} /> : <Mail size={16} />,
+      note: a.body || a.note || ''
+    }));
   }, [drawerActivities, mockStore.activities, contact?.id]);
   const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim() || 'Chưa cập nhật tên';
 
@@ -461,143 +465,143 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             >
               <AnimatePresence>
-              {showAvatarModal && (
-                <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-                    style={{ background: 'var(--color-surface)', width: '400px', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-2xl)' }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem', textAlign: 'center' }}>Cập nhật Ảnh đại diện</h3>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-                      <div style={{ width: 120, height: 120, borderRadius: '32px', background: tempAvatar ? `url(${tempAvatar}) center/cover` : 'var(--color-bg)', border: '4px solid var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
-                        {!tempAvatar && <User size={48} color="var(--color-text-muted)" />}
-                      </div>
-                    </div>
+                {showAvatarModal && (
+                  <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
+                      style={{ background: 'var(--color-surface)', width: '400px', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-2xl)' }}
+                      onClick={e => e.stopPropagation()}
+                    >
+                      <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem', textAlign: 'center' }}>Cập nhật Ảnh đại diện</h3>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div>
-                        <label className="form-label">Tải ảnh lên</label>
-                        <input 
-                          type="file" 
-                          className="form-input" 
-                          accept="image/*"
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => setTempAvatar(reader.result as string);
-                              reader.readAsDataURL(file);
+                      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                        <div style={{ width: 120, height: 120, borderRadius: '32px', background: tempAvatar ? `url(${tempAvatar}) center/cover` : 'var(--color-bg)', border: '4px solid var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: 'var(--shadow-lg)' }}>
+                          {!tempAvatar && <User size={48} color="var(--color-text-muted)" />}
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div>
+                          <label className="form-label">Tải ảnh lên</label>
+                          <input
+                            type="file"
+                            className="form-input"
+                            accept="image/*"
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const reader = new FileReader();
+                                reader.onloadend = () => setTempAvatar(reader.result as string);
+                                reader.readAsDataURL(file);
+                              }
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label">Hoặc dán URL ảnh</label>
+                          <input
+                            className="form-input"
+                            placeholder="https://example.com/avatar.jpg"
+                            value={tempAvatar}
+                            onChange={e => setTempAvatar(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                        <button className="btn outline" style={{ flex: 1 }} onClick={() => setShowAvatarModal(false)}>Hủy</button>
+                        <button
+                          className="btn primary"
+                          style={{ flex: 1 }}
+                          onClick={async () => {
+                            try {
+                              let finalUrl = tempAvatar;
+
+                              // Check if tempAvatar is a base64 string (meaning it was just uploaded)
+                              if (tempAvatar.startsWith('data:image/')) {
+                                const blob = await (await fetch(tempAvatar)).blob();
+                                const formDataUpload = new FormData();
+                                formDataUpload.append('file', blob, 'avatar.jpg');
+                                formDataUpload.append('previous_url', formData.avatar_url || '');
+
+                                const uploadRes = await api.post('/upload', formDataUpload, {
+                                  headers: { 'Content-Type': 'multipart/form-data' }
+                                });
+                                finalUrl = uploadRes.data.data.url;
+                              }
+
+                              await api.put(`/contacts/${contact.id}`, { avatar_url: finalUrl });
+                              setFormData((prev: any) => ({ ...prev, avatar_url: finalUrl }));
+                              addToast('Đã cập nhật ảnh đại diện', 'success');
+                              setShowAvatarModal(false);
+                              onUpdate?.({ ...formData, avatar_url: finalUrl });
+                            } catch (err: any) {
+                              addToast(err.response?.data?.message || 'Lỗi khi lưu ảnh', 'error');
                             }
                           }}
-                        />
+                        >
+                          Lưu thay đổi
+                        </button>
                       </div>
-                      <div>
-                        <label className="form-label">Hoặc dán URL ảnh</label>
-                        <input 
-                          className="form-input" 
-                          placeholder="https://example.com/avatar.jpg"
-                          value={tempAvatar}
-                          onChange={e => setTempAvatar(e.target.value)}
-                        />
-                      </div>
-                    </div>
+                    </motion.div>
+                  </div>
+                )}
+              </AnimatePresence>
 
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                      <button className="btn outline" style={{ flex: 1 }} onClick={() => setShowAvatarModal(false)}>Hủy</button>
-                      <button 
-                        className="btn primary" 
-                        style={{ flex: 1 }} 
-                        onClick={async () => {
-                          try {
-                            let finalUrl = tempAvatar;
-                            
-                            // Check if tempAvatar is a base64 string (meaning it was just uploaded)
-                            if (tempAvatar.startsWith('data:image/')) {
-                              const blob = await (await fetch(tempAvatar)).blob();
-                              const formDataUpload = new FormData();
-                              formDataUpload.append('file', blob, 'avatar.jpg');
-                              formDataUpload.append('previous_url', formData.avatar_url || '');
-                              
-                              const uploadRes = await api.post('/upload', formDataUpload, {
-                                headers: { 'Content-Type': 'multipart/form-data' }
-                              });
-                              finalUrl = uploadRes.data.data.url;
-                            }
-
-                            await api.put(`/contacts/${contact.id}`, { avatar_url: finalUrl });
-                            setFormData((prev: any) => ({ ...prev, avatar_url: finalUrl }));
-                            addToast('Đã cập nhật ảnh đại diện', 'success');
-                            setShowAvatarModal(false);
-                            onUpdate?.({ ...formData, avatar_url: finalUrl });
-                          } catch (err: any) {
-                            addToast(err.response?.data?.message || 'Lỗi khi lưu ảnh', 'error');
-                          }
-                        }}
-                      >
-                        Lưu thay đổi
-                      </button>
-                    </div>
-                  </motion.div>
-                </div>
-              )}
-            </AnimatePresence>
-            
-            {/* ── Quick User Card Popover ── */}
-            <AnimatePresence>
-              {quickUserCard && quickUserCard.visible && (
-                <>
-                  <div 
-                    style={{ position: 'fixed', inset: 0, zIndex: 3000 }} 
-                    onClick={() => setQuickUserCard(null)} 
-                  />
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                    style={{
-                      position: 'fixed',
-                      top: quickUserCard.y - 120,
-                      left: quickUserCard.x - 220,
-                      zIndex: 3001,
-                      width: 220,
-                      background: 'var(--color-surface)',
-                      borderRadius: '16px',
-                      boxShadow: '0 20px 50px -12px rgba(99, 102, 241, 0.25)',
-                      border: '1px solid var(--color-primary-light)',
-                      overflow: 'hidden'
-                    }}
-                  >
-                    <div style={{ height: 60, background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }} />
-                    <div style={{ padding: '0 1.25rem 1.25rem', textAlign: 'center', marginTop: -30 }}>
-                      <div style={{ width: 60, height: 60, borderRadius: '20px', background: 'white', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '4px solid white', fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6' }}>
-                        {quickUserCard.name.charAt(0).toUpperCase()}
-                      </div>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '4px' }}>{quickUserCard.name}</h4>
-                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{quickUserCard.role === 'admin' ? 'Quản trị viên' : 'Nhân viên kinh doanh'}</p>
-                      {quickUserCard.email && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.8125rem', padding: '8px', background: 'var(--color-bg)', borderRadius: '10px' }}>
-                          <Mail size={12} />
-                          <span style={{ fontWeight: 500 }}>{quickUserCard.email}</span>
+              {/* ── Quick User Card Popover ── */}
+              <AnimatePresence>
+                {quickUserCard && quickUserCard.visible && (
+                  <>
+                    <div
+                      style={{ position: 'fixed', inset: 0, zIndex: 3000 }}
+                      onClick={() => setQuickUserCard(null)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                      style={{
+                        position: 'fixed',
+                        top: quickUserCard.y - 120,
+                        left: quickUserCard.x - 220,
+                        zIndex: 3001,
+                        width: 220,
+                        background: 'var(--color-surface)',
+                        borderRadius: '16px',
+                        boxShadow: '0 20px 50px -12px rgba(99, 102, 241, 0.25)',
+                        border: '1px solid var(--color-primary-light)',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <div style={{ height: 60, background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }} />
+                      <div style={{ padding: '0 1.25rem 1.25rem', textAlign: 'center', marginTop: -30 }}>
+                        <div style={{ width: 60, height: 60, borderRadius: '20px', background: 'white', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '4px solid white', fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6' }}>
+                          {quickUserCard.name.charAt(0).toUpperCase()}
                         </div>
-                      )}
-                    </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
+                        <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '4px' }}>{quickUserCard.name}</h4>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>{quickUserCard.role === 'admin' ? 'Quản trị viên' : 'Nhân viên kinh doanh'}</p>
+                        {quickUserCard.email && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: 'var(--color-text-light)', fontSize: '0.8125rem', padding: '8px', background: 'var(--color-bg)', borderRadius: '10px' }}>
+                            <Mail size={12} />
+                            <span style={{ fontWeight: 500 }}>{quickUserCard.email}</span>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
 
               {/* ── Header ── */}
               <div style={{ padding: '2rem 2.5rem', background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)', borderBottom: '1px solid var(--color-border-light)', position: 'relative' }}>
                 <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                   {/* Avatar Section */}
                   <div style={{ position: 'relative' }}>
-                    <div 
-                      className="avatar-placeholder lg" 
-                      style={{ 
-                        background: formData.avatar_url ? `url(${formData.avatar_url}) center/cover` : 'linear-gradient(135deg, var(--color-primary) 0%, #4338ca 100%)', 
-                        fontSize: '1.5rem', width: 80, height: 80, borderRadius: '24px', 
+                    <div
+                      className="avatar-placeholder lg"
+                      style={{
+                        background: formData.avatar_url ? `url(${formData.avatar_url}) center/cover` : 'linear-gradient(135deg, var(--color-primary) 0%, #4338ca 100%)',
+                        fontSize: '1.5rem', width: 80, height: 80, borderRadius: '24px',
                         boxShadow: '0 10px 25px -5px rgba(99, 102, 241, 0.4)',
                         overflow: 'hidden',
                         cursor: 'pointer',
@@ -609,19 +613,19 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       }}
                     >
                       {!formData.avatar_url && (formData.first_name?.[0] || '?').toUpperCase()}
-                      <div 
-                        style={{ 
-                          position: 'absolute', 
-                          inset: 0, 
-                          background: 'rgba(0,0,0,0.3)', 
-                          opacity: 0, 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background: 'rgba(0,0,0,0.3)',
+                          opacity: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
                           transition: 'opacity 0.2s',
-                          borderRadius: '24px' 
-                        }} 
-                        onMouseEnter={e => e.currentTarget.style.opacity = '1'} 
+                          borderRadius: '24px'
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = '1'}
                         onMouseLeave={e => e.currentTarget.style.opacity = '0'}
                       >
                         <Pencil size={20} color="white" />
@@ -666,7 +670,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                         <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
                       </div>
-                      <div 
+                      <div
                         style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: 'white', border: '1px solid var(--color-border)', borderRadius: '12px', cursor: 'pointer' }}
                         onClick={(e) => showUserCard(e, formData.owner_name)}
                       >
@@ -678,17 +682,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </div>
                   </div>
 
-                  {/* Stats Section */}
-                  <div style={{ display: 'flex', gap: '1.5rem', padding: '0 1.5rem', borderLeft: '1px solid var(--color-border-light)', height: 'fit-content' }}>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', textTransform: 'uppercase' }}>Tổng chi tiêu</p>
-                      <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-primary)' }}>{FMT(formData.total_spent)}</p>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-muted)', fontWeight: 700, marginBottom: '2px', textTransform: 'uppercase' }}>Số đơn hàng</p>
-                      <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)' }}>{formData.order_count || 0}</p>
-                    </div>
-                  </div>
 
                   {/* Actions Section */}
                   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
@@ -704,11 +697,6 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </button>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'white', padding: '10px 16px', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Mã liên hệ</p>
-                        <p style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-primary)' }}>#CON-{formData.id}</p>
-                      </div>
-                      <div style={{ width: 1, height: 32, background: 'var(--color-border-light)' }} />
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ textAlign: 'right' }}>
                           <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Lead Score</p>
@@ -860,7 +848,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             }} />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">Số di động</label>
+                            <label className="form-label">Số điện thoại phụ</label>
                             <input className="form-input" type="tel" placeholder="08xx xxx xxx" value={formData.mobile || ''} onChange={e => {
                               const val = e.target.value;
                               setFormData((prev: any) => ({ ...prev, mobile: val }));
@@ -881,6 +869,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             }} />
                           </div>
                           <div className="form-group">
+                            <label className="form-label">Công ty</label>
+                            <input className="form-input" placeholder="Tên công ty" value={formData.company_name || ''} onChange={e => {
+                              const val = e.target.value;
+                              setFormData((prev: any) => ({ ...prev, company_name: val }));
+                            }} />
+                          </div>
+                          <div className="form-group">
                             <label className="form-label">Phòng ban</label>
                             <input className="form-input" placeholder="ví dụ: Kinh doanh" value={formData.department || ''} onChange={e => {
                               const val = e.target.value;
@@ -893,24 +888,17 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
                         <div className="grid grid-2">
                           <div className="form-group">
-                            <label className="form-label">Công ty / Tổ chức</label>
-                            <input className="form-input" placeholder="Tên công ty" value={formData.company_name || ''} onChange={e => {
-                              const val = e.target.value;
-                              setFormData((prev: any) => ({ ...prev, company_name: val }));
-                            }} />
-                          </div>
-                          <div className="form-group">
                             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <Clock size={13} style={{ color: 'var(--color-text-muted)' }} /> Thời gian
                             </label>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               <div style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 <span style={{ fontWeight: 600, color: 'var(--color-text-light)', minWidth: 58 }}>Tạo lúc:</span>
-                                <input 
-                                  type="datetime-local" 
-                                  className="form-input sm" 
+                                <input
+                                  type="datetime-local"
+                                  className="form-input sm"
                                   style={{ padding: '4px 8px', fontSize: '0.8125rem', width: '180px' }}
-                                  value={formData.created_at ? formData.created_at.substring(0, 16) : ''} 
+                                  value={formData.created_at ? formData.created_at.substring(0, 16) : ''}
                                   onChange={e => {
                                     const val = e.target.value.replace('T', ' ') + ':00';
                                     setFormData((prev: any) => ({ ...prev, created_at: val }));
@@ -964,9 +952,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <div className="form-group">
                             <label className="form-label">Người đang chăm sóc (Sale)</label>
                             <CustomSelect
-                              options={users.map(u => ({ 
-                                value: u.id, 
-                                label: u.full_name, 
+                              options={users.map(u => ({
+                                value: u.id,
+                                label: u.full_name,
                                 avatar: u.avatar_url,
                                 sublabel: u.role
                               }))}
@@ -1088,8 +1076,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                                   <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                     <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{new Date(ev.time).toLocaleDateString('vi-VN')}</span>
-                                    <button 
-                                      className="btn ghost sm" 
+                                    <button
+                                      className="btn ghost sm"
                                       style={{ padding: '2px', height: '24px', width: '24px', color: 'var(--color-danger)', opacity: 0.5 }}
                                       onClick={(e) => { e.stopPropagation(); deleteActivity(ev.id); }}
                                       onMouseEnter={e => e.currentTarget.style.opacity = '1'}
@@ -1164,45 +1152,53 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Cơ hội (Deals) - {deals.length}</h3>
                         <button className="btn primary sm" onClick={() => setShowDealModal(true)}><Plus size={14} /> Tạo deal mới</button>
                       </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
-                        {deals.map((d: any) => (
-                          <div key={d.id} className="card-panel" style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer', borderRadius: '16px' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.05)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-                            <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--color-surface)' }}>
-                              <div>
-                                <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>{d.title}</h4>
-                                <span className="badge" style={{ background: `${d.stage_color}15`, color: d.stage_color, fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '8px' }}>{d.stage}</span>
+                      {deals.length === 0 ? (
+                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
+                          <Activity size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
+                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có cơ hội</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Đang không có cơ hội kinh doanh nào đang mở cho khách hàng này.</p>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
+                          {deals.map((d: any) => (
+                            <div key={d.id} className="card-panel" style={{ padding: 0, overflow: 'hidden', border: `1px solid var(--color-border)`, transition: 'transform 0.2s, box-shadow 0.2s', cursor: 'pointer', borderRadius: '16px' }} onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 25px -5px rgba(0, 0, 0, 0.05)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
+                              <div style={{ padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: 'var(--color-surface)' }}>
+                                <div>
+                                  <h4 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', marginBottom: '0.5rem', letterSpacing: '-0.01em' }}>{d.title}</h4>
+                                  <span className="badge" style={{ background: `${d.stage_color}15`, color: d.stage_color, fontSize: '0.75rem', fontWeight: 700, padding: '4px 10px', borderRadius: '8px' }}>{d.stage}</span>
+                                </div>
+                                <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</span>
+                                    <button
+                                      className="btn-icon sm text-danger"
+                                      style={{ opacity: 0.4, transition: 'opacity 0.2s', padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                                      onClick={(e) => { e.stopPropagation(); deleteDeal(d.id); }}
+                                      onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                      onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
-                              <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '1rem', letterSpacing: '-0.01em' }}>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(d.value || 0)}</span>
-                                  <button 
-                                    className="btn-icon sm text-danger" 
-                                    style={{ opacity: 0.4, transition: 'opacity 0.2s', padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer' }}
-                                    onClick={(e) => { e.stopPropagation(); deleteDeal(d.id); }}
-                                    onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                                    onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
+                              <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(to right, var(--color-bg), var(--color-surface))', borderTop: '1px solid var(--color-border-light)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                                  <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Activity size={14} /> Xác suất chốt</span>
+                                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{d.prob}%</span>
+                                </div>
+                                <div style={{ height: 8, background: 'var(--color-border-light)', borderRadius: 4, overflow: 'hidden', marginBottom: '1.25rem' }}>
+                                  <div style={{ width: `${d.prob}%`, height: '100%', background: `linear-gradient(90deg, ${d.stage_color}88 0%, ${d.stage_color} 100%)`, borderRadius: 4 }} />
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
+                                  <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={14} /> Ngày dự kiến</span>
+                                  <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{new Date(d.close).toLocaleDateString('vi-VN')}</span>
                                 </div>
                               </div>
                             </div>
-                            <div style={{ padding: '1rem 1.5rem', background: 'linear-gradient(to right, var(--color-bg), var(--color-surface))', borderTop: '1px solid var(--color-border-light)' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
-                                <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Activity size={14} /> Xác suất chốt</span>
-                                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{d.prob}%</span>
-                              </div>
-                              <div style={{ height: 8, background: 'var(--color-border-light)', borderRadius: 4, overflow: 'hidden', marginBottom: '1.25rem' }}>
-                                <div style={{ width: `${d.prob}%`, height: '100%', background: `linear-gradient(90deg, ${d.stage_color}88 0%, ${d.stage_color} 100%)`, borderRadius: 4 }} />
-                              </div>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8125rem' }}>
-                                <span style={{ color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}><Calendar size={14} /> Ngày dự kiến</span>
-                                <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{new Date(d.close).toLocaleDateString('vi-VN')}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1213,53 +1209,61 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <h3 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Công việc cần làm</h3>
                         <button className="btn primary sm" onClick={() => setShowTaskModal(true)}><Plus size={14} /> Thêm công việc</button>
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        {tasks.map(t => (
-                          <div
-                            key={t.id}
-                            className="card-panel"
-                            onClick={() => setTasks(p => p.map(x => x.id === t.id ? { ...x, done: !x.done } : x))}
-                            style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1rem', opacity: t.done ? 0.6 : 1, cursor: 'pointer', transition: 'all 0.2s', border: '1px solid transparent' }}
-                            onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary-light)'}
-                            onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
-                          >
-                            <div style={{ width: 24, height: 24, borderRadius: '6px', border: `2px solid ${t.done ? 'var(--color-success)' : 'var(--color-border)'}`, background: t.done ? 'var(--color-success)' : 'transparent', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
-                              {t.done && <CheckSquare size={14} />}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                              <p style={{ fontSize: '0.9375rem', fontWeight: 600, textDecoration: t.done ? 'line-through' : 'none', color: 'var(--color-text)' }}>{t.title}</p>
-                              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.375rem' }}>
-                                <span className={`badge ${t.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.7rem' }}>{t.priority === 'high' ? 'Ưu tiên cao' : 'Trung bình'}</span>
-                                <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Hạn hoàn thành: {t.due}</span>
-                              </div>
-                            </div>
-                            <button
-                              className="btn-icon sm text-danger"
-                              style={{ opacity: 0.4, transition: 'opacity 0.2s' }}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                showConfirm(
-                                  'Xóa công việc?',
-                                  `Bạn có chắc chắn muốn xóa công việc "${t.title}"?`,
-                                  async () => {
-                                    try {
-                                      await api.delete(`/activities/${t.id}`);
-                                      setTasks(prev => prev.filter(x => x.id !== t.id));
-                                      addToast('Đã xóa công việc thành công', 'success');
-                                    } catch (err: any) {
-                                      addToast(err.response?.data?.message || 'Lỗi khi xóa công việc', 'error');
-                                    }
-                                  }
-                                );
-                              }}
-                              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                              onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
+                      {tasks.length === 0 ? (
+                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
+                          <CheckSquare size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
+                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có công việc</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Bắt đầu bằng việc thêm một công việc mới để quản lý tiến độ với khách hàng.</p>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          {tasks.map(t => (
+                            <div
+                              key={t.id}
+                              className="card-panel"
+                              onClick={() => setTasks(p => p.map(x => x.id === t.id ? { ...x, done: !x.done } : x))}
+                              style={{ display: 'flex', gap: '1rem', alignItems: 'center', padding: '1rem', opacity: t.done ? 0.6 : 1, cursor: 'pointer', transition: 'all 0.2s', border: '1px solid transparent' }}
+                              onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary-light)'}
+                              onMouseLeave={e => e.currentTarget.style.borderColor = 'transparent'}
                             >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+                              <div style={{ width: 24, height: 24, borderRadius: '6px', border: `2px solid ${t.done ? 'var(--color-success)' : 'var(--color-border)'}`, background: t.done ? 'var(--color-success)' : 'transparent', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.2s' }}>
+                                {t.done && <CheckSquare size={14} />}
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <p style={{ fontSize: '0.9375rem', fontWeight: 600, textDecoration: t.done ? 'line-through' : 'none', color: 'var(--color-text)' }}>{t.title}</p>
+                                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.375rem' }}>
+                                  <span className={`badge ${t.priority === 'high' ? 'danger' : 'warning'}`} style={{ fontSize: '0.7rem' }}>{t.priority === 'high' ? 'Ưu tiên cao' : 'Trung bình'}</span>
+                                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Hạn hoàn thành: {t.due}</span>
+                                </div>
+                              </div>
+                              <button
+                                className="btn-icon sm text-danger"
+                                style={{ opacity: 0.4, transition: 'opacity 0.2s' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  showConfirm(
+                                    'Xóa công việc?',
+                                    `Bạn có chắc chắn muốn xóa công việc "${t.title}"?`,
+                                    async () => {
+                                      try {
+                                        await api.delete(`/activities/${t.id}`);
+                                        setTasks(prev => prev.filter(x => x.id !== t.id));
+                                        addToast('Đã xóa công việc thành công', 'success');
+                                      } catch (err: any) {
+                                        addToast(err.response?.data?.message || 'Lỗi khi xóa công việc', 'error');
+                                      }
+                                    }
+                                  );
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                                onMouseLeave={e => e.currentTarget.style.opacity = '0.4'}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -1271,7 +1275,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
                       <div className="card-panel" style={{ marginBottom: '1.5rem', background: 'var(--color-surface)' }}>
                         <MentionInput
-                          value={newNote}
+                          value={newNote || ''}
                           onChange={e => setNewNote(e.target.value)}
                           placeholder="Nhập nội dung ghi chú về khách hàng này (Sử dụng @ để tag user/sale)..."
                           style={{ width: '100%', padding: '0.75rem', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', resize: 'vertical', minHeight: 100, color: 'var(--color-text)', outline: 'none', background: 'var(--color-surface)', marginBottom: '1rem' }}
@@ -1292,8 +1296,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   Tạo bởi <strong>{n.user}</strong> lúc {new Date(n.time).toLocaleString('vi-VN')}
                                 </p>
                               </div>
-                              <button 
-                                className="btn-icon sm text-danger" 
+                              <button
+                                className="btn-icon sm text-danger"
                                 style={{ opacity: 0.4, transition: 'opacity 0.2s' }}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1341,10 +1345,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       </div>
 
                       {docs.length === 0 ? (
-                        <div className="empty-state" style={{ padding: '3rem 1rem', textAlign: 'center', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
-                          <FileText size={48} color="var(--color-border)" style={{ margin: '0 auto 1rem auto' }} />
-                          <p style={{ fontWeight: 600, color: 'var(--color-text)' }}>Chưa có tài liệu nào</p>
-                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: '0.5rem' }}>Upload hợp đồng, CMND/CCCD hoặc báo giá tại đây.</p>
+                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
+                          <FileText size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
+                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có tài liệu nào</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Upload hợp đồng, CMND/CCCD hoặc báo giá tại đây.</p>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1390,9 +1394,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <button className="btn outline sm" onClick={() => { useUIStore.getState().setShowPOS(formData); }}><Plus size={14} /> Tạo hóa đơn</button>
                       </div>
                       {drawerInvoices.length === 0 ? (
-                        <div className="empty-state" style={{ padding: '3rem 1rem', textAlign: 'center', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
-                          <DollarSign size={48} color="var(--color-border)" style={{ margin: '0 auto 1rem auto' }} />
-                          <p style={{ fontWeight: 600, color: 'var(--color-text)' }}>Chưa có lịch sử thanh toán</p>
+                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
+                          <DollarSign size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
+                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có hóa đơn</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Khách hàng này chưa phát sinh giao dịch thanh toán nào.</p>
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -1477,8 +1482,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           <h3 style={{ fontWeight: 700, fontSize: '1.125rem', color: 'var(--color-text)' }}>Danh sách Báo giá</h3>
                           <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>Theo dõi các đề xuất giá gửi cho khách hàng này</p>
                         </div>
-                        <button 
-                          className="btn primary sm" 
+                        <button
+                          className="btn primary sm"
                           style={{ boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)' }}
                           onClick={() => {
                             setSelectedQuote(null);
@@ -1497,18 +1502,18 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          {drawerQuotes.map((q: any) => (
-                            <div 
-                              key={q.id} 
-                              className="card-panel table-row-hover" 
+                          {(Array.isArray(drawerQuotes) ? drawerQuotes : []).map((q: any) => (
+                            <div
+                              key={q.id}
+                              className="card-panel table-row-hover"
                               onClick={() => {
                                 setSelectedQuote(q);
                                 setShowQuoteEditor(true);
                               }}
-                              style={{ 
-                                padding: '1.25rem', 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
+                              style={{
+                                padding: '1.25rem',
+                                display: 'flex',
+                                justifyContent: 'space-between',
                                 alignItems: 'center',
                                 border: '1px solid var(--color-border-light)',
                                 borderRadius: '16px'
@@ -1574,9 +1579,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           ))}
                         </div>
                       ) : (
-                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-                          <DollarSign size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1rem', opacity: 0.5 }} />
-                          <h4 style={{ fontWeight: 700 }}>Chưa có chi phí nào được ghi nhận</h4>
+                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
+                          <DollarSign size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
+                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có chi phí</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Hệ thống chưa ghi nhận bất kỳ khoản chi phí nào liên quan đến khách hàng này.</p>
                         </div>
                       )}
                     </div>
@@ -1591,9 +1597,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </button>
                       </div>
                       {drawerTickets.length === 0 ? (
-                        <div className="empty-state" style={{ padding: '3rem 1rem', textAlign: 'center', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--color-border)' }}>
-                          <LifeBuoy size={48} color="var(--color-border)" style={{ margin: '0 auto 1rem auto' }} />
-                          <p style={{ fontWeight: 600, color: 'var(--color-text)' }}>Chưa có ticket nào</p>
+                        <div className="card-panel" style={{ textAlign: 'center', padding: '4rem 2rem', border: '2px dashed var(--color-border-light)', borderRadius: '24px' }}>
+                          <LifeBuoy size={48} style={{ color: 'var(--color-border)', margin: '0 auto 1.5rem', opacity: 0.4 }} />
+                          <h4 style={{ fontWeight: 800, color: 'var(--color-text)', marginBottom: '8px' }}>Chưa có ticket hỗ trợ</h4>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', maxWidth: '240px', margin: '0 auto' }}>Hiện tại không có yêu cầu hỗ trợ nào đang chờ xử lý cho khách hàng này.</p>
                         </div>
                       ) : (
                         <div className="card-panel" style={{ padding: 0, overflow: 'hidden' }}>
@@ -1647,9 +1654,9 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           try {
             // Map CallLog to activities table schema exactly
             const subject = `Cuộc gọi ${log.direction === 'outbound' ? 'đi' : 'đến'}: ${log.outcome === 'reached' ? 'Đã kết nối' :
-                log.outcome === 'no_answer' ? 'Không nghe máy' :
-                  log.outcome === 'busy' ? 'Máy bận' :
-                    log.outcome === 'voicemail' ? 'Hộp thư thoại' : 'Sai số'
+              log.outcome === 'no_answer' ? 'Không nghe máy' :
+                log.outcome === 'busy' ? 'Máy bận' :
+                  log.outcome === 'voicemail' ? 'Hộp thư thoại' : 'Sai số'
               }`;
             await api.post('/activities', {
               type: 'call',
@@ -1706,7 +1713,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <textarea
                   className="form-input"
                   placeholder="Ghi chú bắt buộc lý do hoặc tóm tắt trước khi chuyển bước..."
-                  value={pipelineModal.note}
+                  value={pipelineModal.note || ''}
                   onChange={e => setPipelineModal({ ...pipelineModal, note: e.target.value })}
                   style={{ minHeight: '80px', resize: 'vertical' }}
                   autoFocus
@@ -1789,14 +1796,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className="grid grid-2">
                   <div className="form-group">
                     <label className="form-label">Giai đoạn</label>
-                    <CustomSelect 
+                    <CustomSelect
                       options={[
                         { value: 'lead', label: 'Mới (Lead)' },
                         { value: 'negotiation', label: 'Đàm phán' },
                         { value: 'proposal', label: 'Đã báo giá' }
-                      ]} 
-                      value={dealForm.stage} 
-                      onChange={val => setDealForm({ ...dealForm, stage: val.toString() })} 
+                      ]}
+                      value={dealForm.stage}
+                      onChange={val => setDealForm({ ...dealForm, stage: val.toString() })}
                     />
                   </div>
                   <div className="form-group">
@@ -1836,14 +1843,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 <div className="grid grid-2">
                   <div className="form-group">
                     <label className="form-label">Mức độ ưu tiên</label>
-                    <CustomSelect 
+                    <CustomSelect
                       options={[
                         { value: 'low', label: 'Thấp' },
                         { value: 'medium', label: 'Trung bình' },
                         { value: 'high', label: 'Cao' }
-                      ]} 
-                      value={taskForm.priority} 
-                      onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })} 
+                      ]}
+                      value={taskForm.priority}
+                      onChange={val => setTaskForm({ ...taskForm, priority: val.toString() })}
                     />
                   </div>
                   <div className="form-group">
@@ -1887,21 +1894,21 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   </div>
                   <div className="form-group">
                     <label className="form-label">Độ ưu tiên</label>
-                    <CustomSelect 
+                    <CustomSelect
                       options={[
                         { value: 'low', label: 'Thấp' },
                         { value: 'medium', label: 'Trung bình' },
                         { value: 'high', label: 'Cao' },
                         { value: 'urgent', label: 'Khẩn cấp' }
-                      ]} 
-                      value={ticketForm.priority} 
-                      onChange={val => setTicketForm({ ...ticketForm, priority: val.toString() })} 
+                      ]}
+                      value={ticketForm.priority}
+                      onChange={val => setTicketForm({ ...ticketForm, priority: val.toString() })}
                     />
                   </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Mô tả chi tiết</label>
-                  <textarea className="form-input" rows={4} placeholder="Nội dung chi tiết..." value={ticketForm.description} onChange={e => setTicketForm({ ...ticketForm, description: e.target.value })} style={{ resize: 'none' }} />
+                  <textarea className="form-input" rows={4} placeholder="Nội dung chi tiết..." value={ticketForm.description || ''} onChange={e => setTicketForm({ ...ticketForm, description: e.target.value })} style={{ resize: 'none' }} />
                 </div>
               </div>
               <div className="modal-footer">

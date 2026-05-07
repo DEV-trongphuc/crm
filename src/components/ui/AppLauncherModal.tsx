@@ -143,12 +143,13 @@ export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onCl
                       <div style={{ 
                         width: 44, 
                         height: 44, 
-                        borderRadius: '12px', 
-                        background: 'var(--color-primary-light)', 
+                        borderRadius: '14px', 
+                        background: 'linear-gradient(135deg, var(--color-primary), #4f46e5)', 
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'center', 
-                        color: 'var(--color-primary)' 
+                        color: 'white',
+                        boxShadow: '0 4px 12px rgba(124, 58, 237, 0.25)'
                       }}>
                         <Icon size={22} />
                       </div>

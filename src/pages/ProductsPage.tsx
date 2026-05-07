@@ -198,7 +198,7 @@ export const ProductsPage: React.FC = () => {
         )}
       </div>
 
-      <div className="card" style={{ overflow:'hidden' }}>
+      <div className="card" style={{ overflow: 'visible' }}>
         <div className="table-wrap">
           <table>
             <thead>

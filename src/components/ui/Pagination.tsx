@@ -45,6 +45,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               options={[20, 50, 100, 200].map(n => ({ value: n, label: `${n} / trang` }))}
               value={pageSize}
               onChange={v => { onPageSizeChange(Number(v)); onChange(1); }}
+              direction="up"
             />
           </div>
         )}

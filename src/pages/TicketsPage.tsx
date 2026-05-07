@@ -200,7 +200,7 @@ export const TicketsPage: React.FC = () => {
           <TableSkeleton rows={5} cols={6} />
         </div>
       ) : viewMode === 'list' ? (
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card" style={{ overflow: 'visible' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>

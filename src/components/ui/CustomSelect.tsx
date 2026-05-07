@@ -21,6 +21,7 @@ interface CustomSelectProps {
   searchable?: boolean;
   showAvatars?: boolean;
   width?: string | number;
+  direction?: 'up' | 'down';
 }
 
 export const CustomSelect: React.FC<CustomSelectProps> = ({ 
@@ -31,7 +32,8 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
   label,
   searchable = false,
   showAvatars = false,
-  width
+  width,
+  direction = 'down'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -75,11 +77,16 @@ export const CustomSelect: React.FC<CustomSelectProps> = ({
       <AnimatePresence>
         {isOpen && (
           <motion.div 
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: direction === 'down' ? -10 : 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            exit={{ opacity: 0, y: direction === 'down' ? -10 : 10 }}
             transition={{ duration: 0.15 }}
             className={styles.dropdown}
+            style={{ 
+              top: direction === 'down' ? 'calc(100% + 0.5rem)' : 'auto',
+              bottom: direction === 'up' ? 'calc(100% + 0.5rem)' : 'auto',
+              transformOrigin: direction === 'down' ? 'top' : 'bottom'
+            }}
           >
             {searchable && (
               <div className={styles.searchBox}>

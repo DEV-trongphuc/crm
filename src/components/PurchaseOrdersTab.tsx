@@ -63,11 +63,12 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
   }, []);
 
   const handleAddItem = (p: any) => {
+    const cost = Number(p.cost || 0);
     const exists = formData.items.find(i => i.product_id === p.id);
     if (exists) {
       setFormData({
         ...formData,
-        items: formData.items.map(i => i.product_id === p.id ? { ...i, quantity: i.quantity + 1, subtotal: (i.quantity + 1) * i.unit_cost } : i)
+        items: formData.items.map(i => i.product_id === p.id ? { ...i, quantity: i.quantity + 1, subtotal: (i.quantity + 1) * Number(i.unit_cost) } : i)
       });
     } else {
       setFormData({
@@ -76,8 +77,8 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
           product_id: p.id, 
           name: p.name, 
           quantity: 1, 
-          unit_cost: p.cost || 0, 
-          subtotal: p.cost || 0 
+          unit_cost: cost, 
+          subtotal: cost 
         }]
       });
     }
@@ -91,11 +92,11 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
     if (qty < 1) return;
     setFormData({
       ...formData,
-      items: formData.items.map((item, i) => i === idx ? { ...item, quantity: qty, subtotal: qty * item.unit_cost } : item)
+      items: formData.items.map((item, i) => i === idx ? { ...item, quantity: qty, subtotal: qty * Number(item.unit_cost) } : item)
     });
   };
 
-  const calculateTotal = () => formData.items.reduce((acc, i) => acc + i.subtotal, 0);
+  const calculateTotal = () => formData.items.reduce((acc, i) => acc + (Number(i.subtotal) || 0), 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

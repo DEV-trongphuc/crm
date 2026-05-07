@@ -403,7 +403,7 @@ export const ContactsPage: React.FC = () => {
           <TableSkeleton rows={6} cols={6} />
         </div>
       ) : (
-        <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card" style={{ overflow: 'visible' }}>
           {viewMode === 'list' ? (
             <div className="table-wrap" style={{ maxHeight: 'calc(100vh - 280px)', overflowY: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>

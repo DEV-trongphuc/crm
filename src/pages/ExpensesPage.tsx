@@ -365,7 +365,7 @@ export const ExpensesPage: React.FC = () => {
       </div>
 
       {/* Main table */}
-      <div className="card" style={{ overflow: 'hidden' }}>
+      <div className="card" style={{ overflow: 'visible' }}>
         <div className="table-wrap">
           <table>
             <thead>

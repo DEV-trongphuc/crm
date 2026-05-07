@@ -233,7 +233,7 @@ export const InvoicesPage: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="card" style={{ overflow: 'hidden' }}>
+      <div className="card" style={{ overflow: 'visible' }}>
         <div className="table-wrap">
           <table>
             <thead>
