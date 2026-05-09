@@ -144,11 +144,11 @@ export const DemoIndicator: React.FC = () => {
                 position: 'fixed', top: '50%', left: '50%', width: '900px',
                 maxWidth: '95vw', maxHeight: '90vh', background: '#fafafa', borderRadius: '32px', zIndex: 10001,
                 boxShadow: '0 30px 60px -12px rgba(88, 28, 135, 0.4)',
-                overflow: 'hidden', display: 'flex'
+                overflow: 'visible', display: 'flex'
               }}
             >
               {/* Left Panel: Promo */}
-              <div style={{ width: '380px', background: 'linear-gradient(135deg, #2e1065, #4c1d95)', padding: '3rem', color: 'white', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0 }}>
+              <div style={{ width: '380px', background: 'linear-gradient(135deg, #2e1065, #4c1d95)', padding: '3rem', color: 'white', display: 'flex', flexDirection: 'column', position: 'relative', flexShrink: 0, borderTopLeftRadius: '32px', borderBottomLeftRadius: '32px', overflow: 'hidden' }}>
                 <div style={{ position: 'relative', zIndex: 2 }}>
                   <div style={{ width: 48, height: 48, borderRadius: '14px', background: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
                     <Building size={24} />
@@ -184,7 +184,7 @@ export const DemoIndicator: React.FC = () => {
               </div>
 
               {/* Right Panel: Form */}
-              <div style={{ flex: 1, padding: '2.5rem 3.5rem', position: 'relative', background: 'linear-gradient(180deg, #ffffff 0%, #f3f0ff 100%)', overflowY: 'auto' }}>
+              <div style={{ flex: 1, padding: '2.5rem 3.5rem', position: 'relative', background: 'linear-gradient(180deg, #ffffff 0%, #f3f0ff 100%)', borderTopRightRadius: '32px', borderBottomRightRadius: '32px' }}>
                 <button 
                   onClick={() => setShowModal(false)}
                   style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'white', border: 'none', color: '#4c1d95', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
