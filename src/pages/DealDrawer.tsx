@@ -138,7 +138,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
             </div>
 
             {/* Layout Split: Left Sidebar & Content */}
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <div className={styles.drawerBody}>
               <div className={styles.sidebarTabs}>
                 {TABS.map(tab => (
                   <button 

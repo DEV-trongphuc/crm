@@ -978,19 +978,119 @@ select:focus {
   background: var(--score-cold);
 }
 
-/* Responsive */
+/* ================================================
+   RESPONSIVE DESIGN & GRID SYSTEM
+   ================================================ */
+/* Touch target optimizations for tablet/mobile */
 @media (max-width: 1024px) {
-  .grid-4 {
+  .btn, .btn-icon, .form-input, .form-select, select, .searchTrigger {
+    min-height: 44px;
+  }
+  .grid-4, .grid-3 {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1279px) and (min-width: 1025px) {
+  .grid-4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
 
+@media (max-width: 767px) {
   .grid-2,
   .grid-3,
   .grid-4 {
     grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  /* ── TABLE CARD VIEW (MOBILE) ── */
+  .table-wrap table {
+    display: block;
+    width: 100%;
+  }
+
+  .table-wrap table thead {
+    display: none;
+  }
+
+  .table-wrap table tbody, 
+  .table-wrap table tr {
+    display: block;
+    width: 100%;
+  }
+
+  .table-wrap table tr {
+    margin-bottom: 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: 0.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .table-wrap table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0.5rem;
+    border-bottom: 1px solid var(--color-border-light);
+    text-align: right;
+    font-size: 0.875rem;
+  }
+
+  .table-wrap table td:last-child {
+    border-bottom: none;
+  }
+
+  .table-wrap table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    margin-right: 1rem;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  .table-wrap table td.col-actions {
+    justify-content: flex-end;
+    background: #fafafa;
+    margin: 0 -0.5rem -0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--color-border-light);
+  }
+
+  [data-theme="dark"] .table-wrap table td.col-actions {
+    background: #111118;
+  }
+
+  .table-wrap table td.col-actions::before {
+    display: none;
   }
 }
 

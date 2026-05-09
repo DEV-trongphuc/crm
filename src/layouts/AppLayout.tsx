@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, Briefcase, CalendarCheck,
   Package, BarChart3, Settings, LogOut, Menu, Search,
   ChevronLeft, Moon, Sun, Command, Plus, FileSpreadsheet, Wallet, LifeBuoy,
-  Truck, ShoppingCart, Folder, Calendar, Layers, FileText, LayoutGrid
+  Truck, ShoppingCart, Folder, Calendar, Layers, FileText, LayoutGrid, AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuthStore } from '../store/authStore';
@@ -99,6 +99,15 @@ export const AppLayout: React.FC = () => {
         )}
       </AnimatePresence>
 
+      {/* Mobile Not Supported Overlay */}
+      <div className={styles.mobileNotSupportedOverlay}>
+        <div style={{ textAlign: 'center', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <AlertCircle size={48} style={{ color: 'var(--color-primary)', marginBottom: '1rem' }} />
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--color-text)' }}>Hiện chưa hỗ trợ Mobile</h2>
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>Vui lòng sử dụng màn hình lớn hơn (PC, Laptop, hoặc Tablet xoay ngang) để có trải nghiệm sử dụng hệ thống quản trị CRM tốt nhất.</p>
+        </div>
+      </div>
+
       <DemoIndicator />
       {/* SIDEBAR */}
       <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileVisible : ''}`}>
@@ -158,7 +167,10 @@ export const AppLayout: React.FC = () => {
         {/* TOPBAR */}
         <header className={styles.topbar}>
           <div className={styles.topbarLeft}>
-            <button className={styles.iconBtn} onClick={() => setLauncherOpen(true)} title="Trình khởi chạy">
+            <button className={`${styles.iconBtn} ${styles.mobileMenuBtn}`} onClick={() => setMobileOpen(true)} title="Menu">
+              <Menu size={20} />
+            </button>
+            <button className={`${styles.iconBtn} ${styles.desktopLauncherBtn}`} onClick={() => setLauncherOpen(true)} title="Trình khởi chạy">
               <LayoutGrid size={20} />
             </button>
             {/* Global Search trigger */}
@@ -190,6 +202,26 @@ export const AppLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* BOTTOM NAVIGATION (MOBILE) */}
+      <nav className={styles.bottomNav}>
+        <NavLink to="/" className={({ isActive }) => `${styles.bottomNavItem} ${isActive ? styles.active : ''}`} end onClick={() => setMobileOpen(false)}>
+          <LayoutDashboard size={20} />
+          <span>Tổng quan</span>
+        </NavLink>
+        <NavLink to="/deals" className={({ isActive }) => `${styles.bottomNavItem} ${isActive ? styles.active : ''}`} onClick={() => setMobileOpen(false)}>
+          <Briefcase size={20} />
+          <span>Pipeline</span>
+        </NavLink>
+        <NavLink to="/contacts" className={({ isActive }) => `${styles.bottomNavItem} ${isActive ? styles.active : ''}`} onClick={() => setMobileOpen(false)}>
+          <Users size={20} />
+          <span>Khách hàng</span>
+        </NavLink>
+        <button className={styles.bottomNavItem} onClick={() => setMobileOpen(true)}>
+          <Menu size={20} />
+          <span>Menu</span>
+        </button>
+      </nav>
 
       {/* GLOBAL SEARCH MODAL */}
       <AnimatePresence>

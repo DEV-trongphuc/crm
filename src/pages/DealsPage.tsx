@@ -575,7 +575,7 @@ export const DealsPage: React.FC = () => {
 
       {/* Main Content Area */}
       {viewMode === 'kanban' ? (
-        <div className="card" style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', padding: '1.5rem', paddingBottom: '2rem', flex: 1, alignItems: 'flex-start', background: 'var(--color-surface)' }}>
+        <div className="card no-scrollbar" style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', padding: '1.5rem', paddingBottom: '2rem', flex: 1, alignItems: 'flex-start', background: 'var(--color-surface)', scrollSnapType: 'x mandatory' }}>
           {loading ? (
             // Skeleton columns while loading
             <>
@@ -615,7 +615,8 @@ export const DealsPage: React.FC = () => {
                   border: '1px solid var(--color-border-light)',
                   borderRadius: 'var(--radius-xl)',
                   display: 'flex', flexDirection: 'column', maxHeight: '100%',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  scrollSnapAlign: 'center'
                 }}
                 onDragOver={e => { 
                   e.preventDefault(); 

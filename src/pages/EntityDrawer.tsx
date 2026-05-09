@@ -89,7 +89,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
               </div>
 
               {/* Layout Split: Left Sidebar & Content */}
-              <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              <div className={styles.drawerBody}>
                 {/* Sidebar Tabs */}
                 <div className={styles.sidebarTabs}>
                   {TABS.map(tab => (

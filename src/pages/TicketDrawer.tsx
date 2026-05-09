@@ -135,7 +135,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
             </div>
 
             {/* ── Content Split ── */}
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden', background: '#fcfcfd' }}>
+            <div className={styles.drawerBody} style={{ background: '#fcfcfd' }}>
               
               {/* Left: Activity Thread */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--color-border)' }}>

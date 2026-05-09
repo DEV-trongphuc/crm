@@ -15,9 +15,17 @@
 
 @media (max-width: 1280px) {
   .chartsRow { grid-template-columns: 1fr; }
-  .pipelineCard { display: none; }
-}
-@media (max-width: 768px) {
   .bottomRow { grid-template-columns: 1fr; }
-  .stageCard { display: none; }
+}
+
+@media (max-width: 1024px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .kpiGrid {
+    grid-template-columns: 1fr !important;
+  }
 }

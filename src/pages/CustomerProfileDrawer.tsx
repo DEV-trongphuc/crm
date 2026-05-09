@@ -814,7 +814,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </div>
 
               {/* ── Layout Split: Left Sidebar Tabs & Content ── */}
-              <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              <div className={styles.drawerBody}>
 
                 {/* Sidebar Tabs */}
                 <div className={styles.sidebarTabs}>

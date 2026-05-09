@@ -200,7 +200,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             </div>
 
             {/* Layout Split: Left Sidebar & Content */}
-            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            <div className={styles.drawerBody}>
               {/* Sidebar Tabs */}
               <div className={styles.sidebarTabs}>
                 {TABS.map(tab => (
