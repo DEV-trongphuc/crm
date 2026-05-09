@@ -259,7 +259,7 @@ export const DemoIndicator: React.FC = () => {
                           onChange={val => setFormData({...formData, size: String(val)})}
                         />
                         <style>{`
-                          .demo-select-wrapper > div > div {
+                          .demo-select-wrapper > div > div:first-of-type {
                             border-radius: 12px;
                             height: 44px;
                             min-height: 44px;
