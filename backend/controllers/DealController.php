@@ -127,6 +127,9 @@ class DealController {
             json_encode($b['tags']??[]),
         ]);
         $id = (int)$this->db->lastInsertId();
+        if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
+            saveCustomFields($this->db, $auth['tenant_id'], $id, 'deal', $b['custom_fields']);
+        }
         // Record history
         $this->db->prepare("INSERT INTO deal_stage_history (deal_id,from_stage,to_stage,moved_by) VALUES (?,NULL,?,?)")
             ->execute([$id, $stageId, $auth['user_id']]);
@@ -157,6 +160,7 @@ class DealController {
         $row = $stmt->fetch();
         if (!$row) respond(404, null, 'Không tìm thấy deal', false);
         $row['tags'] = json_decode($row['tags']??'[]');
+        $row['custom_fields'] = getCustomFields($this->db, $auth['tenant_id'], $id, 'deal');
         respond(200, $row);
     }
 
@@ -167,7 +171,7 @@ class DealController {
         $this->db->beginTransaction();
         try {
             // Get old stage for history
-            $stmt = $this->db->prepare("SELECT stage_id FROM deals WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
+            $stmt = $this->db->prepare("SELECT stage_id FROM deals WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND owner_id=?" : "") . " FOR UPDATE");
             $cp = [$id, $auth['tenant_id']];
             if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
             $stmt->execute($cp);
@@ -225,6 +229,11 @@ class DealController {
         $params[]=$id; $params[]=$auth['tenant_id'];
         $stmt = $this->db->prepare("UPDATE deals SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
         $stmt->execute($params);
+        
+        if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
+            saveCustomFields($this->db, $auth['tenant_id'], $id, 'deal', $b['custom_fields']);
+        }
+        
         $this->show($auth, $id);
     }
 

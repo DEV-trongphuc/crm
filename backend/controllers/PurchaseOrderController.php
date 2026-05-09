@@ -41,9 +41,14 @@ class PurchaseOrderController {
                 VALUES (?, ?, ?, ?, ?, ?)
             ");
             foreach ($b['items'] as $item) {
+                $qty = (int)($item['quantity'] ?? 1);
+                $unit_cost = (float)($item['unit_cost'] ?? 0);
+                if ($qty <= 0 || $unit_cost < 0) {
+                    throw new Exception('Số lượng sản phẩm phải lớn hơn 0 và đơn giá không được âm');
+                }
                 $itemStmt->execute([
                     $poId, $item['product_id'] ?? null, $item['name'],
-                    $item['quantity'], $item['unit_cost'], $item['subtotal']
+                    $qty, $unit_cost, $item['subtotal']
                 ]);
             }
 
@@ -79,7 +84,7 @@ class PurchaseOrderController {
         $this->db->beginTransaction();
         try {
             // 1. Get PO and items
-            $stmt = $this->db->prepare("SELECT status FROM purchase_orders WHERE id = ? AND tenant_id = ?");
+            $stmt = $this->db->prepare("SELECT status FROM purchase_orders WHERE id = ? AND tenant_id = ? FOR UPDATE");
             $stmt->execute([$id, $auth['tenant_id']]);
             $po = $stmt->fetch();
             if (!$po) respond(404, null, 'Không tìm thấy đơn hàng', false);

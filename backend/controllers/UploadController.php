@@ -15,8 +15,11 @@ class UploadController {
         }
 
         $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!in_array($file['type'], $allowedTypes)) {
-            respond(400, null, 'Định dạng file không hỗ trợ');
+        $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
+        if (!in_array($file['type'], $allowedTypes) || !in_array($ext, $allowedExts)) {
+            respond(400, null, 'Định dạng file không hỗ trợ hoặc không an toàn');
         }
 
         // Limit size to 2MB

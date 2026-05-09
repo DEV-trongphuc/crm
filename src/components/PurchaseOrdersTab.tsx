@@ -11,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useUIStore } from '../store/uiStore';
 import { EmptyCard } from '../components/ui/EmptyCard';
+import { CustomSelect } from '../components/ui/CustomSelect';
 
 interface Props {
   showModal: boolean;
@@ -245,15 +246,13 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                         <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Truck size={14} /> Nhà cung cấp <span className="text-danger">*</span>
                         </label>
-                        <select 
-                          className="form-input"
-                          style={{ height: '3rem', fontWeight: 600, borderRadius: '12px', cursor: 'pointer' }}
+                        <CustomSelect 
+                          options={suppliers.map(s => ({ value: String(s.id), label: s.name }))}
                           value={formData.supplier_id} 
-                          onChange={e => setFormData({...formData, supplier_id: e.target.value})}
-                        >
-                          <option value="">-- Chọn nhà cung cấp --</option>
-                          {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                        </select>
+                          onChange={val => setFormData({...formData, supplier_id: String(val)})}
+                          placeholder="-- Chọn nhà cung cấp --"
+                          searchable
+                        />
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>

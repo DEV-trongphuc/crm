@@ -149,6 +149,9 @@ class ContactController {
             $b['last_contact'] ?? null, $b['lead_score'] ?? 0
         ]);
         $id = (int)$this->db->lastInsertId();
+        if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
+            saveCustomFields($this->db, $auth['tenant_id'], $id, 'contact', $b['custom_fields']);
+        }
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Tạo Khách hàng mới', "Khách hàng \"{$b['first_name']} " . ($b['last_name'] ?? '') . "\" đã được thêm vào hệ thống.", 'contact', $id);
         $this->show($auth, $id);
     }
@@ -180,6 +183,7 @@ class ContactController {
         $row = $stmt->fetch();
         if (!$row) respond(404, null, 'Không tìm thấy liên hệ', false);
         $row['tags'] = json_decode($row['tags'] ?? '[]');
+        $row['custom_fields'] = getCustomFields($this->db, $auth['tenant_id'], $id, 'contact');
         respond(200, $row);
     }
 
@@ -241,6 +245,11 @@ class ContactController {
         $sql = "UPDATE contacts SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
+        
+        if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
+            saveCustomFields($this->db, $auth['tenant_id'], $id, 'contact', $b['custom_fields']);
+        }
+        
         $this->show($auth, $id);
     }
 

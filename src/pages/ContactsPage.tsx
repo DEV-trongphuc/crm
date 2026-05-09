@@ -203,7 +203,10 @@ export const ContactsPage: React.FC = () => {
     });
   };
 
-  const bulkExport = () => addToast(`Xuất ${selected.size} liên hệ ra CSV...`, 'info');
+  const bulkExport = () => {
+    window.open(`${api.defaults.baseURL}/export?type=contact&token=${localStorage.getItem('token')}`, '_blank');
+    addToast('Đang tải xuống dữ liệu Export...', 'info');
+  };
   const bulkTag    = () => addToast('Mở gán tag hàng loạt...', 'info');
   const bulkEmail  = () => addToast(`Soạn email cho ${selected.size} liên hệ...`, 'info');
   const bulkAssign = () => addToast('Gán nhân viên phụ trách...', 'info');
@@ -662,6 +665,9 @@ export const ContactsPage: React.FC = () => {
         isOpen={showImportExport} 
         onClose={() => setShowImportExport(false)} 
         entityName="Liên hệ" 
+        onExport={(format) => {
+          window.open(`${api.defaults.baseURL}/export?type=contact&token=${localStorage.getItem('token')}`, '_blank');
+        }}
       />
 
       {/* Quick Create Contact Modal - Enhanced UI */}
@@ -773,7 +779,7 @@ export const ContactsPage: React.FC = () => {
                         value: u.id, 
                         label: u.full_name, 
                         avatar: u.avatar_url,
-                        sublabel: u.role
+                        sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
                       }))}
                       value={createForm.owner_id}
                       onChange={val => setCreateForm(f => ({ ...f, owner_id: val.toString() }))}

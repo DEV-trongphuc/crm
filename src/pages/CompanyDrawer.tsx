@@ -338,20 +338,62 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                     <div className="card-panel">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="panel-title" style={{ margin: 0 }}>Các trường tùy chỉnh (Custom Fields)</h4>
-                        <button className="btn outline sm" onClick={() => addToast('Đang mở form tạo trường tùy chỉnh...', 'info')}><Plus size={14} /> Thêm trường</button>
                       </div>
                       <div className="grid grid-2">
-                        <div className="form-group">
-                          <label className="form-label" style={{ color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            Đại diện pháp luật
-                            <button className="btn-icon-bare" onClick={() => setHelpModal({ title: 'Đại diện pháp luật', content: 'Tên người đại diện pháp lý theo Giấy phép kinh doanh.' })}><HelpCircle size={14} color="var(--color-text-muted)" /></button>
-                          </label>
-                          <input className="form-input" placeholder="Tên người đại diện..." value={formData?.legal_representative || ''} onChange={e => setFormData((prev: any) => ({ ...prev, legal_representative: e.target.value }))} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label" style={{ color: 'var(--color-primary)' }}>Mã khách hàng nội bộ (ERP)</label>
-                          <input className="form-input" placeholder="Nhập mã ERP..." value={formData?.erp_code || ''} onChange={e => setFormData((prev: any) => ({ ...prev, erp_code: e.target.value }))} />
-                        </div>
+                        {formData.custom_fields && formData.custom_fields.length > 0 ? (
+                          formData.custom_fields.map((field: any, index: number) => (
+                            <div className="form-group" key={field.id}>
+                              <label className="form-label">{field.label} {field.is_required ? <span style={{color: 'var(--color-danger)'}}>*</span> : ''}</label>
+                              {field.field_type === 'text' && (
+                                <input className="form-input" value={field.value || ''} onChange={e => {
+                                  const newFields = [...formData.custom_fields];
+                                  newFields[index].value = e.target.value;
+                                  setFormData({ ...formData, custom_fields: newFields });
+                                }} />
+                              )}
+                              {field.field_type === 'number' && (
+                                <input type="number" className="form-input" value={field.value || ''} onChange={e => {
+                                  const newFields = [...formData.custom_fields];
+                                  newFields[index].value = e.target.value;
+                                  setFormData({ ...formData, custom_fields: newFields });
+                                }} />
+                              )}
+                              {field.field_type === 'date' && (
+                                <input type="date" className="form-input" value={field.value || ''} onChange={e => {
+                                  const newFields = [...formData.custom_fields];
+                                  newFields[index].value = e.target.value;
+                                  setFormData({ ...formData, custom_fields: newFields });
+                                }} />
+                              )}
+                              {field.field_type === 'dropdown' && (
+                                <CustomSelect 
+                                  options={(field.options || []).map((o:any) => ({ value: o, label: o }))} 
+                                  value={field.value || ''} 
+                                  onChange={val => {
+                                    const newFields = [...formData.custom_fields];
+                                    newFields[index].value = val.toString();
+                                    setFormData({ ...formData, custom_fields: newFields });
+                                  }} 
+                                />
+                              )}
+                              {field.field_type === 'checkbox' && (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', height: '40px' }}>
+                                  <CustomCheckbox 
+                                    checked={field.value === 'true' || field.value === true} 
+                                    onChange={e => {
+                                      const newFields = [...formData.custom_fields];
+                                      newFields[index].value = e ? 'true' : 'false';
+                                      setFormData({ ...formData, custom_fields: newFields });
+                                    }} 
+                                  />
+                                  <span style={{ fontSize: '0.875rem' }}>Có</span>
+                                </label>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div style={{ gridColumn: 'span 2', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có trường tùy chỉnh nào được cấu hình cho Công ty.</div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -651,7 +693,18 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                 className="btn primary" 
                 onClick={async () => {
                   try {
-                    const res = await api.put(`/companies/${entity.id}`, { ...formData, tags });
+                    const payload = { ...formData, tags };
+                    if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
+                      for (const f of formData.custom_fields) {
+                        const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
+                        if (f.is_required && isEmpty) {
+                          addToast(`Trường "${f.label}" là bắt buộc.`, 'error');
+                          return;
+                        }
+                      }
+                      payload.custom_fields = formData.custom_fields.map((f: any) => ({ field_id: f.id, value: f.value }));
+                    }
+                    const res = await api.put(`/companies/${entity.id}`, payload);
                     addToast('Đã cập nhật thông tin công ty thành công', 'success');
                     onSave(res.data.data);
                   } catch (e: any) {

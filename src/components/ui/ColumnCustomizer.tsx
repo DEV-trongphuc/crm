@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Columns } from 'lucide-react';
+import { CustomCheckbox } from './CustomCheckbox';
 
 export interface ColumnDef {
   id: string;
@@ -55,12 +56,9 @@ export const ColumnCustomizer: React.FC<ColumnCustomizerProps> = ({ isOpen, onCl
                   onMouseEnter={e => e.currentTarget.style.background = 'var(--color-bg)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <input 
-                    type="checkbox" 
-                    className="custom-checkbox" 
+                  <CustomCheckbox 
                     checked={col.visible} 
                     onChange={() => toggleCol(col.id)} 
-                    disabled={columns.filter(c => c.visible).length === 1 && col.visible}
                   />
                   <span style={{ fontSize: '0.875rem', fontWeight: 500, color: col.visible ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
                     {col.label}

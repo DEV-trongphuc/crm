@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Máy chủ: localhost:3306
--- Thời gian đã tạo: Th5 07, 2026 lúc 08:54 AM
+-- Thời gian đã tạo: Th5 09, 2026 lúc 01:46 PM
 -- Phiên bản máy phục vụ: 10.6.18-MariaDB-cll-lve-log
 -- Phiên bản PHP: 8.4.20
 
@@ -519,6 +519,20 @@ CREATE TABLE `invoice_items` (
 -- --------------------------------------------------------
 
 --
+-- Cấu trúc bảng cho bảng `login_attempts`
+--
+
+CREATE TABLE `login_attempts` (
+  `id` int(11) NOT NULL,
+  `ip_address` varchar(45) NOT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `attempt_time` timestamp NOT NULL DEFAULT current_timestamp(),
+  `is_successful` tinyint(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Cấu trúc bảng cho bảng `notes`
 --
 
@@ -604,22 +618,12 @@ CREATE TABLE `products` (
   `unit` varchar(50) DEFAULT 'cái',
   `stock_quantity` int(11) NOT NULL DEFAULT 0,
   `min_stock_level` int(11) NOT NULL DEFAULT 5,
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `deleted_at` datetime DEFAULT NULL,
   `track_inventory` tinyint(1) DEFAULT 1,
   `track_cost` tinyint(1) DEFAULT 1
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Cấu trúc bảng cho bảng `login_attempts`
---
-
-CREATE TABLE `login_attempts` (
-  `id` int(11) NOT NULL,
-  `ip_address` varchar(45) NOT NULL,
-  `email` varchar(255) DEFAULT NULL,
-  `attempt_time` timestamp NOT NULL DEFAULT current_timestamp(),
-  `is_successful` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -908,7 +912,8 @@ ALTER TABLE `activities`
   ADD KEY `idx_activity_due` (`due_date`),
   ADD KEY `idx_activity_status` (`status`),
   ADD KEY `idx_act_type` (`tenant_id`,`type`),
-  ADD KEY `idx_activity_created` (`tenant_id`,`created_at`);
+  ADD KEY `idx_activity_created` (`tenant_id`,`created_at`),
+  ADD KEY `idx_activities_tenant_user_status` (`tenant_id`,`user_id`,`status`,`due_date`);
 
 --
 -- Chỉ mục cho bảng `audit_logs`
@@ -927,7 +932,8 @@ ALTER TABLE `batches`
   ADD PRIMARY KEY (`id`),
   ADD KEY `tenant_id` (`tenant_id`),
   ADD KEY `product_id` (`product_id`),
-  ADD KEY `batch_code` (`batch_code`);
+  ADD KEY `batch_code` (`batch_code`),
+  ADD KEY `idx_batches_fifo` (`product_id`,`tenant_id`,`current_qty`,`import_date`);
 
 --
 -- Chỉ mục cho bảng `cloud_files`
@@ -963,7 +969,6 @@ ALTER TABLE `contacts`
   ADD KEY `idx_contact_status` (`status`),
   ADD KEY `idx_contact_stage` (`stage_id`),
   ADD KEY `idx_contact_tenant_created` (`tenant_id`,`created_at`),
-  ADD KEY `idx_contacts_tenant_deleted` (`tenant_id`,`deleted_at`),
   ADD KEY `idx_contacts_deep_filter` (`tenant_id`,`owner_id`,`deleted_at`);
 ALTER TABLE `contacts` ADD FULLTEXT KEY `idx_contact_search` (`first_name`,`last_name`,`email`);
 
@@ -1012,7 +1017,8 @@ ALTER TABLE `deals`
   ADD KEY `idx_deal_value` (`tenant_id`,`value`),
   ADD KEY `idx_deal_tenant_created` (`tenant_id`,`created_at`),
   ADD KEY `idx_deals_tenant_deleted` (`tenant_id`,`deleted_at`),
-  ADD KEY `idx_deals_deep_filter` (`tenant_id`,`stage_id`,`deleted_at`);
+  ADD KEY `idx_deals_deep_filter` (`tenant_id`,`stage_id`,`deleted_at`),
+  ADD KEY `idx_deals_tenant_owner_deleted` (`tenant_id`,`owner_id`,`deleted_at`,`stage_id`);
 
 --
 -- Chỉ mục cho bảng `deal_stage_history`
@@ -1098,7 +1104,8 @@ ALTER TABLE `inventory_logs`
   ADD KEY `tenant_id` (`tenant_id`),
   ADD KEY `batch_id` (`batch_id`),
   ADD KEY `idx_inv_logs_receiver` (`receiver_type`,`receiver_id`),
-  ADD KEY `idx_inventory_logs_filter` (`tenant_id`,`action_type`,`created_at`);
+  ADD KEY `idx_inventory_logs_filter` (`tenant_id`,`action_type`,`created_at`),
+  ADD KEY `idx_inv_logs_reason` (`tenant_id`,`reason`(100));
 
 --
 -- Chỉ mục cho bảng `invoices`
@@ -1121,6 +1128,13 @@ ALTER TABLE `invoice_items`
   ADD KEY `product_id` (`product_id`);
 
 --
+-- Chỉ mục cho bảng `login_attempts`
+--
+ALTER TABLE `login_attempts`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_ip_attempts` (`ip_address`,`attempt_time`);
+
+--
 -- Chỉ mục cho bảng `notes`
 --
 ALTER TABLE `notes`
@@ -1137,7 +1151,7 @@ ALTER TABLE `notes`
 ALTER TABLE `note_mentions`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_mention` (`note_id`,`user_id`),
-  ADD KEY `user_id` (`user_id`);
+  ADD KEY `fk_note_mentions_user` (`user_id`);
 
 --
 -- Chỉ mục cho bảng `notifications`
@@ -1420,6 +1434,12 @@ ALTER TABLE `invoices`
 -- AUTO_INCREMENT cho bảng `invoice_items`
 --
 ALTER TABLE `invoice_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT cho bảng `login_attempts`
+--
+ALTER TABLE `login_attempts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -1708,8 +1728,8 @@ ALTER TABLE `notes`
 -- Ràng buộc cho bảng `note_mentions`
 --
 ALTER TABLE `note_mentions`
-  ADD CONSTRAINT `note_mentions_ibfk_1` FOREIGN KEY (`note_id`) REFERENCES `notes` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `note_mentions_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `fk_note_mentions_note` FOREIGN KEY (`note_id`) REFERENCES `notes` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_note_mentions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Ràng buộc cho bảng `notifications`
@@ -1823,6 +1843,26 @@ ALTER TABLE `users`
 ALTER TABLE `workflows`
   ADD CONSTRAINT `workflows_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `workflows_ibfk_2` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`);
+--
+-- Table structure for table `file_categories`
+--
+
+CREATE TABLE `file_categories` (
+  `id` varchar(50) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `label` varchar(100) NOT NULL,
+  `icon_type` varchar(50) DEFAULT 'folder',
+  `is_default` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `file_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `tenant_id` (`tenant_id`);
+
+ALTER TABLE `file_categories`
+  ADD CONSTRAINT `file_categories_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

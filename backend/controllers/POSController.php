@@ -20,7 +20,12 @@ class POSController {
         // Server-side validation of total_amount
         $calculatedTotal = 0;
         foreach ($data['cart'] as $item) {
-            $calculatedTotal += (float)$item['price'] * (int)$item['quantity'];
+            $qty = (int)$item['quantity'];
+            $price = (float)$item['price'];
+            if ($qty <= 0 || $price < 0) {
+                respond(422, null, "Số lượng phải lớn hơn 0 và giá không được âm", false);
+            }
+            $calculatedTotal += $price * $qty;
         }
         $shipping = (float)($data['shipping_fee'] ?? 0);
         $totalWithShipping = $calculatedTotal + $shipping;

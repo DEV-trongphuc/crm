@@ -154,24 +154,8 @@ export const DealsPage: React.FC = () => {
   };
 
   const bulkExport = () => {
-    const visible = getVisibleItems().filter(item => selected.has(item.id));
-    const csv = [
-      ['Tên', 'Dự kiến', 'Giai đoạn', 'Email', 'SĐT'].join(','),
-      ...visible.map(item => [
-        `"${pipelineView === 'contacts' ? `${item.first_name} ${item.last_name}` : item.name}"`,
-        item.expected_revenue,
-        stages.find(s => s.id === item.stage_id)?.name || '',
-        item.email,
-        item.phone
-      ].join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `pipeline_export_${new Date().toISOString().slice(0,10)}.csv`;
-    link.click();
-    addToast(`Đã xuất ${selected.size} dòng ra CSV`, 'success');
+    window.open(`${api.defaults.baseURL}/export?type=deal&token=${localStorage.getItem('token')}`, '_blank');
+    addToast('Đang tải xuống dữ liệu Export...', 'info');
   };
 
   const bulkMove = async () => {
@@ -491,7 +475,7 @@ export const DealsPage: React.FC = () => {
                            value: String(u.id), 
                            label: u.full_name,
                            avatar: u.avatar_url,
-                           sublabel: u.role
+                           sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
                          }))]} 
                          value={filterAssignee} 
                          onChange={v => setFilterAssignee(v as string)} 

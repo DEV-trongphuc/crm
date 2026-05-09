@@ -116,8 +116,8 @@ class DashboardController {
         if ($isSale) { $sqlToday .= " AND user_id=?"; $pToday[] = $uid; }
         $todayTasks = $this->queryAll($sqlToday . " LIMIT 10", $pToday);
 
-        $currRev = $res['revenue'] > 0 ? $res['revenue'] : $res['won_value'];
-        $prevRev = $resPrev['revenue'] > 0 ? $resPrev['revenue'] : $resPrev['won_value'];
+        $currRev = $res['revenue'];
+        $prevRev = $resPrev['revenue'];
 
         $currExp = $res['expenses'] + $res['cogs'] + $res['shop_paid_shipping'];
         $prevExp = $resPrev['expenses'] + $resPrev['cogs'] + $resPrev['shop_paid_shipping'];
@@ -130,8 +130,9 @@ class DashboardController {
 
         respond(200, [
             'total_value'       => $res['total_value'],
-            'won_value'         => $currRev,
+            'won_value'         => $res['won_value'],
             'won_count'         => $res['won_count'],
+            'revenue'           => $currRev,
             'expenses'          => $currExp,
             'profit'            => $currRev - $currExp,
             'gross_profit'      => $currRev - $res['cogs'],

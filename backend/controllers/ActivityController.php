@@ -136,9 +136,13 @@ class ActivityController {
     public function update(array $auth,int $id): void {
         $b=getBody();
         
-        // Auto set done_at if status changes to done
-        if (isset($b['status']) && $b['status'] === 'done' && !isset($b['done_at'])) {
-            $b['done_at'] = date('Y-m-d H:i:s');
+        // Auto set done_at if status changes to done, or clear it if changed to something else
+        if (isset($b['status'])) {
+            if ($b['status'] === 'done' && !isset($b['done_at'])) {
+                $b['done_at'] = date('Y-m-d H:i:s');
+            } elseif ($b['status'] !== 'done') {
+                $b['done_at'] = null;
+            }
         }
 
         // Verify related entity if changed

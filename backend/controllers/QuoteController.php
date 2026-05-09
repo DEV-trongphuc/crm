@@ -99,7 +99,12 @@ class QuoteController {
         if(!empty($b['items'])) {
             $ins=$this->db->prepare("INSERT INTO quote_items (quote_id,product_id,name,description,quantity,unit_price,discount,subtotal,sort_order) VALUES (?,?,?,?,?,?,?,?,?)");
             foreach($b['items'] as $i=>$item) {
-                $ins->execute([$qid,$item['product_id']??null,$item['name'],$item['description']??null,$item['quantity']??1,$item['unit_price']??0,$item['discount']??0,$item['subtotal']??0,$i]);
+                $qty = (int)($item['quantity'] ?? 1);
+                $price = (float)($item['unit_price'] ?? 0);
+                if ($qty <= 0 || $price < 0) {
+                    throw new Exception('Số lượng sản phẩm phải lớn hơn 0 và đơn giá không được âm');
+                }
+                $ins->execute([$qid,$item['product_id']??null,$item['name'],$item['description']??null,$qty,$price,$item['discount']??0,$item['subtotal']??0,$i]);
             }
         }
 

@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { DEV_MODE } from '../../config/env';
-import { AlertCircle, Terminal, X, Send, User, Mail, Building, Phone, Loader2 } from 'lucide-react';
+import { AlertCircle, Terminal, X, Send, User, Mail, Building, Phone, Loader2, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../../store/uiStore';
+import { CustomSelect } from './CustomSelect';
 
 export const DemoIndicator: React.FC = () => {
   const { addToast } = useUIStore();
@@ -136,12 +137,12 @@ export const DemoIndicator: React.FC = () => {
               style={{ position: 'fixed', inset: 0, background: 'rgba(15, 5, 30, 0.7)', backdropFilter: 'blur(8px)', zIndex: 10000 }}
             />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20, x: '-50%' }}
-              animate={{ opacity: 1, scale: 1, y: 0, x: '-50%' }}
-              exit={{ opacity: 0, scale: 0.9, y: 20, x: '-50%' }}
+              initial={{ opacity: 0, scale: 0.9, y: '-45%', x: '-50%' }}
+              animate={{ opacity: 1, scale: 1, y: '-50%', x: '-50%' }}
+              exit={{ opacity: 0, scale: 0.9, y: '-45%', x: '-50%' }}
               style={{
-                position: 'fixed', top: '10%', left: '50%', width: '900px',
-                maxWidth: '95vw', background: '#fafafa', borderRadius: '32px', zIndex: 10001,
+                position: 'fixed', top: '50%', left: '50%', width: '900px',
+                maxWidth: '95vw', maxHeight: '90vh', background: '#fafafa', borderRadius: '32px', zIndex: 10001,
                 boxShadow: '0 30px 60px -12px rgba(88, 28, 135, 0.4)',
                 overflow: 'hidden', display: 'flex'
               }}
@@ -183,7 +184,7 @@ export const DemoIndicator: React.FC = () => {
               </div>
 
               {/* Right Panel: Form */}
-              <div style={{ flex: 1, padding: '3.5rem', position: 'relative', background: 'linear-gradient(180deg, #ffffff 0%, #f3f0ff 100%)' }}>
+              <div style={{ flex: 1, padding: '2.5rem 3.5rem', position: 'relative', background: 'linear-gradient(180deg, #ffffff 0%, #f3f0ff 100%)', overflowY: 'auto' }}>
                 <button 
                   onClick={() => setShowModal(false)}
                   style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'white', border: 'none', color: '#4c1d95', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
@@ -245,16 +246,29 @@ export const DemoIndicator: React.FC = () => {
 
                     <div className="form-group">
                       <label className="form-label" style={{ fontWeight: 700, color: '#374151' }}>Quy mô nhân sự</label>
-                      <select 
-                        className="form-input lg" 
-                        style={{ borderRadius: '12px', paddingLeft: '1rem' }}
-                        value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})}
-                      >
-                        <option value="1-10">Dưới 10 nhân sự</option>
-                        <option value="11-50">Từ 11 - 50 nhân sự</option>
-                        <option value="51-200">Từ 51 - 200 nhân sự</option>
-                        <option value="200+">Trên 200 nhân sự</option>
-                      </select>
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ borderRadius: '12px', height: '44px' }} className="demo-select-wrapper">
+                          <CustomSelect 
+                            options={[
+                            { value: '1-10', label: 'Dưới 10 nhân sự' },
+                            { value: '11-50', label: 'Từ 11 - 50 nhân sự' },
+                            { value: '51-200', label: 'Từ 51 - 200 nhân sự' },
+                            { value: '200+', label: 'Trên 200 nhân sự' }
+                          ]}
+                          value={formData.size} 
+                          onChange={val => setFormData({...formData, size: String(val)})}
+                        />
+                        <style>{`
+                          .demo-select-wrapper > div > div {
+                            border-radius: 12px;
+                            height: 44px;
+                            min-height: 44px;
+                            padding-left: 2.75rem;
+                          }
+                        `}</style>
+                        </div>
+                        <Users size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#8b5cf6', opacity: 0.7, pointerEvents: 'none', zIndex: 10 }} />
+                      </div>
                     </div>
                   </div>
 

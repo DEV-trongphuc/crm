@@ -609,7 +609,7 @@ export const ExpensesPage: React.FC = () => {
                         value: u.id, 
                         label: u.full_name, 
                         avatar: u.avatar_url,
-                        sublabel: u.role
+                        sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
                       }))}
                       value={form.approver_id}
                       onChange={val => setForm({ ...form, approver_id: Number(val) })}
@@ -639,8 +639,8 @@ export const ExpensesPage: React.FC = () => {
                         options={users.filter((u:any) => !form.related_user_ids.includes(u.id)).map((u: any) => ({
                           value: String(u.id),
                           label: u.full_name,
-                          sublabel: u.role,
-                          avatar: u.avatar_url
+                          avatar: u.avatar_url,
+                          sublabel: [u.phone, u.email, u.role].filter(Boolean).join(' - ')
                         }))}
                         value=""
                         onChange={(val) => {

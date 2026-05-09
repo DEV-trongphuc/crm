@@ -11,6 +11,7 @@ import { PurchaseOrdersTab } from '../components/PurchaseOrdersTab';
 import api from '../api/axios';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/Pagination';
+import { CustomSelect } from '../components/ui/CustomSelect';
 import { useMockStore } from '../store/mockStore';
 import { DEV_MODE } from '../config/env';
 
@@ -68,7 +69,7 @@ export default function InventoryPage() {
   
   const [exportForm, setExportForm] = useState({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' });
   const [adjustForm, setAdjustForm] = useState({ new_qty: '', reason: 'Điều chỉnh kiểm kho' });
-  const [receivers, setReceivers] = useState<{value: string, label: string}[]>([]);
+  const [receivers, setReceivers] = useState<{value: string, label: string, sublabel?: string, avatar?: string}[]>([]);
 
   const { showConfirm, addToast } = useUIStore();
 
@@ -85,7 +86,12 @@ export default function InventoryPage() {
     try {
       const res = await api.get('/contacts');
       if (res.data?.data) {
-        setReceivers(res.data.data.map((c: any) => ({ value: String(c.id), label: `${c.first_name} ${c.last_name || ''} - ${c.phone || c.email || ''}` })));
+        setReceivers(res.data.data.map((c: any) => ({ 
+          value: String(c.id), 
+          label: `${c.first_name} ${c.last_name || ''}`.trim(),
+          sublabel: c.phone || c.email || '',
+          avatar: c.avatar_url
+        })));
       }
     } catch (err) {}
   };
@@ -378,22 +384,26 @@ export default function InventoryPage() {
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <select className="form-input" style={{ width: 'auto', paddingRight: '2.5rem' }}
-            value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="in_stock">Còn hàng</option>
-            <option value="low_stock">Sắp hết hàng</option>
-            <option value="out_of_stock">Đã hết hàng</option>
-          </select>
-          <select className="form-input" style={{ width: 'auto', paddingRight: '2.5rem' }}
-            value={sortBy} onChange={e => { setSortBy(e.target.value); setPage(1); }}
-          >
-            <option value="date_desc">Mới nhất trước</option>
-            <option value="date_asc">Cũ nhất trước</option>
-            <option value="qty_desc">Tồn kho giảm dần</option>
-            <option value="qty_asc">Tồn kho tăng dần</option>
-          </select>
+          <CustomSelect
+            options={[
+              { value: 'all', label: 'Tất cả trạng thái' },
+              { value: 'in_stock', label: 'Còn hàng' },
+              { value: 'low_stock', label: 'Sắp hết hàng' },
+              { value: 'out_of_stock', label: 'Đã hết hàng' }
+            ]}
+            value={statusFilter}
+            onChange={(val) => { setStatusFilter(String(val)); setPage(1); }}
+          />
+          <CustomSelect
+            options={[
+              { value: 'date_desc', label: 'Mới nhất trước' },
+              { value: 'date_asc', label: 'Cũ nhất trước' },
+              { value: 'qty_desc', label: 'Tồn kho giảm dần' },
+              { value: 'qty_asc', label: 'Tồn kho tăng dần' }
+            ]}
+            value={sortBy}
+            onChange={(val) => { setSortBy(String(val)); setPage(1); }}
+          />
         </div>
       </div>
 
@@ -741,32 +751,31 @@ export default function InventoryPage() {
 
                   <div className="form-group">
                     <label className="form-label">Lý do xuất</label>
-                    <select 
-                      className="form-control"
+                    <CustomSelect 
+                      options={[
+                        { value: 'Hàng tặng/Quà tặng', label: 'Hàng tặng/Quà tặng' },
+                        { value: 'Hư hỏng/Bể vỡ', label: 'Hư hỏng/Bể vỡ' },
+                        { value: 'Hao hụt/Mất lạc', label: 'Hao hụt/Mất lạc' },
+                        { value: 'Hàng mẫu/Tester', label: 'Hàng mẫu/Tester' },
+                        { value: 'Tiêu dùng nội bộ', label: 'Tiêu dùng nội bộ' }
+                      ]}
                       value={exportForm.reason}
-                      onChange={e => setExportForm({...exportForm, reason: e.target.value})}
-                    >
-                      <option value="Hàng tặng/Quà tặng">Hàng tặng/Quà tặng</option>
-                      <option value="Hư hỏng/Bể vỡ">Hư hỏng/Bể vỡ</option>
-                      <option value="Hao hụt/Mất lạc">Hao hụt/Mất lạc</option>
-                      <option value="Hàng mẫu/Tester">Hàng mẫu/Tester</option>
-                      <option value="Tiêu dùng nội bộ">Tiêu dùng nội bộ</option>
-                    </select>
+                      onChange={val => setExportForm({...exportForm, reason: String(val)})}
+                    />
                   </div>
 
                   <AnimatePresence>
                     {exportForm.reason === 'Hàng tặng/Quà tặng' && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="form-group">
                         <label className="form-label" style={{ color: 'var(--color-primary)' }}>Người nhận (Ghi nhận chi phí CRM)</label>
-                        <select 
-                          className="form-control" 
-                          value={exportForm.receiver_id} 
-                          onChange={e => setExportForm({...exportForm, receiver_id: e.target.value})}
-                          style={{ borderColor: 'var(--color-primary-light)', background: 'var(--color-bg)' }}
-                        >
-                          <option value="">-- Bỏ qua hoặc Chọn khách hàng nhận --</option>
-                          {receivers.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                        </select>
+                        <CustomSelect 
+                          options={receivers.map(r => ({ ...r, label: r.label }))}
+                          value={exportForm.receiver_id}
+                          onChange={val => setExportForm({...exportForm, receiver_id: String(val)})}
+                          placeholder="-- Bỏ qua hoặc Chọn khách hàng nhận --"
+                          searchable
+                          showAvatars
+                        />
                         <p className="text-xs text-muted mt-2">Chi phí (giá vốn × số lượng) sẽ được tính vào mục chi phí của khách hàng này nếu bạn chọn.</p>
                       </motion.div>
                     )}

@@ -11,6 +11,7 @@ import api from '../api/axios';
 import { useUIStore } from '../store/uiStore';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { Avatar } from '../components/ui/Avatar';
+import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { DEV_MODE } from '../config/env';
 import { useMockStore } from '../store/mockStore';
@@ -26,13 +27,31 @@ export const FilesPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // New States for Category Management
-  const [categories, setCategories] = useState([
-    { id: 'all', label: 'Tất cả', icon: <HardDrive size={18} /> },
-    { id: 'template', label: 'Biểu mẫu', icon: <FileText size={18} /> },
-    { id: 'marketing', label: 'Marketing', icon: <Globe size={18} /> },
-    { id: 'contract', label: 'Hợp đồng', icon: <Shield size={18} /> },
-    { id: 'general', label: 'Khác', icon: <Folder size={18} /> },
+  const [categories, setCategories] = useState<any[]>([
+    { id: 'all', label: 'Tất cả', icon: <HardDrive size={18} /> }
   ]);
+
+  const fetchCategories = async () => {
+    if (DEV_MODE) return;
+    try {
+      const res = await api.get('/file-categories');
+      const cats = res.data.data.map((c: any) => ({
+        ...c,
+        icon: c.icon_type === 'hard-drive' ? <HardDrive size={18} /> :
+              c.icon_type === 'file-text' ? <FileText size={18} /> :
+              c.icon_type === 'globe' ? <Globe size={18} /> :
+              c.icon_type === 'shield' ? <Shield size={18} /> :
+              <Folder size={18} />
+      }));
+      setCategories(cats);
+    } catch (err) {
+      console.error('Failed to fetch categories', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
   // New States for Upload Modal
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -98,6 +117,13 @@ export const FilesPage: React.FC = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      addToast('Dung lượng file quá lớn (tối đa 2MB)', 'error');
+      e.target.value = '';
+      return;
+    }
+
     setSelectedFile(file);
     setUploadFormData({ name: file.name.split('.')[0], category: category === 'all' ? 'general' : category });
     setShowUploadModal(true);
@@ -130,19 +156,19 @@ export const FilesPage: React.FC = () => {
     }
   };
 
-  const handleSaveCategory = () => {
+  const handleSaveCategory = async () => {
     if (!catFormData.label) return;
-    if (editingCat) {
-      setCategories(categories.map(c => c.id === editingCat.id ? { ...c, label: catFormData.label } : c));
-      addToast('Đã cập nhật danh mục', 'success');
-    } else {
-      const newCat = {
-        id: 'cat_' + Date.now(),
-        label: catFormData.label,
-        icon: <Folder size={18} />
-      };
-      setCategories([...categories, newCat]);
-      addToast('Đã thêm danh mục mới', 'success');
+    try {
+      if (editingCat) {
+        if (!DEV_MODE) await api.put(`/file-categories/${editingCat.id}`, { label: catFormData.label });
+        addToast('Đã cập nhật danh mục', 'success');
+      } else {
+        if (!DEV_MODE) await api.post('/file-categories', { label: catFormData.label, icon_type: 'folder' });
+        addToast('Đã thêm danh mục mới', 'success');
+      }
+      fetchCategories();
+    } catch {
+      addToast('Lỗi lưu danh mục', 'error');
     }
     setShowCatModal(false);
     setEditingCat(null);
@@ -150,16 +176,18 @@ export const FilesPage: React.FC = () => {
   };
 
   const deleteCategory = (id: string) => {
-    if (['all', 'general'].includes(id)) {
-      return addToast('Không thể xóa danh mục mặc định', 'error');
-    }
     showConfirm(
       'Xóa danh mục?',
-      'Các tệp tin trong danh mục này sẽ không bị xóa nhưng sẽ khó tìm kiếm hơn. Bạn chắc chứ?',
-      () => {
-        setCategories(categories.filter(c => c.id !== id));
-        if (category === id) setCategory('all');
-        addToast('Đã xóa danh mục', 'success');
+      'Các tệp tin trong danh mục này sẽ được chuyển về mục Khác. Bạn chắc chứ?',
+      async () => {
+        try {
+          if (!DEV_MODE) await api.delete(`/file-categories/${id}`);
+          if (category === id) setCategory('all');
+          addToast('Đã xóa danh mục', 'success');
+          fetchCategories();
+        } catch {
+          addToast('Lỗi xóa danh mục', 'error');
+        }
       }
     );
   };
@@ -482,15 +510,11 @@ export const FilesPage: React.FC = () => {
 
                 <div className="form-group" style={{ marginTop: '1rem' }}>
                   <label className="form-label">Danh mục</label>
-                  <select 
-                    className="form-input"
+                  <CustomSelect
+                    options={categories.filter(c => c.id !== 'all').map(c => ({ value: c.id, label: c.label }))}
                     value={uploadFormData.category}
-                    onChange={e => setUploadFormData({ ...uploadFormData, category: e.target.value })}
-                  >
-                    {categories.filter(c => c.id !== 'all').map(c => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))}
-                  </select>
+                    onChange={val => setUploadFormData({ ...uploadFormData, category: String(val) })}
+                  />
                 </div>
               </div>
               <div className="modal-footer" style={{ gap: '1rem' }}>

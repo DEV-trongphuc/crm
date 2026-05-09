@@ -56,6 +56,32 @@ export const ActivitiesPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
 
+  // Related entities for dropdown
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [deals, setDeals] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (showModal && !DEV_MODE) {
+      api.get('/contacts', { params: { limit: 1000 } }).then(r => setContacts(r.data.data.items || [])).catch(() => {});
+      api.get('/deals', { params: { limit: 1000 } }).then(r => setDeals(r.data.data.items || [])).catch(() => {});
+      api.get('/companies', { params: { limit: 1000 } }).then(r => setCompanies(r.data.data.items || [])).catch(() => {});
+    }
+  }, [showModal]);
+
+  const getRelatedOptions = () => {
+    if (form.related_type === 'contact') {
+      return contacts.map(c => ({ value: c.id, label: c.name, sublabel: c.phone || c.email, avatar: c.avatar }));
+    }
+    if (form.related_type === 'deal') {
+      return deals.map(d => ({ value: d.id, label: d.title, sublabel: d.value ? `${d.value.toLocaleString()} đ` : '' }));
+    }
+    if (form.related_type === 'company') {
+      return companies.map(c => ({ value: c.id, label: c.name, sublabel: c.industry }));
+    }
+    return [];
+  };
+
   const fetchActivities = useCallback(async () => {
     if (DEV_MODE) {
       const state = useMockStore.getState();
@@ -477,8 +503,15 @@ export const ActivitiesPage: React.FC = () => {
                   </div>
                   {form.related_type && (
                     <div className="form-group">
-                      <label className="form-label">ID {form.related_type}</label>
-                      <input className="form-input" type="number" placeholder="VD: 1" value={form.related_id} onChange={e => setForm({ ...form, related_id: e.target.value })} />
+                      <label className="form-label">Chọn {form.related_type === 'contact' ? 'Khách hàng' : form.related_type === 'deal' ? 'Deal' : 'Công ty'}</label>
+                      <CustomSelect 
+                        options={getRelatedOptions()} 
+                        value={form.related_id} 
+                        onChange={val => setForm({ ...form, related_id: val.toString() })} 
+                        placeholder="Gõ để tìm kiếm..."
+                        searchable={true}
+                        showAvatars={form.related_type === 'contact'}
+                      />
                     </div>
                   )}
                 </div>

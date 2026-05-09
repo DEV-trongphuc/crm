@@ -82,6 +82,9 @@ class CompanyController {
             json_encode($b['tags']??[]), $b['notes']??null, $stageId
         ]);
         $id = (int)$this->db->lastInsertId();
+        if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
+            saveCustomFields($this->db, $auth['tenant_id'], $id, 'company', $b['custom_fields']);
+        }
         logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'note', 'Thêm Công ty mới', "Công ty \"{$b['name']}\" đã được tạo.", 'company', $id);
         $this->show($auth, $id);
     }
@@ -108,6 +111,7 @@ class CompanyController {
         $row = $stmt->fetch();
         if (!$row) respond(404, null, 'Không tìm thấy công ty', false);
         $row['tags'] = json_decode($row['tags'] ?? '[]');
+        $row['custom_fields'] = getCustomFields($this->db, $auth['tenant_id'], $id, 'company');
         respond(200, $row);
     }
 
@@ -129,6 +133,11 @@ class CompanyController {
         $params[]=$id; $params[]=$auth['tenant_id'];
         $stmt = $this->db->prepare("UPDATE companies SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
         $stmt->execute($params);
+        
+        if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
+            saveCustomFields($this->db, $auth['tenant_id'], $id, 'company', $b['custom_fields']);
+        }
+        
         $this->show($auth, $id);
     }
 

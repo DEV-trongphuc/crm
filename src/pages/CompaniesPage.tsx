@@ -326,6 +326,9 @@ export const CompaniesPage: React.FC = () => {
         isOpen={showImportExport} 
         onClose={() => setShowImportExport(false)} 
         entityName="Công ty" 
+        onExport={(format) => {
+          window.open(`${api.defaults.baseURL}/export?type=company&token=${localStorage.getItem('token')}`, '_blank');
+        }}
       />
     </div>
   );

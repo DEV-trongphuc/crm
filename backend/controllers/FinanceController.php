@@ -138,7 +138,12 @@ class FinanceController {
             if (!empty($data['items']) && is_array($data['items'])) {
                 $sItem = $this->db->prepare("INSERT INTO invoice_items (invoice_id,product_id,name,quantity,unit_price,subtotal) VALUES (?,?,?,?,?,?)");
                 foreach ($data['items'] as $item) {
-                    $sItem->execute([$invId, $item['product_id']??null, $item['name'], $item['quantity']??1, $item['unit_price']??0, $item['subtotal']??0]);
+                    $qty = (int)($item['quantity'] ?? 1);
+                    $price = (float)($item['unit_price'] ?? 0);
+                    if ($qty <= 0 || $price < 0) {
+                        throw new Exception('Số lượng sản phẩm phải lớn hơn 0 và đơn giá không được âm');
+                    }
+                    $sItem->execute([$invId, $item['product_id']??null, $item['name'], $qty, $price, $item['subtotal']??0]);
                     
                     if ($isPaid && !empty($item['product_id'])) {
                         $pCheck = $this->db->prepare("SELECT track_inventory FROM products WHERE id=?");
@@ -173,8 +178,8 @@ class FinanceController {
         if (!$sets) respond(422, null, 'Không có dữ liệu', false);
         $this->db->beginTransaction();
         try {
-            // Check permission and current status
-            $check = $this->db->prepare("SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND created_by=?" : ""));
+            // Check permission and current status with FOR UPDATE to prevent race condition
+            $check = $this->db->prepare("SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND created_by=?" : "") . " FOR UPDATE");
             $cp = [$id, $auth['tenant_id']];
             if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
             $check->execute($cp);
@@ -195,6 +200,11 @@ class FinanceController {
             if (isset($data['status']) && $data['status'] === 'paid' && !$current['is_inventory_deducted']) {
                 $this->triggerStockDeduction($auth, $id, $current['invoice_number']);
                 $this->db->prepare("UPDATE invoices SET is_inventory_deducted=1 WHERE id=?")->execute([$id]);
+            }
+            // Handle stock return if status changed AWAY from paid (e.g. cancelled) and it was already deducted
+            else if (isset($data['status']) && $data['status'] !== 'paid' && $current['is_inventory_deducted']) {
+                returnStock($this->db, $auth['tenant_id'], $auth['user_id'], $current['invoice_number']);
+                $this->db->prepare("UPDATE invoices SET is_inventory_deducted=0 WHERE id=?")->execute([$id]);
             }
 
             logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'invoice', $id, json_encode($data));

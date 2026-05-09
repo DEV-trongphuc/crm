@@ -66,6 +66,9 @@ class InventoryController {
         if (empty($b['batch_id']) || empty($b['qty']) || empty($b['reason'])) {
             respond(422, null, 'Thiếu thông tin xuất kho nội bộ', false);
         }
+        if ((int)$b['qty'] <= 0) {
+            respond(422, null, 'Số lượng xuất kho phải lớn hơn 0', false);
+        }
 
         $this->db->beginTransaction();
         try {
@@ -159,6 +162,7 @@ class InventoryController {
         if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền điều chỉnh kho', false);
         $b = getBody();
         if (empty($b['batch_id']) || !isset($b['new_qty'])) respond(400, null, 'Thiếu thông tin điều chỉnh', false);
+        if ((int)$b['new_qty'] < 0) respond(422, null, 'Số lượng tồn kho không được nhỏ hơn 0', false);
 
         $this->db->beginTransaction();
         try {

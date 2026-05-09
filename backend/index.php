@@ -59,6 +59,7 @@ function getBody(): array {
 function getBearerToken(): ?string {
     $h = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
     if (preg_match('/Bearer\s+(.+)/i', $h, $m)) return $m[1];
+    if (isset($_GET['token']) && !empty($_GET['token'])) return $_GET['token'];
     return null;
 }
 
@@ -117,6 +118,87 @@ function logInteraction(PDO $db, $tid, $uid, string $type, string $subject, ?str
     ");
     $stmt->execute([$tid, $uid, $cid, $type, $subject, $body, $relType, $relId]);
 }
+
+function getCustomFields(PDO $db, int $tenant_id, int $entity_id, string $entity_type): array {
+    $stmt = $db->prepare("
+        SELECT cf.id, cf.field_key, cf.label, cf.field_type, cf.options, cf.is_required, 
+               cfv.value_text, cfv.value_number, cfv.value_date, cfv.value_json 
+        FROM custom_fields cf
+        LEFT JOIN custom_field_values cfv ON cf.id = cfv.custom_field_id AND cfv.entity_id = ?
+        WHERE cf.tenant_id = ? AND cf.entity_type = ?
+        ORDER BY cf.order_index ASC, cf.id ASC
+    ");
+    $stmt->execute([$entity_id, $tenant_id, $entity_type]);
+    $cfs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $custom_fields = [];
+    foreach ($cfs as $cf) {
+        $val = null;
+        if ($cf['field_type'] === 'number') $val = $cf['value_number'] !== null ? $cf['value_number'] + 0 : null;
+        elseif ($cf['field_type'] === 'date') $val = $cf['value_date'];
+        elseif (in_array($cf['field_type'], ['multiselect', 'checkbox'])) {
+            if ($cf['field_type'] === 'checkbox' && empty($cf['value_json'])) {
+                $val = ($cf['value_text'] === 'true' || $cf['value_text'] === '1') ? true : false;
+            } else {
+                $val = json_decode($cf['value_json'] ?? '[]', true);
+            }
+        }
+        else $val = $cf['value_text'];
+        
+        $custom_fields[] = [
+            'id' => (int)$cf['id'],
+            'field_key' => $cf['field_key'],
+            'label' => $cf['label'],
+            'field_type' => $cf['field_type'],
+            'options' => $cf['options'] ? json_decode($cf['options'], true) : [],
+            'is_required' => (bool)$cf['is_required'],
+            'value' => $val
+        ];
+    }
+    return $custom_fields;
+}
+
+function saveCustomFields(PDO $db, int $tenant_id, int $entity_id, string $entity_type, array $custom_fields): void {
+    foreach ($custom_fields as $key => $item) {
+        $value = null;
+        
+        if (is_array($item) && isset($item['field_id'])) {
+            $cf_id = (int)$item['field_id'];
+            $value = $item['value'] ?? null;
+            $stmt = $db->prepare("SELECT id, field_type FROM custom_fields WHERE tenant_id = ? AND id = ?");
+            $stmt->execute([$tenant_id, $cf_id]);
+        } else {
+            $value = $item;
+            $stmt = $db->prepare("SELECT id, field_type FROM custom_fields WHERE tenant_id = ? AND entity_type = ? AND field_key = ?");
+            $stmt->execute([$tenant_id, $entity_type, $key]);
+        }
+        
+        $cfDef = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$cfDef) continue;
+        
+        $cf_id = $cfDef['id'];
+        $type = $cfDef['field_type'];
+        
+        $v_text = null; $v_num = null; $v_date = null; $v_json = null;
+        if ($type === 'number') {
+            $v_num = ($value !== '' && $value !== null) ? (float)$value : null;
+        } elseif ($type === 'date') {
+            $v_date = $value ?: null;
+        } elseif (in_array($type, ['multiselect', 'checkbox'])) {
+            $v_json = json_encode($value);
+            if ($type === 'checkbox') $v_text = $value ? 'true' : 'false';
+        } else {
+            $v_text = $value;
+        }
+        
+        $upsert = $db->prepare("
+            INSERT INTO custom_field_values (custom_field_id, entity_id, value_text, value_number, value_date, value_json)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE value_text=VALUES(value_text), value_number=VALUES(value_number), value_date=VALUES(value_date), value_json=VALUES(value_json), updated_at=NOW()
+        ");
+        $upsert->execute([$cf_id, $entity_id, $v_text, $v_num, $v_date, $v_json]);
+    }
+}
+
 
 /**
  * Shared Inventory Deduction Logic (FIFO)
@@ -213,6 +295,8 @@ require_once __DIR__ . '/controllers/SupplierController.php';
 require_once __DIR__ . '/controllers/InventoryController.php';
 require_once __DIR__ . '/controllers/PurchaseOrderController.php';
 require_once __DIR__ . '/controllers/CloudFileController.php';
+require_once __DIR__ . '/controllers/CustomFieldController.php';
+require_once __DIR__ . '/controllers/ExportController.php';
 
 // ── Parse route ───────────────────────────────────────────────
 $requestUri = strtok($_SERVER['REQUEST_URI'], '?');
@@ -235,6 +319,34 @@ if ($resource === 'check') {
 
 // ── Route dispatch ────────────────────────────────────────────
 switch ($resource) {
+    // CUSTOM FIELDS
+    case 'custom-fields':
+        $auth = requireAuth();
+        $ctrl = new CustomFieldController($db);
+        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // EXPORT
+    case 'export':
+        $auth = requireAuth();
+        $ctrl = new ExportController($db);
+        if ($method === 'GET') $ctrl->export($auth);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // IMPORT
+    case 'import':
+        $auth = requireAuth();
+        $ctrl = new ImportController($db);
+        if ($resourceId === 'template' && $method === 'GET') $ctrl->template();
+        elseif ($resourceId === 'contacts' && $method === 'POST') $ctrl->contacts($auth);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
     // AUTH
     case 'auth':
         $ctrl = new AuthController($db);
@@ -418,16 +530,6 @@ switch ($resource) {
         else $ctrl->global($auth);
         break;
 
-    // IMPORT / EXPORT
-    case 'import':
-        $auth = requireAuth();
-        $ctrl = new ImportController($db);
-        if ($resourceId === 'template') $ctrl->template();
-        elseif ($resourceId === 'contacts' && $method === 'POST') $ctrl->contacts($auth);
-        elseif ($resourceId === 'export') $ctrl->export($auth);
-        else respond(404, null, 'Route không tồn tại', false);
-        break;
-
     // FINANCE (Invoices & Expenses)
     case 'invoices':
         $auth = requireAuth();
@@ -520,6 +622,18 @@ switch ($resource) {
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
         elseif ($subResource === 'receive' && $method === 'POST') $ctrl->receive($auth, (int)$resourceId);
+        else respond(404, null, 'Route không tồn tại', false);
+        break;
+
+    // FILE CATEGORIES
+    case 'file-categories':
+        $auth = requireAuth();
+        require_once __DIR__ . '/controllers/FileCategoryController.php';
+        $ctrl = new FileCategoryController($db);
+        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, $resourceId);
+        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, $resourceId);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 

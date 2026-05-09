@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, DollarSign, History, Briefcase, Tag as TagIcon, Box, FileText, CheckCircle2 } from 'lucide-react';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { EmptyCard } from '../components/ui/EmptyCard';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
@@ -189,6 +190,89 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                     </div>
                     
                     <div className="card-panel">
+                      <h4 className="panel-title">Các trường tùy chỉnh (Custom Fields)</h4>
+                      <div className="grid grid-2">
+                        {formData.custom_fields && formData.custom_fields.length > 0 ? (
+                          formData.custom_fields.map((field: any, index: number) => (
+                            <div className="form-group" key={field.id}>
+                              <label className="form-label">{field.label} {field.is_required ? <span style={{color: 'var(--color-danger)'}}>*</span> : ''}</label>
+                              {field.field_type === 'text' && (
+                                <input className="form-input" value={field.value || ''} onChange={e => {
+                                  const newFields = [...formData.custom_fields];
+                                  newFields[index].value = e.target.value;
+                                  setFormData({ ...formData, custom_fields: newFields });
+                                }} />
+                              )}
+                              {field.field_type === 'number' && (
+                                <input type="number" className="form-input" value={field.value || ''} onChange={e => {
+                                  const newFields = [...formData.custom_fields];
+                                  newFields[index].value = e.target.value;
+                                  setFormData({ ...formData, custom_fields: newFields });
+                                }} />
+                              )}
+                              {field.field_type === 'date' && (
+                                <input type="date" className="form-input" value={field.value || ''} onChange={e => {
+                                  const newFields = [...formData.custom_fields];
+                                  newFields[index].value = e.target.value;
+                                  setFormData({ ...formData, custom_fields: newFields });
+                                }} />
+                              )}
+                              {field.field_type === 'dropdown' && (
+                                <CustomSelect 
+                                  options={(field.options || []).map((o:any) => ({ value: o, label: o }))} 
+                                  value={field.value || ''} 
+                                  onChange={val => {
+                                    const newFields = [...formData.custom_fields];
+                                    newFields[index].value = val.toString();
+                                    setFormData({ ...formData, custom_fields: newFields });
+                                  }} 
+                                />
+                              )}
+                              {field.field_type === 'multiselect' && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', paddingTop: '0.25rem' }}>
+                                  {(field.options || []).map((o: any) => {
+                                    let selected: string[] = [];
+                                    try {
+                                      if (typeof field.value === 'string') selected = JSON.parse(field.value);
+                                      else if (Array.isArray(field.value)) selected = field.value;
+                                    } catch { }
+                                    const isChecked = selected.includes(o);
+                                    return (
+                                      <label key={o} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: isChecked ? 'var(--color-primary)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`, transition: 'all 0.2s' }}>
+                                        <input type="checkbox" checked={isChecked} onChange={e => {
+                                          const newFields = [...formData.custom_fields];
+                                          const newSelected = e.target.checked ? [...selected, o] : selected.filter((s: string) => s !== o);
+                                          newFields[index].value = newSelected;
+                                          setFormData({ ...formData, custom_fields: newFields });
+                                        }} style={{ display: 'none' }} />
+                                        <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: isChecked ? 'white' : 'var(--color-text)' }}>{o}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              {field.field_type === 'checkbox' && (
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', height: '40px' }}>
+                                  <CustomCheckbox 
+                                    checked={field.value === 'true' || field.value === true} 
+                                    onChange={e => {
+                                      const newFields = [...formData.custom_fields];
+                                      newFields[index].value = e ? 'true' : 'false';
+                                      setFormData({ ...formData, custom_fields: newFields });
+                                    }} 
+                                  />
+                                  <span style={{ fontSize: '0.875rem' }}>Có</span>
+                                </label>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <div style={{ gridColumn: 'span 2', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>Chưa có trường tùy chỉnh nào được cấu hình cho Cơ hội bán hàng.</div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="card-panel">
                       <h4 className="panel-title">Khách hàng / Công ty</h4>
                       <div className="grid grid-2">
                         <div className="form-group">
@@ -315,7 +399,20 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
             {/* Footer */}
             <div className={styles.footer}>
               <button className="btn ghost" onClick={onClose}>Hủy bỏ</button>
-              <button className="btn primary" onClick={() => onSave(formData)}>Lưu Cơ Hội</button>
+              <button className="btn primary" onClick={() => {
+                const payload = { ...formData };
+                if (formData.custom_fields && Array.isArray(formData.custom_fields)) {
+                  for (const f of formData.custom_fields) {
+                    const isEmpty = f.value === undefined || f.value === null || f.value === '' || (Array.isArray(f.value) && f.value.length === 0);
+                    if (f.is_required && isEmpty) {
+                      addToast(`Trường "${f.label}" là bắt buộc.`, 'error');
+                      return;
+                    }
+                  }
+                  payload.custom_fields = formData.custom_fields.map((f: any) => ({ field_id: f.id, value: f.value }));
+                }
+                onSave(payload);
+              }}>Lưu Cơ Hội</button>
             </div>
           </motion.div>
         </>

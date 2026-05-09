@@ -37,12 +37,7 @@ export const SettingsPage: React.FC = () => {
 
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [tags, setTags] = useState<any[]>([]);
-  const [customFields, setCustomFields] = useState([
-    { id: 1, name: 'Mã số thuế', entity: 'Công ty', type: 'Text', required: false },
-    { id: 2, name: 'Ngày sinh', entity: 'Liên hệ', type: 'Date', required: false },
-    { id: 3, name: 'Hạn mức tín dụng', entity: 'Công ty', type: 'Number', required: false },
-    { id: 4, name: 'Phân loại khách hàng', entity: 'Liên hệ', type: 'Select', required: true }
-  ]);
+  const [customFields, setCustomFields] = useState<any[]>([]);
 
   const fetchUsers = async () => {
     if (DEV_MODE) {
@@ -102,10 +97,30 @@ export const SettingsPage: React.FC = () => {
     }
   };
 
+  const fetchCustomFields = async () => {
+    if (DEV_MODE) {
+      setCustomFields([
+        { id: 1, label: 'Mã số thuế', entity_type: 'company', field_type: 'text', is_required: false },
+        { id: 2, label: 'Ngày sinh', entity_type: 'contact', field_type: 'date', is_required: false }
+      ]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const r = await api.get('/custom-fields');
+      setCustomFields(r.data || []);
+    } catch {
+      addToast('Lỗi tải danh sách trường tùy chỉnh', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (tab === 'users') fetchUsers();
-    if (tab === 'pipeline') fetchPipelines();
-    if (tab === 'tags') fetchTags();
+    else if (tab === 'pipeline') fetchPipelines();
+    else if (tab === 'tags') fetchTags();
+    else if (tab === 'custom_fields') fetchCustomFields();
   }, [tab]);
 
   const [activeModal, setActiveModal] = useState<{ type: 'pipeline' | 'tag' | 'field' | null, item: any }>({ type: null, item: null });
@@ -118,7 +133,7 @@ export const SettingsPage: React.FC = () => {
     } else {
       if (type === 'pipeline') setGenericForm({ name: '', color: '#3b82f6' });
       if (type === 'tag') setGenericForm({ name: '', color: '#10b981' });
-      if (type === 'field') setGenericForm({ name: '', entity: 'Liên hệ', type: 'Text', required: false });
+      if (type === 'field') setGenericForm({ label: '', entity_type: 'contact', field_type: 'text', is_required: false, options: '' });
     }
   };
 
@@ -137,8 +152,13 @@ export const SettingsPage: React.FC = () => {
         fetchTags();
       }
       if (activeModal.type === 'field') {
-        if (activeModal.item) setCustomFields(f => f.map(x => x.id === activeModal.item.id ? { ...x, ...genericForm } : x));
-        else setCustomFields(f => [...f, { ...genericForm, id: Date.now() }]);
+        const payload = { ...genericForm };
+        if (['dropdown', 'multiselect'].includes(payload.field_type) && typeof payload.options === 'string') {
+          payload.options = payload.options.split(',').map((s:string) => s.trim()).filter(Boolean);
+        }
+        if (activeModal.item) await api.put(`/custom-fields/${activeModal.item.id}`, payload);
+        else await api.post('/custom-fields', payload);
+        fetchCustomFields();
       }
 
       addToast('Đã lưu cấu hình', 'success');
@@ -424,13 +444,18 @@ export const SettingsPage: React.FC = () => {
                 {customFields.map((f, i) => (
                   <tr key={f.id} style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                     <td style={{ padding: '0.875rem 1rem', color: 'var(--color-text-muted)', cursor: 'grab' }}><GripVertical size={16} /></td>
-                    <td style={{ padding: '0.875rem 1rem', fontWeight: 600 }}>{f.name}</td>
-                    <td style={{ padding: '0.875rem 1rem' }}><span className="badge info">{f.entity}</span></td>
-                    <td style={{ padding: '0.875rem 1rem', fontSize: '0.875rem' }}>{f.type}</td>
+                    <td style={{ padding: '0.875rem 1rem', fontWeight: 600 }}>{f.label}</td>
+                    <td style={{ padding: '0.875rem 1rem' }}><span className="badge info">{f.entity_type === 'contact' ? 'Liên hệ' : f.entity_type === 'company' ? 'Công ty' : 'Cơ hội'}</span></td>
+                    <td style={{ padding: '0.875rem 1rem', fontSize: '0.875rem' }}>{f.field_type}</td>
                     <td style={{ padding: '0.875rem 1rem' }}>
                       <CustomCheckbox 
-                        checked={f.required} 
-                        onChange={() => setCustomFields(prev => prev.map(x => x.id === f.id ? { ...x, required: !x.required } : x))} 
+                        checked={f.is_required} 
+                        onChange={async () => {
+                          try {
+                            await api.put(`/custom-fields/${f.id}`, { is_required: !f.is_required });
+                            fetchCustomFields();
+                          } catch {}
+                        }} 
                       />
                     </td>
                     <td style={{ padding: '0.875rem 1rem', textAlign: 'right' }}>
@@ -583,7 +608,7 @@ export const SettingsPage: React.FC = () => {
               <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="form-group">
                   <label className="form-label">Tên {activeModal.type === 'pipeline' ? 'giai đoạn' : activeModal.type === 'tag' ? 'Tag' : 'trường'} *</label>
-                  <input className="form-input" value={genericForm.name || ''} onChange={e => setGenericForm({ ...genericForm, name: e.target.value })} autoFocus />
+                  <input className="form-input" value={activeModal.type === 'field' ? (genericForm.label || '') : (genericForm.name || '')} onChange={e => setGenericForm({ ...genericForm, [activeModal.type === 'field' ? 'label' : 'name']: e.target.value })} autoFocus />
                 </div>
 
                 {(activeModal.type === 'pipeline' || activeModal.type === 'tag') && (
@@ -594,32 +619,42 @@ export const SettingsPage: React.FC = () => {
                 )}
 
                 {activeModal.type === 'field' && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label">Module áp dụng</label>
-                      <CustomSelect 
-                        options={[
-                          { value: 'Liên hệ', label: 'Liên hệ' },
-                          { value: 'Công ty', label: 'Công ty' },
-                          { value: 'Cơ hội', label: 'Cơ hội (Deal)' }
-                        ]} 
-                        value={genericForm.entity || 'Liên hệ'} 
-                        onChange={val => setGenericForm({ ...genericForm, entity: val.toString() })} 
-                      />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">Module áp dụng</label>
+                        <CustomSelect 
+                          options={[
+                            { value: 'contact', label: 'Liên hệ' },
+                            { value: 'company', label: 'Công ty' },
+                            { value: 'deal', label: 'Cơ hội (Deal)' }
+                          ]} 
+                          value={genericForm.entity_type || 'contact'} 
+                          onChange={val => setGenericForm({ ...genericForm, entity_type: val.toString() })} 
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Loại dữ liệu</label>
+                        <CustomSelect 
+                          options={[
+                            { value: 'text', label: 'Văn bản (Text)' },
+                            { value: 'number', label: 'Số (Number)' },
+                            { value: 'date', label: 'Ngày tháng (Date)' },
+                            { value: 'dropdown', label: 'Chọn 1 (Dropdown)' },
+                            { value: 'multiselect', label: 'Chọn nhiều (Multi-select)' },
+                            { value: 'checkbox', label: 'Hộp kiểm (Checkbox)' }
+                          ]} 
+                          value={genericForm.field_type || 'text'} 
+                          onChange={val => setGenericForm({ ...genericForm, field_type: val.toString() })} 
+                        />
+                      </div>
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">Loại dữ liệu</label>
-                      <CustomSelect 
-                        options={[
-                          { value: 'Text', label: 'Văn bản (Text)' },
-                          { value: 'Number', label: 'Số (Number)' },
-                          { value: 'Date', label: 'Ngày tháng (Date)' },
-                          { value: 'Select', label: 'Lựa chọn (Select)' }
-                        ]} 
-                        value={genericForm.type || 'Text'} 
-                        onChange={val => setGenericForm({ ...genericForm, type: val.toString() })} 
-                      />
-                    </div>
+                    {['dropdown', 'multiselect'].includes(genericForm.field_type) && (
+                      <div className="form-group">
+                        <label className="form-label">Các tùy chọn (cách nhau bởi dấu phẩy)</label>
+                        <input className="form-input" value={Array.isArray(genericForm.options) ? genericForm.options.join(', ') : (genericForm.options || '')} onChange={e => setGenericForm({ ...genericForm, options: e.target.value })} placeholder="VD: Vàng, Bạc, Đồng" />
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -684,13 +719,18 @@ export const SettingsPage: React.FC = () => {
                           if (activeModal.type === 'field') {
                             showConfirm({
                               title: 'Xóa trường tùy chỉnh?',
-                              message: `Dữ liệu trong trường "${activeModal.item.name}" sẽ bị xóa vĩnh viễn trên toàn bộ hệ thống.`,
+                              message: `Dữ liệu trong trường "${activeModal.item.label}" sẽ bị xóa vĩnh viễn trên toàn bộ hệ thống.`,
                               isDanger: true,
                               confirmText: 'Xác nhận xóa',
-                              onConfirm: () => {
-                                setCustomFields(f => f.filter(x => x.id !== activeModal.item.id));
-                                setActiveModal({ type: null, item: null });
-                                addToast('Đã xóa trường tùy chỉnh', 'success');
+                              onConfirm: async () => {
+                                try {
+                                  await api.delete(`/custom-fields/${activeModal.item.id}`);
+                                  fetchCustomFields();
+                                  setActiveModal({ type: null, item: null });
+                                  addToast('Đã xóa trường tùy chỉnh', 'success');
+                                } catch (e) {
+                                  addToast('Lỗi xóa trường tùy chỉnh', 'error');
+                                }
                               }
                             });
                           }
