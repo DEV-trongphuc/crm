@@ -17,6 +17,11 @@ class ActivityController {
         $sortBy = $_GET['sort']  ?? 'due_date';
         $order  = $_GET['order'] ?? 'ASC';
 
+        // Validating sort fields to prevent SQL Injection
+        $allowedSort = ['due_date', 'created_at', 'updated_at', 'status', 'priority', 'type'];
+        if (!in_array($sortBy, $allowedSort)) $sortBy = 'due_date';
+        if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'ASC';
+
         $where=['a.tenant_id=?', 'a.deleted_at IS NULL']; $params=[$tid];
 
         if ($search) {
@@ -66,6 +71,7 @@ class ActivityController {
     }
 
     public function store(array $auth): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thêm mới', false);
         $b=getBody();
         if (empty($b['subject'])||empty($b['type'])) respond(422,null,'Tiêu đề và loại là bắt buộc',false);
         
@@ -88,24 +94,30 @@ class ActivityController {
         if ($auth['role'] === 'sale' && (int)$targetUserId !== (int)$auth['user_id']) {
             $targetUserId = $auth['user_id']; // Force self for sale role
         }
+        
+        $due_date = empty($b['due_date']) ? null : $b['due_date'];
+        $status = $b['status'] ?? 'planned';
+        $done_at = null;
+        if ($status === 'done') {
+            $done_at = empty($b['done_at']) ? date('Y-m-d H:i:s') : $b['done_at'];
+        }
 
         $this->db->prepare("
-            INSERT INTO activities (tenant_id,user_id,type,subject,body,status,priority,due_date,related_type,related_id)
-            VALUES (?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO activities (tenant_id,user_id,type,subject,body,status,priority,due_date,done_at,related_type,related_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)
         ")->execute([
             $auth['tenant_id'], $targetUserId, $b['type'],
-            $b['subject'], $b['body']??null, $b['status']??'planned', $b['priority']??'medium',
-            $b['due_date']??null, $b['related_type']??null, $b['related_id']??null,
+            $b['subject'], $b['body']??null, $status, $b['priority']??'medium',
+            $due_date, $done_at, $b['related_type']??null, $b['related_id']??null,
         ]);
         $actId = (int)$this->db->lastInsertId();
 
-        // Update last_contact for the contact
-        if (!empty($b['related_type']) && !empty($b['related_id'])) {
-            if ($b['related_type'] === 'contact') {
+        // If status is done, update contact's last_contact
+        if ($status === 'done' && !empty($b['related_id'])) {
+            if (($b['related_type'] ?? '') === 'contact') {
                 $this->db->prepare("UPDATE contacts SET last_contact = CURRENT_DATE WHERE id = ? AND tenant_id = ?")
                      ->execute([(int)$b['related_id'], $auth['tenant_id']]);
-            } else if ($b['related_type'] === 'deal') {
-                // Find contact linked to this deal
+            } else if (($b['related_type'] ?? '') === 'deal') {
                 $sDeal = $this->db->prepare("SELECT contact_id FROM deals WHERE id = ? AND tenant_id = ?");
                 $sDeal->execute([(int)$b['related_id'], $auth['tenant_id']]);
                 $cid = $sDeal->fetchColumn();
@@ -135,11 +147,12 @@ class ActivityController {
     }
 
     public function update(array $auth,int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật', false);
         $b=getBody();
         
         // Auto set done_at if status changes to done, or clear it if changed to something else
         if (isset($b['status'])) {
-            if ($b['status'] === 'done' && !isset($b['done_at'])) {
+            if ($b['status'] === 'done' && empty($b['done_at'])) {
                 $b['done_at'] = date('Y-m-d H:i:s');
             } elseif ($b['status'] !== 'done') {
                 $b['done_at'] = null;
@@ -163,7 +176,16 @@ class ActivityController {
 
         $fields=['user_id','type','subject','body','status','priority','due_date','done_at','related_type','related_id'];
         $sets=[];$params=[];
-        foreach($fields as $f){if(array_key_exists($f,$b)){$sets[]="$f=?";$params[]=$b[$f];}}
+        foreach($fields as $f){
+            if(array_key_exists($f,$b)){
+                $sets[]="$f=?";
+                if (in_array($f, ['due_date', 'done_at']) && $b[$f] === '') {
+                    $params[] = null;
+                } else {
+                    $params[]=$b[$f];
+                }
+            }
+        }
         if(!$sets) respond(422,null,'Không có dữ liệu',false);
 
         // Check permission first
@@ -233,6 +255,7 @@ class ActivityController {
     }
 
     public function addComment(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền bình luận', false);
         // Verify activity belongs to tenant and user has permission
         $sql = "SELECT id FROM activities WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
@@ -269,7 +292,8 @@ class ActivityController {
         respond(200, ['id' => $commentId], 'Đã thêm bình luận');
     }
 
-    public function destroy(array $auth,int $id): void {
+    public function destroy(array $auth, int $id): void {
+        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa hoạt động', false);
         $sql = "UPDATE activities SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') {

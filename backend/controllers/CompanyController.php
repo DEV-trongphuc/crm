@@ -70,6 +70,22 @@ class CompanyController {
             $s->execute([$auth['tenant_id']]); $stageId = $s->fetchColumn();
         }
 
+        // Check duplicate name
+        $checkName = $this->db->prepare("SELECT id FROM companies WHERE tenant_id=? AND name=? AND deleted_at IS NULL LIMIT 1");
+        $checkName->execute([$auth['tenant_id'], $b['name']]);
+        if ($checkName->fetch()) {
+            respond(409, null, "Tên công ty '{$b['name']}' đã tồn tại trong hệ thống.", false);
+        }
+
+        // Check duplicate tax_id
+        if (!empty($b['tax_id'])) {
+            $checkTax = $this->db->prepare("SELECT id FROM companies WHERE tenant_id=? AND tax_id=? AND deleted_at IS NULL LIMIT 1");
+            $checkTax->execute([$auth['tenant_id'], $b['tax_id']]);
+            if ($checkTax->fetch()) {
+                respond(409, null, "Mã số thuế '{$b['tax_id']}' đã tồn tại trong hệ thống.", false);
+            }
+        }
+
         $stmt = $this->db->prepare("
             INSERT INTO companies (tenant_id,owner_id,created_by,name,tax_id,industry,website,social_link,phone,email,address,ward,city,country,size,status,tags,notes,stage_id)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
@@ -123,12 +139,36 @@ class CompanyController {
         if (isset($b['tags'])) { $sets[]='tags=?'; $params[]=json_encode($b['tags']); }
         if (!$sets) respond(422, null, 'Không có dữ liệu', false);
 
+        if (array_key_exists('stage_id', $b)) {
+            $sStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
+            $sStage->execute([(int)$b['stage_id'], $auth['tenant_id']]);
+            if (!$sStage->fetch()) respond(404, null, 'Giai đoạn không hợp lệ', false);
+        }
+
         // Check permission first
         $check = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
         $check->execute($cp);
         if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+
+        // Check duplicate name
+        if (!empty($b['name'])) {
+            $checkName = $this->db->prepare("SELECT id FROM companies WHERE tenant_id=? AND name=? AND id!=? AND deleted_at IS NULL LIMIT 1");
+            $checkName->execute([$auth['tenant_id'], $b['name'], $id]);
+            if ($checkName->fetch()) {
+                respond(409, null, "Tên công ty '{$b['name']}' đã tồn tại trong hệ thống.", false);
+            }
+        }
+
+        // Check duplicate tax_id
+        if (!empty($b['tax_id'])) {
+            $checkTax = $this->db->prepare("SELECT id FROM companies WHERE tenant_id=? AND tax_id=? AND id!=? AND deleted_at IS NULL LIMIT 1");
+            $checkTax->execute([$auth['tenant_id'], $b['tax_id'], $id]);
+            if ($checkTax->fetch()) {
+                respond(409, null, "Mã số thuế '{$b['tax_id']}' đã tồn tại trong hệ thống.", false);
+            }
+        }
 
         $params[]=$id; $params[]=$auth['tenant_id'];
         $stmt = $this->db->prepare("UPDATE companies SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
@@ -145,6 +185,10 @@ class CompanyController {
         $b = getBody();
         if (empty($b['stage_id'])) respond(422, null, 'stage_id là bắt buộc', false);
         
+        $sStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
+        $sStage->execute([(int)$b['stage_id'], $auth['tenant_id']]);
+        if (!$sStage->fetch()) respond(404, null, 'Giai đoạn không hợp lệ', false);
+
         $sql = "UPDATE companies SET stage_id=? WHERE id=? AND tenant_id=?";
         $p = [$b['stage_id'], $id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') {

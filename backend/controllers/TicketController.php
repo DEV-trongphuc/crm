@@ -84,33 +84,60 @@ class TicketController {
     }
 
     public function store(array $auth): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền tạo ticket', false);
         $data = getBody();
         if (empty($data['subject']) || empty($data['customer_name'])) {
             respond(400, null, 'Thiếu tiêu đề hoặc tên khách hàng', false);
+        }
+
+        $assigneeId = $data['assignee_id'] ?? $auth['user_id'];
+        
+        // Verify assignee_id belongs to tenant
+        $checkUser = $this->db->prepare("SELECT id FROM users WHERE id=? AND tenant_id=?");
+        $checkUser->execute([$assigneeId, $auth['tenant_id']]);
+        if (!$checkUser->fetch()) $assigneeId = $auth['user_id']; // Fallback to self
+        
+        // Verify related_contacts
+        $validContacts = [];
+        if (!empty($data['related_contacts']) && is_array($data['related_contacts'])) {
+            $inClause = implode(',', array_fill(0, count($data['related_contacts']), '?'));
+            $sC = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND id IN ($inClause)");
+            $sC->execute(array_merge([$auth['tenant_id']], $data['related_contacts']));
+            $validContacts = $sC->fetchAll(PDO::FETCH_COLUMN);
+        }
+
+        // Verify related_users
+        $validUsers = [];
+        if (!empty($data['related_users']) && is_array($data['related_users'])) {
+            $inClause = implode(',', array_fill(0, count($data['related_users']), '?'));
+            $sU = $this->db->prepare("SELECT id FROM users WHERE tenant_id=? AND id IN ($inClause)");
+            $sU->execute(array_merge([$auth['tenant_id']], $data['related_users']));
+            $validUsers = $sU->fetchAll(PDO::FETCH_COLUMN);
         }
 
         $stmt = $this->db->prepare("
             INSERT INTO tickets (tenant_id, created_by, assignee_id, subject, customer_name, description, status, priority, due_date, related_contacts, related_users)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
+        $due_date = empty($data['due_date']) ? date('Y-m-d H:i:s', strtotime('+1 day')) : $data['due_date'];
         $stmt->execute([
             $auth['tenant_id'],
             $auth['user_id'],
-            $data['assignee_id'] ?? $auth['user_id'], // assign to self by default
+            $assigneeId,
             $data['subject'],
             $data['customer_name'],
             $data['description'] ?? null,
             $data['status'] ?? 'open',
             $data['priority'] ?? 'medium',
-            $data['due_date'] ?? date('Y-m-d H:i:s', strtotime('+1 day')),
-            isset($data['related_contacts']) ? json_encode($data['related_contacts']) : null,
-            isset($data['related_users']) ? json_encode($data['related_users']) : null
+            $due_date,
+            !empty($validContacts) ? json_encode($validContacts) : null,
+            !empty($validUsers) ? json_encode($validUsers) : null
         ]);
         $id = $this->db->lastInsertId();
 
         // Log interaction for related contacts
-        if (!empty($data['related_contacts']) && is_array($data['related_contacts'])) {
-            foreach ($data['related_contacts'] as $cId) {
+        if (!empty($validContacts)) {
+            foreach ($validContacts as $cId) {
                 logInteraction($this->db, $auth['tenant_id'], $auth['user_id'], 'task', "Tạo Ticket mới: {$data['subject']}", "Ticket #$id đã được khởi tạo cho khách hàng.", 'contact', (int)$cId);
             }
         }
@@ -119,6 +146,7 @@ class TicketController {
     }
 
     public function update(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật ticket', false);
         $data = getBody();
         $fields = ['subject', 'customer_name', 'description', 'status', 'priority', 'due_date', 'assignee_id'];
         $sets = []; 
@@ -126,12 +154,47 @@ class TicketController {
         
         foreach ($fields as $f) { 
             if (array_key_exists($f, $data)) { 
+                $val = $data[$f];
+                
+                // Verify assignee_id
+                if ($f === 'assignee_id') {
+                    $checkUser = $this->db->prepare("SELECT id FROM users WHERE id=? AND tenant_id=?");
+                    $checkUser->execute([$val, $auth['tenant_id']]);
+                    if (!$checkUser->fetch()) continue; // Skip invalid assignee
+                }
+
                 $sets[] = "$f=?"; 
-                $params[] = $data[$f]; 
+                if ($f === 'due_date' && $val === '') {
+                    $params[] = null;
+                } else {
+                    $params[] = $val; 
+                }
             } 
         }
-        if (isset($data['related_contacts'])) { $sets[] = 'related_contacts=?'; $params[] = json_encode($data['related_contacts']); }
-        if (isset($data['related_users'])) { $sets[] = 'related_users=?'; $params[] = json_encode($data['related_users']); }
+        
+        if (isset($data['related_contacts'])) { 
+            $validContacts = [];
+            if (!empty($data['related_contacts']) && is_array($data['related_contacts'])) {
+                $inClause = implode(',', array_fill(0, count($data['related_contacts']), '?'));
+                $sC = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND id IN ($inClause)");
+                $sC->execute(array_merge([$auth['tenant_id']], $data['related_contacts']));
+                $validContacts = $sC->fetchAll(PDO::FETCH_COLUMN);
+            }
+            $sets[] = 'related_contacts=?'; 
+            $params[] = !empty($validContacts) ? json_encode($validContacts) : null; 
+        }
+        
+        if (isset($data['related_users'])) { 
+            $validUsers = [];
+            if (!empty($data['related_users']) && is_array($data['related_users'])) {
+                $inClause = implode(',', array_fill(0, count($data['related_users']), '?'));
+                $sU = $this->db->prepare("SELECT id FROM users WHERE tenant_id=? AND id IN ($inClause)");
+                $sU->execute(array_merge([$auth['tenant_id']], $data['related_users']));
+                $validUsers = $sU->fetchAll(PDO::FETCH_COLUMN);
+            }
+            $sets[] = 'related_users=?'; 
+            $params[] = !empty($validUsers) ? json_encode($validUsers) : null; 
+        }
         
         if (isset($data['status']) && $data['status'] === 'resolved') {
             $sets[] = "resolved_at=NOW()";
@@ -191,6 +254,7 @@ class TicketController {
     }
 
     public function addComment(array $auth, int $ticketId): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền phản hồi ticket', false);
         $data = getBody();
         if (empty($data['body'])) respond(400, null, 'Nội dung ghi chú không được để trống', false);
 

@@ -123,12 +123,25 @@ class ContactController {
                 respond(422, null, "Số điện thoại '$phone' đã tồn tại trong hệ thống. Vui lòng kiểm tra lại.", false);
             }
         }
+        
+        // Duplicate Email Check
+        $email = $b['email'] ?? null;
+        if ($email) {
+            $checkEmail = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND email=? AND deleted_at IS NULL LIMIT 1");
+            $checkEmail->execute([$auth['tenant_id'], $email]);
+            if ($checkEmail->fetch()) {
+                respond(422, null, "Email '$email' đã tồn tại trong hệ thống.", false);
+            }
+        }
 
         $stageId = $b['stage_id'] ?? null;
         if (!$stageId) {
             $s = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id=? ORDER BY order_index LIMIT 1");
             $s->execute([$auth['tenant_id']]); $stageId = $s->fetchColumn();
         }
+
+        $birthday = empty($b['birthday']) ? null : $b['birthday'];
+        $last_contact = empty($b['last_contact']) ? null : $b['last_contact'];
 
         $stmt = $this->db->prepare("
             INSERT INTO contacts (tenant_id,company_id,owner_id,created_by,first_name,last_name,
@@ -140,13 +153,13 @@ class ContactController {
             $auth['tenant_id'],
             $company_id, $b['owner_id'] ?? $auth['user_id'],
             $auth['user_id'], $b['first_name'], $b['last_name'] ?? '',
-            $b['email'] ?? null, $b['phone'] ?? null, $b['mobile'] ?? null,
+            $email, $b['phone'] ?? null, $b['mobile'] ?? null,
             $b['job_title'] ?? null, $b['department'] ?? null,
             $b['source'] ?? 'other', $b['status'] ?? 'lead',
             $tags, $b['notes'] ?? null, $stageId,
-            $b['birthday'] ?? null, $b['address'] ?? null, $b['city'] ?? null, $b['ward'] ?? null,
+            $birthday, $b['address'] ?? null, $b['city'] ?? null, $b['ward'] ?? null,
             $b['expected_revenue'] ?? 0, $b['win_probability'] ?? 50,
-            $b['last_contact'] ?? null, $b['lead_score'] ?? 0
+            $last_contact, $b['lead_score'] ?? 0
         ]);
         $id = (int)$this->db->lastInsertId();
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
@@ -219,7 +232,12 @@ class ContactController {
             if ($f === 'company_id') continue;
             if (array_key_exists($f, $b)) { 
                 $sets[] = "$f=?"; 
-                $params[] = $b[$f]; 
+                // Fix date string strict mode crash
+                if (in_array($f, ['birthday', 'last_contact']) && $b[$f] === '') {
+                    $params[] = null;
+                } else {
+                    $params[] = $b[$f];
+                }
             }
         }
         if (isset($b['tags'])) { $sets[] = 'tags=?'; $params[] = json_encode($b['tags']); }
@@ -232,8 +250,24 @@ class ContactController {
                 respond(422, null, "Số điện thoại '$phone' đã tồn tại ở một khách hàng khác.", false);
             }
         }
+        // Duplicate Email Check (excluding self)
+        $email = $b['email'] ?? null;
+        if ($email) {
+            $checkEmail = $this->db->prepare("SELECT id FROM contacts WHERE tenant_id=? AND email=? AND id!=? AND deleted_at IS NULL LIMIT 1");
+            $checkEmail->execute([$auth['tenant_id'], $email, $id]);
+            if ($checkEmail->fetch()) {
+                respond(422, null, "Email '$email' đã tồn tại ở một khách hàng khác.", false);
+            }
+        }
 
         if (!$sets) respond(422, null, 'Không có dữ liệu để cập nhật', false);
+
+        if (array_key_exists('stage_id', $b)) {
+            $sStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
+            $sStage->execute([(int)$b['stage_id'], $auth['tenant_id']]);
+            if (!$sStage->fetch()) respond(404, null, 'Giai đoạn không hợp lệ', false);
+        }
+
         // Check permission first
         $check = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
@@ -257,6 +291,10 @@ class ContactController {
         $b = getBody();
         if (empty($b['stage_id'])) respond(422, null, 'stage_id là bắt buộc', false);
         
+        $sStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
+        $sStage->execute([(int)$b['stage_id'], $auth['tenant_id']]);
+        if (!$sStage->fetch()) respond(404, null, 'Giai đoạn không hợp lệ', false);
+
         $sql = "UPDATE contacts SET stage_id=? WHERE id=? AND tenant_id=?";
         $p = [$b['stage_id'], $id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') {

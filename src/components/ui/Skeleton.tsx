@@ -34,7 +34,7 @@ export const TableSkeleton: React.FC<{ rows?: number; cols?: number }> = ({ rows
       {Array.from({ length: rows }).map((_, i) => (
         <div key={i} style={{ display: 'flex', gap: '1rem' }}>
           {Array.from({ length: cols }).map((_, j) => (
-            <Skeleton key={j} height="1.25rem" width={`${Math.random() * 50 + 50}%`} />
+            <Skeleton key={j} height="1.25rem" width={`${((i * cols + j) * 17 % 50) + 50}%`} />
           ))}
         </div>
       ))}

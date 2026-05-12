@@ -8,7 +8,7 @@ export const numberToText = (number: number | string): string => {
 export const numberToVietnameseText = (number: number | string): string => {
   if (number === "" || number === null || number === undefined) return "";
   
-  let str = String(number).replace(/,/g, "");
+  const str = String(number).replace(/,/g, "");
   const n = parseInt(str);
   
   if (isNaN(n) || n === 0) return "";
@@ -47,7 +47,6 @@ export const numberToVietnameseText = (number: number | string): string => {
   const units = ["", " nghìn", " triệu", " tỷ"];
   let res = "";
   let tempN = n;
-  let unitIdx = 0;
 
   const groups: number[] = [];
   while (tempN > 0) {
@@ -60,15 +59,10 @@ export const numberToVietnameseText = (number: number | string): string => {
     const groupText = readThreeDigits(group, i < groups.length - 1);
     
     if (groupText.trim() !== "") {
-      // Logic for "tỷ" - if we have more than 3 groups, the 4th, 5th, etc. are also "tỷ" related
-      // Actually standard: 1,000,000,000,000 is "một nghìn tỷ"
-      // So we use groups of 3.
-      
-      let unitName = "";
       const pos = i % 3; // 0: unit/billion, 1: thousand, 2: million
       const billionGroup = Math.floor(i / 3);
       
-      unitName = units[pos];
+      let unitName = units[pos];
       for(let j=0; j<billionGroup; j++) unitName += " tỷ";
 
       res += groupText + unitName + " ";

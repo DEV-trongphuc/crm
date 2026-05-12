@@ -235,7 +235,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                                     try {
                                       if (typeof field.value === 'string') selected = JSON.parse(field.value);
                                       else if (Array.isArray(field.value)) selected = field.value;
-                                    } catch { }
+                                     } catch (e) { console.error(e); }
                                     const isChecked = selected.includes(o);
                                     return (
                                       <label key={o} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: isChecked ? 'var(--color-primary)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`, transition: 'all 0.2s' }}>

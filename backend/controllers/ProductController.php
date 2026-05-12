@@ -47,14 +47,30 @@ class ProductController {
         if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền thêm sản phẩm', false);
         $b=getBody();
         if(empty($b['name'])) respond(422,null,'Tên sản phẩm là bắt buộc',false);
+        if (($b['price'] ?? 0) < 0 || ($b['cost'] ?? 0) < 0) respond(422, null, 'Giá bán và Giá vốn không được âm', false);
         
+        $catId = !empty($b['category_id']) ? (int)(is_string($b['category_id']) && str_starts_with($b['category_id'], 'c') ? substr($b['category_id'], 1) : $b['category_id']) : null;
+        if ($catId) {
+            $checkCat = $this->db->prepare("SELECT id FROM product_categories WHERE id=? AND tenant_id=?");
+            $checkCat->execute([$catId, $auth['tenant_id']]);
+            if (!$checkCat->fetch()) respond(404, null, 'Danh mục không hợp lệ', false);
+        }
+        // Check duplicate SKU
+        if (!empty($b['sku'])) {
+            $checkSku = $this->db->prepare("SELECT id FROM products WHERE tenant_id=? AND sku=? AND deleted_at IS NULL LIMIT 1");
+            $checkSku->execute([$auth['tenant_id'], $b['sku']]);
+            if ($checkSku->fetch()) {
+                respond(409, null, "Mã sản phẩm (SKU) '{$b['sku']}' đã tồn tại trong hệ thống.", false);
+            }
+        }
+
         $sql = "INSERT INTO products (tenant_id, created_by, category_id, name, sku, category, description, price, cost, unit, track_inventory, track_cost, is_active) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         
         $params = [
             $auth['tenant_id'],
             $auth['user_id'],
-            !empty($b['category_id']) ? (int)(is_string($b['category_id']) && str_starts_with($b['category_id'], 'c') ? substr($b['category_id'], 1) : $b['category_id']) : null,
+            $catId,
             $b['name'],
             $b['sku'] ?? null,
             $b['category'] ?? null,
@@ -99,8 +115,45 @@ class ProductController {
                 $params[]=$val;
             }
         }
+        if (($b['price'] ?? 0) < 0 || ($b['cost'] ?? 0) < 0) respond(422, null, 'Giá bán và Giá vốn không được âm', false);
+        
+        $catId = null;
+        if (array_key_exists('category_id', $b)) {
+            $catId = !empty($b['category_id']) ? (int)(is_string($b['category_id']) && str_starts_with($b['category_id'], 'c') ? substr($b['category_id'], 1) : $b['category_id']) : null;
+            if ($catId) {
+                $checkCat = $this->db->prepare("SELECT id FROM product_categories WHERE id=? AND tenant_id=?");
+                $checkCat->execute([$catId, $auth['tenant_id']]);
+                if (!$checkCat->fetch()) respond(404, null, 'Danh mục không hợp lệ', false);
+            }
+        }
+        
         if(!$sets) respond(422,null,'Không có dữ liệu',false);
+        
+        // Check duplicate SKU
+        if (!empty($b['sku'])) {
+            $checkSku = $this->db->prepare("SELECT id FROM products WHERE tenant_id=? AND sku=? AND id!=? AND deleted_at IS NULL LIMIT 1");
+            $checkSku->execute([$auth['tenant_id'], $b['sku'], $id]);
+            if ($checkSku->fetch()) {
+                respond(409, null, "Mã sản phẩm (SKU) '{$b['sku']}' đã tồn tại trong hệ thống.", false);
+            }
+        }
+
         $params[]=$id;$params[]=$auth['tenant_id'];
+        
+        // Find index of category_id in fields and replace value in params if exists
+        $catIdx = array_search('category_id', $fields);
+        if ($catIdx !== false && array_key_exists('category_id', $b)) {
+            // Rebuild params to use $catId
+            $newSets = []; $newParams = [];
+            foreach ($fields as $f) {
+                if (array_key_exists($f, $b)) {
+                    $newSets[] = "$f=?";
+                    $newParams[] = ($f === 'category_id') ? $catId : $b[$f];
+                }
+            }
+            $sets = $newSets;
+            $params = array_merge($newParams, [$id, $auth['tenant_id']]);
+        }
         try {
             $this->db->prepare("UPDATE products SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?")->execute($params);
             $this->show($auth,$id);

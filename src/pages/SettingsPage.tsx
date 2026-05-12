@@ -454,7 +454,9 @@ export const SettingsPage: React.FC = () => {
                           try {
                             await api.put(`/custom-fields/${f.id}`, { is_required: !f.is_required });
                             fetchCustomFields();
-                          } catch {}
+                          } catch (e) {
+                            console.error(e);
+                          }
                         }} 
                       />
                     </td>

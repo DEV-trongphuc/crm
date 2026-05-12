@@ -56,7 +56,9 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
       const pData = pRes.data.data;
       setSuppliers(Array.isArray(sData) ? sData : (sData?.items || []));
       setProducts(Array.isArray(pData) ? pData : (pData?.items || []));
-    } catch (err) {}
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => { 

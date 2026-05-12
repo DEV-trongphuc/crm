@@ -43,6 +43,22 @@ class SupplierController {
         $b = getBody();
         if (empty($b['name'])) respond(422, null, 'Tên nhà cung cấp là bắt buộc', false);
 
+        // Check duplicate name
+        $checkName = $this->db->prepare("SELECT id FROM suppliers WHERE tenant_id=? AND name=? AND deleted_at IS NULL LIMIT 1");
+        $checkName->execute([$auth['tenant_id'], $b['name']]);
+        if ($checkName->fetch()) {
+            respond(409, null, "Nhà cung cấp '{$b['name']}' đã tồn tại trong hệ thống.", false);
+        }
+
+        // Check duplicate email
+        if (!empty($b['email'])) {
+            $checkEmail = $this->db->prepare("SELECT id FROM suppliers WHERE tenant_id=? AND email=? AND deleted_at IS NULL LIMIT 1");
+            $checkEmail->execute([$auth['tenant_id'], $b['email']]);
+            if ($checkEmail->fetch()) {
+                respond(409, null, "Email '{$b['email']}' đã tồn tại trong hệ thống.", false);
+            }
+        }
+
         $stmt = $this->db->prepare("
             INSERT INTO suppliers (tenant_id, created_by, name, contact_name, email, phone, address, tax_code, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -77,6 +93,24 @@ class SupplierController {
             }
         }
         if (!$sets) respond(422, null, 'Không có dữ liệu cập nhật', false);
+
+        // Check duplicate name
+        if (!empty($b['name'])) {
+            $checkName = $this->db->prepare("SELECT id FROM suppliers WHERE tenant_id=? AND name=? AND id!=? AND deleted_at IS NULL LIMIT 1");
+            $checkName->execute([$auth['tenant_id'], $b['name'], $id]);
+            if ($checkName->fetch()) {
+                respond(409, null, "Nhà cung cấp '{$b['name']}' đã tồn tại trong hệ thống.", false);
+            }
+        }
+
+        // Check duplicate email
+        if (!empty($b['email'])) {
+            $checkEmail = $this->db->prepare("SELECT id FROM suppliers WHERE tenant_id=? AND email=? AND id!=? AND deleted_at IS NULL LIMIT 1");
+            $checkEmail->execute([$auth['tenant_id'], $b['email'], $id]);
+            if ($checkEmail->fetch()) {
+                respond(409, null, "Email '{$b['email']}' đã tồn tại trong hệ thống.", false);
+            }
+        }
 
         $params[] = $id; $params[] = $auth['tenant_id'];
         $stmt = $this->db->prepare("UPDATE suppliers SET " . implode(',', $sets) . " WHERE id = ? AND tenant_id = ?");

@@ -7,6 +7,7 @@ class POSController {
 
 
     public function createOrder(array $auth): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện giao dịch POS', false);
         $tid = $auth['tenant_id'];
         $uid = $auth['user_id'];
         $data = getBody();
@@ -28,6 +29,7 @@ class POSController {
             $calculatedTotal += $price * $qty;
         }
         $shipping = (float)($data['shipping_fee'] ?? 0);
+        if ($shipping < 0) respond(422, null, "Phí giao hàng không được âm", false);
         $totalWithShipping = $calculatedTotal + $shipping;
 
         if (abs($totalWithShipping - (float)$data['total_amount']) > 1) {
@@ -81,7 +83,11 @@ class POSController {
                 
                 // Deduct stock if product_id is present
                 if (!empty($item['id'])) {
-                    deductStockFIFO($this->db, $tid, $uid, (int)$item['id'], (int)$item['quantity'], $invNum);
+                    $pCheck = $this->db->prepare("SELECT track_inventory FROM products WHERE id=?");
+                    $pCheck->execute([(int) $item['id']]);
+                    if ($pCheck->fetchColumn()) {
+                        deductStockFIFO($this->db, $tid, $uid, (int)$item['id'], (int)$item['quantity'], $invNum);
+                    }
                 }
             }
 

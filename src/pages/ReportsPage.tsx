@@ -336,7 +336,7 @@ export const ReportsPage: React.FC = () => {
             <p className="text-sm text-light mb-4">So sánh doanh thu thực tế với chỉ tiêu — 9 tháng gần nhất</p>
             {loading ? (
               <div style={{ height: 260, display: 'flex', alignItems: 'flex-end', gap: '1.25rem', padding: '1rem' }}>
-                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} height={`${Math.random() * 40 + 40}%`} width="100%" />)}
+                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} height={`${((i * 13) % 40) + 40}%`} width="100%" />)}
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={260}>

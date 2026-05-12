@@ -74,8 +74,10 @@ class QuoteController {
         ]);
     }
     public function store(array $auth): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền tạo báo giá', false);
         $tid = $auth['tenant_id'];
         $b=getBody(); if(empty($b['title'])) respond(422,null,'Tiêu đề là bắt buộc',false);
+        if (($b['total'] ?? 0) < 0) respond(422, null, 'Tổng tiền báo giá không được âm', false);
         
         // Verify contact belongs to tenant
         if (!empty($b['contact_id'])) {
@@ -93,8 +95,9 @@ class QuoteController {
 
         // Generate robust quote number
         $qNum = 'QT-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(2)));
+        $validUntil = empty($b['valid_until']) ? null : $b['valid_until'];
         $this->db->prepare("INSERT INTO quotes (tenant_id,deal_id,contact_id,created_by,quote_number,title,status,subtotal,discount,tax,total,valid_until,notes) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")
-            ->execute([$tid,$b['deal_id']??null,$b['contact_id']??null,$auth['user_id'],$qNum,$b['title'],$b['status']??'draft',$b['subtotal']??0,$b['discount']??0,$b['tax']??0,$b['total']??0,$b['valid_until']??null,$b['notes']??null]);
+            ->execute([$tid,$b['deal_id']??null,$b['contact_id']??null,$auth['user_id'],$qNum,$b['title'],$b['status']??'draft',$b['subtotal']??0,$b['discount']??0,$b['tax']??0,$b['total']??0,$validUntil,$b['notes']??null]);
         $qid=(int)$this->db->lastInsertId();
         if(!empty($b['items'])) {
             $ins=$this->db->prepare("INSERT INTO quote_items (quote_id,product_id,name,description,quantity,unit_price,discount,subtotal,sort_order) VALUES (?,?,?,?,?,?,?,?,?)");
@@ -131,10 +134,32 @@ class QuoteController {
         respond(200,$q);
     }
     public function update(array $auth,int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật báo giá', false);
         $b=getBody(); $fields=['title','status','subtotal','discount','tax','total','valid_until','notes','terms'];
         $sets=[];$params=[];
-        foreach($fields as $f){if(array_key_exists($f,$b)){$sets[]="$f=?";$params[]=$b[$f];}}
+        foreach($fields as $f){
+            if(array_key_exists($f,$b)){
+                $sets[]="$f=?";
+                if ($f === 'valid_until' && $b[$f] === '') {
+                    $params[] = null;
+                } else {
+                    $params[] = $b[$f];
+                }
+            }
+        }
         if($sets){
+            $tid = $auth['tenant_id'];
+            if (isset($b['contact_id']) && $b['contact_id']) {
+                $c = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
+                $c->execute([(int)$b['contact_id'], $tid]);
+                if (!$c->fetch()) respond(404, null, 'Liên hệ không hợp lệ', false);
+            }
+            if (isset($b['deal_id']) && $b['deal_id']) {
+                $c = $this->db->prepare("SELECT id FROM deals WHERE id=? AND tenant_id=?");
+                $c->execute([(int)$b['deal_id'], $tid]);
+                if (!$c->fetch()) respond(404, null, 'Deal không hợp lệ', false);
+            }
+            
             // Get old status to check for transition
             $old = $this->db->prepare("SELECT status, contact_id, quote_number, title FROM quotes WHERE id=? AND tenant_id=?");
             $old->execute([$id, $auth['tenant_id']]);
@@ -161,6 +186,7 @@ class QuoteController {
         respond(200,null,'Đã cập nhật báo giá');
     }
     public function convert(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền thực hiện thao tác này', false);
         $tid = $auth['tenant_id'];
         $uid = $auth['user_id'];
         

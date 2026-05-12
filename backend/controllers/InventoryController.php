@@ -222,6 +222,14 @@ class InventoryController {
      */
     public function archive(array $auth, int $id): void {
         if ($auth['role'] !== 'admin') respond(403, null, 'Chỉ admin mới có quyền lưu trữ lô hàng', false);
+        
+        $stmt = $this->db->prepare("SELECT current_qty FROM batches WHERE id=? AND tenant_id=?");
+        $stmt->execute([$id, $auth['tenant_id']]);
+        $qty = $stmt->fetchColumn();
+        
+        if ($qty === false) respond(404, null, 'Không tìm thấy lô hàng', false);
+        if ((int)$qty > 0) respond(400, null, 'Không thể lưu trữ lô hàng còn tồn kho. Vui lòng điều chỉnh kho về 0 trước.', false);
+
         $this->db->prepare("UPDATE batches SET status='archived' WHERE id=? AND tenant_id=?")->execute([$id, $auth['tenant_id']]);
         respond(200, null, 'Đã lưu trữ lô hàng');
     }

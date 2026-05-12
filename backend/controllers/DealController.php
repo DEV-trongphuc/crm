@@ -114,6 +114,20 @@ class DealController {
             $s = $this->db->prepare("SELECT id FROM pipeline_stages WHERE tenant_id=? ORDER BY order_index LIMIT 1");
             $s->execute([$auth['tenant_id']]); $stageId = $s->fetchColumn();
         }
+        $tid = $auth['tenant_id'];
+        if (!empty($b['contact_id'])) {
+            $c = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
+            $c->execute([(int)$b['contact_id'], $tid]);
+            if (!$c->fetch()) respond(404, null, 'Liên hệ không hợp lệ', false);
+        }
+        if (!empty($b['company_id'])) {
+            $c = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=?");
+            $c->execute([(int)$b['company_id'], $tid]);
+            if (!$c->fetch()) respond(404, null, 'Công ty không hợp lệ', false);
+        }
+
+        $expected_close_date = empty($b['expected_close_date']) ? null : $b['expected_close_date'];
+
         $this->db->prepare("
             INSERT INTO deals (tenant_id,stage_id,contact_id,company_id,owner_id,created_by,
                 title,description,priority,value,probability,expected_close_date,source,tags)
@@ -123,7 +137,7 @@ class DealController {
             $b['owner_id']??$auth['user_id'], $auth['user_id'],
             $b['title'], $b['description']??null, $b['priority']??'medium',
             $b['value']??0, $b['probability']??50,
-            $b['expected_close_date']??null, $b['source']??null,
+            $expected_close_date, $b['source']??null,
             json_encode($b['tags']??[]),
         ]);
         $id = (int)$this->db->lastInsertId();
@@ -178,12 +192,12 @@ class DealController {
             $old = $stmt->fetchColumn();
             if ($old === false) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 
-            // Check if stage is won/lost to set actual_close_date
             $sStage = $this->db->prepare("SELECT is_won, is_lost FROM pipeline_stages WHERE id=? AND tenant_id=?");
             $sStage->execute([(int)$b['stage_id'], $auth['tenant_id']]);
             $stageInfo = $sStage->fetch();
+            if (!$stageInfo) respond(404, null, 'Giai đoạn không hợp lệ', false);
             
-            $setActualDate = ($stageInfo && ($stageInfo['is_won'] || $stageInfo['is_lost'])) ? ", actual_close_date=CURDATE()" : ", actual_close_date=NULL";
+            $setActualDate = ($stageInfo['is_won'] || $stageInfo['is_lost']) ? ", actual_close_date=CURDATE()" : ", actual_close_date=NULL";
 
             $sql = "UPDATE deals SET stage_id=? $setActualDate WHERE id=? AND tenant_id=?";
             $p = [$b['stage_id'], $id, $auth['tenant_id']];
@@ -215,20 +229,64 @@ class DealController {
         $fields = ['stage_id','contact_id','company_id','owner_id','title','description','priority','value',
                    'probability','expected_close_date','source','lost_reason'];
         $sets=[]; $params=[];
-        foreach ($fields as $f) { if (array_key_exists($f,$b)) { $sets[]="$f=?"; $params[]=$b[$f]; } }
+        foreach ($fields as $f) { 
+            if (array_key_exists($f, $b)) { 
+                $sets[] = "$f=?"; 
+                if ($f === 'expected_close_date' && $b[$f] === '') {
+                    $params[] = null;
+                } else {
+                    $params[] = $b[$f]; 
+                }
+            } 
+        }
         if (isset($b['tags'])) { $sets[]='tags=?'; $params[]=json_encode($b['tags']); }
         if (!$sets) respond(422, null, 'Không có dữ liệu', false);
 
-        // Check permission first
-        $check = $this->db->prepare("SELECT id FROM deals WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
+        $tid = $auth['tenant_id'];
+        if (!empty($b['contact_id'])) {
+            $c = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=?");
+            $c->execute([(int)$b['contact_id'], $tid]);
+            if (!$c->fetch()) respond(404, null, 'Liên hệ không hợp lệ', false);
+        }
+        if (!empty($b['company_id'])) {
+            $c = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=?");
+            $c->execute([(int)$b['company_id'], $tid]);
+            if (!$c->fetch()) respond(404, null, 'Công ty không hợp lệ', false);
+        }
+
+        if (array_key_exists('stage_id', $b)) {
+            $sStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
+            $sStage->execute([(int)$b['stage_id'], $auth['tenant_id']]);
+            if (!$sStage->fetch()) respond(404, null, 'Giai đoạn không hợp lệ', false);
+        }
+
+        // Check permission first and get old stage
+        $check = $this->db->prepare("SELECT id, stage_id FROM deals WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
         if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
         $check->execute($cp);
-        if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+        $oldDeal = $check->fetch();
+        if (!$oldDeal) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+
+        if (array_key_exists('stage_id', $b) && $b['stage_id'] != $oldDeal['stage_id']) {
+            $sStageInfo = $this->db->prepare("SELECT is_won, is_lost FROM pipeline_stages WHERE id=? AND tenant_id=?");
+            $sStageInfo->execute([(int)$b['stage_id'], $auth['tenant_id']]);
+            $sI = $sStageInfo->fetch();
+            if ($sI && ($sI['is_won'] || $sI['is_lost'])) {
+                $sets[] = "actual_close_date=CURDATE()";
+            } else {
+                $sets[] = "actual_close_date=NULL";
+            }
+        }
 
         $params[]=$id; $params[]=$auth['tenant_id'];
         $stmt = $this->db->prepare("UPDATE deals SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
         $stmt->execute($params);
+        
+        if (array_key_exists('stage_id', $b) && $b['stage_id'] != $oldDeal['stage_id']) {
+            $this->db->prepare("INSERT INTO deal_stage_history (deal_id,from_stage,to_stage,moved_by) VALUES (?,?,?,?)")
+                     ->execute([$id, $oldDeal['stage_id'], $b['stage_id'], $auth['user_id']]);
+        }
         
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'deal', $b['custom_fields']);

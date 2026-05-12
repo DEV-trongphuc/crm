@@ -182,7 +182,7 @@ export const POSModal: React.FC<{ onClose: () => void; defaultContact?: Contact 
                           <div>
                             <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{p.name}</p>
                             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700 }}>
-                             Mã: {p.sku || p.id} {!!p.track_inventory ? `• Kho: ${p.stock_quantity || 0}` : ''}
+                             Mã: {p.sku || p.id} {p.track_inventory ? `• Kho: ${p.stock_quantity || 0}` : ''}
                             </p>
                           </div>
                         </div>

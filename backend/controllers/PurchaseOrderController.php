@@ -18,8 +18,14 @@ class PurchaseOrderController {
     }
 
     public function store(array $auth): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền tạo đơn nhập hàng', false);
         $b = getBody();
         if (empty($b['supplier_id']) || empty($b['items'])) respond(422, null, 'Thiếu thông tin nhà cung cấp hoặc danh sách sản phẩm', false);
+        if (($b['total'] ?? 0) < 0) respond(422, null, 'Tổng tiền đơn hàng không được âm', false);
+
+        $checkSup = $this->db->prepare("SELECT id FROM suppliers WHERE id=? AND tenant_id=?");
+        $checkSup->execute([(int)$b['supplier_id'], $auth['tenant_id']]);
+        if (!$checkSup->fetch()) respond(404, null, 'Nhà cung cấp không hợp lệ', false);
 
         $this->db->beginTransaction();
         try {
@@ -31,7 +37,7 @@ class PurchaseOrderController {
             ");
             $stmt->execute([
                 $auth['tenant_id'], $b['supplier_id'], $auth['user_id'], $po_number,
-                $b['order_date'] ?? date('Y-m-d'), 'ordered',
+                empty($b['order_date']) ? date('Y-m-d') : $b['order_date'], 'ordered',
                 $b['subtotal'] ?? 0, $b['tax'] ?? 0, $b['total'] ?? 0, $b['notes'] ?? null
             ]);
             $poId = (int)$this->db->lastInsertId();
@@ -81,6 +87,7 @@ class PurchaseOrderController {
     }
 
     public function receive(array $auth, int $id): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền nhập kho', false);
         $this->db->beginTransaction();
         try {
             // 1. Get PO and items
@@ -148,6 +155,7 @@ class PurchaseOrderController {
     }
 
     public function update(array $auth, int $id): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền cập nhật đơn nhập hàng', false);
         // Simple update for fields like notes or status (not receive)
         $b = getBody();
         $fields = ['status', 'payment_status', 'paid_amount', 'notes'];
@@ -167,6 +175,7 @@ class PurchaseOrderController {
     }
 
     public function destroy(array $auth, int $id): void {
+        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền xóa đơn nhập hàng', false);
         $stmt = $this->db->prepare("DELETE FROM purchase_orders WHERE id = ? AND tenant_id = ? AND status = 'draft'");
         $stmt->execute([$id, $auth['tenant_id']]);
         if (!$stmt->rowCount()) respond(403, null, 'Chỉ có thể xóa đơn hàng nháp', false);

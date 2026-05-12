@@ -416,8 +416,8 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           {loadingStats ? (
-            <div style={{ height: 240, display: 'flex', alignItems: 'flex-end', gap: '10px', padding: '1rem' }}>
-              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} height={`${Math.random() * 60 + 20}%`} width="100%" />)}
+            <div style={{ height: 260, display: 'flex', alignItems: 'flex-end', gap: '1rem' }}>
+              {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} height={`${((i * 17) % 60) + 20}%`} width="100%" />)}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={240}>

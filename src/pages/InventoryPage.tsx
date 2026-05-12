@@ -73,14 +73,6 @@ export default function InventoryPage() {
 
   const { showConfirm, addToast } = useUIStore();
 
-  useEffect(() => {
-    fetchBatches();
-  }, [page, debouncedSearch, statusFilter, sortBy]);
-
-  useEffect(() => {
-    fetchGlobalLogs();
-    fetchReceivers();
-  }, []);
 
   const fetchReceivers = async () => {
     try {
@@ -93,7 +85,9 @@ export default function InventoryPage() {
           avatar: c.avatar_url
         })));
       }
-    } catch (err) {}
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const fetchBatches = async () => {
@@ -175,6 +169,15 @@ export default function InventoryPage() {
     }
   };
 
+  useEffect(() => {
+    fetchBatches();
+  }, [page, debouncedSearch, statusFilter, sortBy]);
+
+  useEffect(() => {
+    fetchGlobalLogs();
+    fetchReceivers();
+  }, []);
+
   const archiveBatch = (id: number) => {
     showConfirm(
       'Lưu trữ lô hàng', 
@@ -240,12 +243,14 @@ export default function InventoryPage() {
 
   const filteredBatches = batches;
 
+  const [now] = useState(() => Date.now());
+
   const stats = {
     totalValue: summary.capital_value || 0,
     totalBatches: total,
     lowStock: batches.filter(b => b.current_qty > 0 && b.current_qty <= 5).length, // Keep client-side for "low stock" if not in summary
     outOfStock: summary.out_of_stock || 0,
-    expiringSoon: batches.filter(b => b.expiry_date && new Date(b.expiry_date) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) && b.current_qty > 0).length
+    expiringSoon: batches.filter(b => b.expiry_date && new Date(b.expiry_date) <= new Date(now + 30 * 24 * 60 * 60 * 1000) && b.current_qty > 0).length
   };
 
   return (

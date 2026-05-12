@@ -40,6 +40,17 @@ class UserController {
             $fields[] = 'role';
             $fields[] = 'is_active';
         }
+
+        // Admin lockout prevention
+        if ($auth['user_id'] === $id) {
+            if (isset($b['role']) && $b['role'] !== 'admin') {
+                respond(403, null, 'Bạn không thể tự tước quyền quản trị của chính mình', false);
+            }
+            if (isset($b['is_active']) && !$b['is_active']) {
+                respond(403, null, 'Bạn không thể tự khóa tài khoản của chính mình', false);
+            }
+        }
+
         $sets=[];$params=[];
         foreach($fields as $f){if(array_key_exists($f,$b)){$sets[]="$f=?";$params[]=$b[$f];}}
         if(!empty($b['password'])){$sets[]='password_hash=?';$params[]=password_hash($b['password'],PASSWORD_BCRYPT,['cost'=>12]);}
@@ -57,8 +68,15 @@ class UserController {
     public function destroy(array $auth,int $id): void {
         if ($auth['role'] !== 'admin') respond(403, null, 'Quyền admin là bắt buộc', false);
         if($id===$auth['user_id']) respond(403,null,'Không thể xóa tài khoản của chính mình',false);
-        $this->db->prepare("DELETE FROM users WHERE id=? AND tenant_id=?")->execute([$id,$auth['tenant_id']]);
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'user', $id);
-        respond(200,null,'Đã xóa người dùng');
+        try {
+            $this->db->prepare("DELETE FROM users WHERE id=? AND tenant_id=?")->execute([$id,$auth['tenant_id']]);
+            logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'DELETE', 'user', $id);
+            respond(200,null,'Đã xóa người dùng');
+        } catch (PDOException $e) {
+            if ($e->getCode() == '23000') {
+                respond(400, null, 'Không thể xóa người dùng này vì họ đang quản lý dữ liệu (liên hệ, hóa đơn, deal). Vui lòng chuyển trạng thái thành "Ngừng hoạt động" thay vì xóa.', false);
+            }
+            respond(500, null, 'Lỗi cơ sở dữ liệu: ' . $e->getMessage(), false);
+        }
     }
 }

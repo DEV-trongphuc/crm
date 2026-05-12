@@ -62,6 +62,7 @@ class NoteController {
     }
 
     public function store(array $auth, string $type, int $entityId): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền tạo ghi chú', false);
         if (!$this->checkEntityAccess($auth, $type, $entityId)) {
             respond(403, null, 'Bạn không có quyền thêm ghi chú cho mục này', false);
         }
@@ -119,6 +120,7 @@ class NoteController {
     }
 
     public function update(array $auth, int $id): void {
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền cập nhật ghi chú', false);
         $b = getBody();
         if (empty($b['body'])) respond(422, null, 'Nội dung là bắt buộc', false);
         $this->db->prepare("UPDATE notes SET body=?, is_pinned=?, updated_at=NOW() WHERE id=? AND user_id=? AND tenant_id=?")
@@ -127,6 +129,7 @@ class NoteController {
     }
 
     public function destroy(array $auth, int $id): void {
+        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa ghi chú', false);
         // 1. Verify existence and permission
         $check = $this->db->prepare("SELECT id FROM notes WHERE id=? AND tenant_id=?" . ($auth['role'] !== 'admin' && $auth['role'] !== 'manager' ? " AND user_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
