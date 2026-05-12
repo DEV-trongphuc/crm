@@ -48,7 +48,7 @@ export const SuppliersPage: React.FC = () => {
       const data = res.data.data;
       setSuppliers(data.items || []);
       setTotal(data.total || 0);
-    } catch (err) {
+    } catch (err: any) {
       addToast('Lỗi khi tải danh sách nhà cung cấp', 'error');
     } finally {
       setLoading(false);
@@ -99,7 +99,7 @@ export const SuppliersPage: React.FC = () => {
           await api.delete(`/suppliers/${id}`);
           setSuppliers(prev => prev.filter(s => s.id !== id));
           addToast('Đã xóa nhà cung cấp', 'success');
-        } catch {
+        } catch (e: any) {
           addToast('Lỗi khi xóa nhà cung cấp', 'error');
         } finally {
           closeConfirm();

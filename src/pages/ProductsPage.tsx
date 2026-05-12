@@ -124,7 +124,7 @@ export const ProductsPage: React.FC = () => {
       }
       fetchProducts();
       setShowModal(false);
-    } catch (err) {
+    } catch (err: any) {
       addToast('Lỗi khi lưu sản phẩm', 'error');
     } finally {
       setSaving(false);
@@ -259,7 +259,7 @@ export const ProductsPage: React.FC = () => {
                               await api.delete(`/products/${p.id}`);
                               addToast('Đã xóa sản phẩm thành công', 'success');
                               fetchProducts();
-                            } catch { 
+                            } catch (e: any) { 
                               addToast('Lỗi khi xóa (Demo Mode)', 'error'); 
                               setProducts(prev => prev.filter(x => x.id !== p.id));
                             }

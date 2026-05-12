@@ -130,7 +130,7 @@ export const ExpensesPage: React.FC = () => {
       setItems(data.items || []);
       setTotal(data.total || 0);
       setSummary(data.summary || { total: 0, approved: 0 });
-    } catch {
+    } catch (e: any) {
       setItems([]);
       setTotal(0);
       addToast('Không thể tải danh sách chi phí', 'error');
@@ -789,7 +789,7 @@ export const ExpensesPage: React.FC = () => {
                       addToast('Đã phê duyệt chi phí', 'success');
                       setViewItem(null);
                       fetchExpenses();
-                    } catch {
+                    } catch (e: any) {
                       addToast('Lỗi khi phê duyệt chi phí', 'error');
                     }
                   }}><CheckCircle2 size={14} /> Phê duyệt</button>

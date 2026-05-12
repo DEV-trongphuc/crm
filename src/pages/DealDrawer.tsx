@@ -49,7 +49,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
       setContacts(rC.data.data?.items || []);
       setCompanies(rCo.data.data?.items || []);
       setAllTags(rT.data.data || []);
-    } catch {
+    } catch (e: any) {
       // Keep empty or mock
     } finally {
       setLoadingLists(false);
@@ -62,7 +62,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
     try {
       const r = await api.get(`/notes?entity_type=deal&entity_id=${deal.id}`);
       setNotes(r.data.data || []);
-    } catch {
+    } catch (e: any) {
       setNotes([
         { id: 1, author_name: 'Admin', body: 'Đã liên hệ khách hàng lần đầu, khách phản hồi tốt.', created_at: new Date().toISOString() },
         { id: 2, author_name: 'Sales', body: 'Khách yêu cầu gửi thêm báo giá chi tiết module ERP.', created_at: new Date(Date.now() - 86400000).toISOString() }
@@ -90,7 +90,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
       setNewNote('');
       addToast('Đã lưu ghi chú mới', 'success');
       fetchNotes();
-    } catch {
+    } catch (e: any) {
       const mockNote = { id: Date.now(), author_name: 'Bạn', body: newNote, created_at: new Date().toISOString() };
       setNotes(prev => [mockNote, ...prev]);
       setNewNote('');
@@ -127,7 +127,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                     <strong>{formData?.company || 'Chưa chọn công ty'}</strong> - Liên hệ: {formData?.contact || 'N/A'}
                   </p>
                   <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', fontWeight: 600, color: 'var(--color-primary)' }}>
-                    <span>{formData?.value ? formData.value.toLocaleString() : '0'} đ</span>
+                    <span>{formData?.value ? (formData.value || 0).toLocaleString() : '0'} đ</span>
                     <span style={{ color: 'var(--color-text-muted)' }}>| Xác suất: {formData?.prob || 0}%</span>
                   </div>
                 </div>
@@ -235,7 +235,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                                     try {
                                       if (typeof field.value === 'string') selected = JSON.parse(field.value);
                                       else if (Array.isArray(field.value)) selected = field.value;
-                                     } catch (e) { console.error(e); }
+                                     } catch (e: any) { console.error(e); }
                                     const isChecked = selected.includes(o);
                                     return (
                                       <label key={o} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: isChecked ? 'var(--color-primary)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`, transition: 'all 0.2s' }}>

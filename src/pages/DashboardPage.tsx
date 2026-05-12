@@ -144,7 +144,7 @@ export const DashboardPage: React.FC = () => {
       setLeaderboard(lead.data.data || []);
       setTagStats((tags.data.data || []).slice(0, 12));
       setInventoryStats(inventory.data.data);
-    } catch {
+    } catch (e: any) {
       setStats(null);
       setRevenueChart([]);
       setPipelineFunnel([]);

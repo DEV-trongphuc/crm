@@ -29,7 +29,7 @@ export const CalendarPage: React.FC = () => {
         }
       });
       setActivities(res.data.data?.items || res.data.data || []);
-    } catch (err) {
+    } catch (err: any) {
       addToast('Lỗi khi tải lịch làm việc', 'error');
     } finally {
       setLoading(false);

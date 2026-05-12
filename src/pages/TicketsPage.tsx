@@ -87,7 +87,7 @@ export const TicketsPage: React.FC = () => {
       const data = r.data.data;
       setTickets(data.items || []);
       setTotal(data.total || 0);
-    } catch {
+    } catch (e: any) {
       setTickets([]);
       addToast('Không thể kết nối với máy chủ Backend', 'error');
     } finally {
@@ -103,7 +103,7 @@ export const TicketsPage: React.FC = () => {
       ]);
       const cData = cRes.data.data; setContacts(Array.isArray(cData) ? cData : (cData?.items || []));
       const uData = uRes.data.data; setUsers(Array.isArray(uData) ? uData : (uData?.items || []));
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to fetch related data', e);
     }
   };

@@ -47,7 +47,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
     try {
       const r = await api.get(`/tickets/${ticket.id}/comments`);
       setComments(r.data.data || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch ticket comments', err);
     } finally {
       setLoading(false);
@@ -71,7 +71,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
       setComments(r.data.data || []);
       setNewComment('');
       addToast('Đã thêm ghi chú', 'success');
-    } catch (err) {
+    } catch (err: any) {
       addToast('Lỗi khi lưu ghi chú', 'error');
     } finally {
       setIsSubmitting(false);

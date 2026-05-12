@@ -50,7 +50,7 @@ export const SettingsPage: React.FC = () => {
     try {
       const r = await api.get('/users');
       setUsers(r.data.data || []);
-    } catch {
+    } catch (e: any) {
       setUsers([]);
       addToast('Không thể tải danh sách người dùng', 'error');
     } finally {
@@ -70,7 +70,7 @@ export const SettingsPage: React.FC = () => {
     try {
       const r = await api.get('/pipeline-stages');
       setPipelines((r.data.data || []).sort((a: any, b: any) => (a.order_index || 0) - (b.order_index || 0)));
-    } catch {
+    } catch (e: any) {
       addToast('Lỗi tải danh sách Pipeline', 'error');
     } finally {
       setLoading(false);
@@ -89,7 +89,7 @@ export const SettingsPage: React.FC = () => {
     try {
       const r = await api.get('/tags');
       setTags(r.data.data || []);
-    } catch {
+    } catch (e: any) {
       addToast('Lỗi tải danh sách Tags', 'error');
     } finally {
       setLoading(false);
@@ -108,7 +108,7 @@ export const SettingsPage: React.FC = () => {
     try {
       const r = await api.get('/custom-fields');
       setCustomFields(r.data.data || []);
-    } catch {
+    } catch (e: any) {
       addToast('Lỗi tải danh sách trường tùy chỉnh', 'error');
     } finally {
       setLoading(false);
@@ -193,7 +193,7 @@ export const SettingsPage: React.FC = () => {
       ]);
       addToast('Đã cập nhật thứ tự', 'success');
       fetchPipelines();
-    } catch {
+    } catch (e: any) {
       addToast('Lỗi khi cập nhật thứ tự', 'error');
       fetchPipelines(); // Revert
     }
@@ -457,7 +457,7 @@ export const SettingsPage: React.FC = () => {
                           try {
                             await api.put(`/custom-fields/${f.id}`, { is_required: !f.is_required });
                             fetchCustomFields();
-                          } catch (e) {
+                          } catch (e: any) {
                             addToast('Lỗi cập nhật trường', 'error');
                           }
                         }} 
@@ -733,7 +733,7 @@ export const SettingsPage: React.FC = () => {
                                   fetchCustomFields();
                                   setActiveModal({ type: null, item: null });
                                   addToast('Đã xóa trường tùy chỉnh', 'success');
-                                } catch (e) {
+                                } catch (e: any) {
                                   addToast('Lỗi xóa trường tùy chỉnh', 'error');
                                 }
                               }

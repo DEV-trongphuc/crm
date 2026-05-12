@@ -44,7 +44,7 @@ export const FilesPage: React.FC = () => {
               <Folder size={18} />
       }));
       setCategories(cats);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch categories', err);
     }
   };
@@ -100,7 +100,7 @@ export const FilesPage: React.FC = () => {
       const data = res.data.data;
       setFiles(data.items || []);
       setTotal(data.total || 0);
-    } catch (err) {
+    } catch (err: any) {
       addToast('Lỗi khi tải danh sách tệp tin', 'error');
     } finally {
       setLoading(false);
@@ -147,7 +147,7 @@ export const FilesPage: React.FC = () => {
       setShowUploadModal(false);
       setSelectedFile(null);
       fetchFiles();
-    } catch {
+    } catch (e: any) {
       addToast('Lỗi khi tải tệp lên', 'error');
     } finally {
       setLoading(false);
@@ -165,7 +165,7 @@ export const FilesPage: React.FC = () => {
         addToast('Đã thêm danh mục mới', 'success');
       }
       fetchCategories();
-    } catch {
+    } catch (e: any) {
       addToast('Lỗi lưu danh mục', 'error');
     }
     setShowCatModal(false);
@@ -183,7 +183,7 @@ export const FilesPage: React.FC = () => {
           if (category === id) setCategory('all');
           addToast('Đã xóa danh mục', 'success');
           fetchCategories();
-        } catch {
+        } catch (e: any) {
           addToast('Lỗi xóa danh mục', 'error');
         }
       }
@@ -199,7 +199,7 @@ export const FilesPage: React.FC = () => {
           await api.delete(`/cloud-files/${id}`);
           addToast('Đã xóa tệp tin', 'success');
           fetchFiles();
-        } catch {
+        } catch (e: any) {
           addToast('Lỗi khi xóa tệp tin', 'error');
         }
       }
@@ -208,11 +208,14 @@ export const FilesPage: React.FC = () => {
 
   const filtered = files;
 
-  const getFileIcon = (mime: string) => {
+  const getMimeIcon = (mime: string) => {
     if (!mime) return <File size={24} />;
     if (mime.includes('image')) return <FileImage size={24} className="text-rose-500" />;
     if (mime.includes('video')) return <FileVideo size={24} className="text-indigo-500" />;
-  const FMT_SIZE = (bytes: number) => {
+    return <File size={24} className="text-slate-500" />;
+  };
+
+  const formatSize = (bytes: number) => {
     if (!bytes || isNaN(bytes)) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
@@ -224,9 +227,9 @@ export const FilesPage: React.FC = () => {
     const ext = name.split('.').pop()?.toLowerCase();
     if (['pdf'].includes(ext!)) return { icon: <FileText size={20} />, color: '#ef4444', bg: '#fef2f2' };
     if (['doc', 'docx'].includes(ext!)) return { icon: <FileText size={20} />, color: '#3b82f6', bg: '#eff6ff' };
-    if (['xls', 'xlsx'].includes(ext!)) return { icon: <FileSpreadsheet size={20} />, color: '#10b981', bg: '#ecfdf5' };
-    if (['jpg', 'jpeg', 'png', 'svg'].includes(ext!)) return { icon: <Image size={20} />, color: '#8b5cf6', bg: '#f5f3ff' };
-    if (['zip', 'rar', '7z'].includes(ext!)) return { icon: <Archive size={20} />, color: '#f59e0b', bg: '#fffbeb' };
+    if (['xls', 'xlsx'].includes(ext!)) return { icon: <FileText size={20} />, color: '#10b981', bg: '#ecfdf5' };
+    if (['jpg', 'jpeg', 'png', 'svg'].includes(ext!)) return { icon: <FileImage size={20} />, color: '#8b5cf6', bg: '#f5f3ff' };
+    if (['zip', 'rar', '7z'].includes(ext!)) return { icon: <Folder size={20} />, color: '#f59e0b', bg: '#fffbeb' };
     return { icon: <File size={20} />, color: '#64748b', bg: '#f8fafc' };
   };
 
@@ -371,7 +374,7 @@ export const FilesPage: React.FC = () => {
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
                           <div style={{ width: '56px', height: '56px', background: 'var(--color-bg)', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--color-border)' }}>
-                            {getFileIcon(f.mime_type)}
+                            {getMimeIcon(f.mime_type)}
                           </div>
                           <div style={{ display: 'flex', gap: '4px' }}>
                             <button className="btn-icon-bare" title="Chia sẻ"><Share2 size={16} /></button>
@@ -434,7 +437,7 @@ export const FilesPage: React.FC = () => {
                                     </div>
                                 </td>
                                 <td style={{ padding: '1.25rem 1.5rem' }}>
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{FMT_SIZE(f.file_size || f.size)}</span>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{formatSize(f.file_size || f.size)}</span>
                                 </td>
                                 <td style={{ padding: '1.25rem 1.5rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -494,7 +497,7 @@ export const FilesPage: React.FC = () => {
               </div>
               <div className="modal-body">
                 <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                   {getFileIcon(selectedFile?.type || '')}
+                   {getMimeIcon(selectedFile?.type || '')}
                    <div style={{ minWidth: 0 }}>
                       <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedFile?.name}</p>
                       <p style={{ fontSize: '10px', color: 'var(--color-text-muted)', fontWeight: 700 }}>{formatSize(selectedFile?.size || 0)}</p>

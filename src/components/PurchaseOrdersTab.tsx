@@ -168,66 +168,67 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
             onAction={() => setShowModal(true)}
           />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {orders.map((o, i) => {
-              const statusConfig = o.status === 'received'
-                ? { label: 'Đã nhập kho', color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0' }
-                : o.status === 'ordered'
-                ? { label: 'Đã đặt hàng', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' }
-                : { label: 'Nháp', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' };
-              return (
-                <motion.div key={o.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                  style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: 'var(--shadow-xs)', display: 'flex', alignItems: 'stretch', transition: 'box-shadow 0.2s' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-xs)'}
-                >
-                  {/* Left accent */}
-                  <div style={{ width: 5, background: statusConfig.color, flexShrink: 0 }} />
-                  {/* Content */}
-                  <div style={{ flex: 1, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-                    {/* Supplier Icon */}
-                    <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'linear-gradient(135deg,#7c3aed,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Truck size={20} style={{ color: '#fff' }} />
-                    </div>
-                    {/* Order info */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', fontFamily: 'monospace', background: 'var(--color-bg)', padding: '2px 7px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>{o.po_number}</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', fontWeight: 800, color: statusConfig.color, background: statusConfig.bg, border: `1px solid ${statusConfig.border}`, padding: '2px 8px', borderRadius: '99px' }}>
-                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusConfig.color, display: 'inline-block' }} />
-                          {statusConfig.label}
-                        </span>
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.supplier_name}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px', fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
-                        <Calendar size={11} /> {new Date(o.order_date).toLocaleDateString('vi-VN')}
-                      </div>
-                    </div>
-                    {/* Total */}
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--color-primary)' }}>{new Intl.NumberFormat('vi-VN').format(o.total)} đ</div>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px' }}>Tổng giá trị</div>
-                    </div>
-                    {/* Action */}
-                    {o.status === 'ordered' && (
-                      <button
-                        onClick={() => handleReceive(o.id)}
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(16,185,129,0.3)', transition: 'opacity 0.15s' }}
-                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '0.85'}
-                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
-                      >
-                        <Package size={14} /> Nhập kho
-                      </button>
-                    )}
-                    {o.status === 'received' && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 700, color: '#10b981', flexShrink: 0 }}>
-                        <CheckCircle2 size={16} /> Hoàn tất
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              );
-            })}
+          <div className="card overflow-hidden">
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>MÃ ĐƠN</th>
+                    <th>NHÀ CUNG CẤP</th>
+                    <th>NGÀY ĐẶT</th>
+                    <th style={{ textAlign: 'right' }}>TỔNG TIỀN</th>
+                    <th>TRẠNG THÁI</th>
+                    <th style={{ textAlign: 'right' }}>THAO TÁC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map(o => {
+                    const statusClass = o.status === 'received' ? 'success' : o.status === 'ordered' ? 'warning' : 'info';
+                    const statusLabel = o.status === 'received' ? 'Đã nhập kho' : o.status === 'ordered' ? 'Đã đặt hàng' : 'Nháp';
+                    return (
+                      <tr key={o.id} className="table-row-hover group">
+                        <td>
+                          <span className="font-black text-primary text-xs font-mono bg-primary/5 px-2 py-1 rounded">{o.po_number}</span>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                              <Truck size={16} />
+                            </div>
+                            <span className="font-bold text-sm text-slate-800">{o.supplier_name}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="text-sm font-medium flex items-center gap-1.5 text-slate-600">
+                            <Calendar size={14} className="text-slate-400" /> {new Date(o.order_date).toLocaleDateString('vi-VN')}
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="font-black text-sm text-primary">
+                            {new Intl.NumberFormat('vi-VN').format(o.total)} đ
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`badge ${statusClass}`}>{statusLabel}</span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          {o.status === 'ordered' && (
+                            <button className="btn primary sm inline-flex items-center justify-center gap-2" onClick={() => handleReceive(o.id)}>
+                              <Package size={14} /> Nhập kho
+                            </button>
+                          )}
+                          {o.status === 'received' && (
+                            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-success">
+                              <CheckCircle2 size={14} /> Hoàn tất
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

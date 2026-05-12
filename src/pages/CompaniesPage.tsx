@@ -63,7 +63,7 @@ export const CompaniesPage: React.FC = () => {
       const data = r.data.data;
       setCompanies(data.items || []);
       setTotal(data.total || 0);
-    } catch {
+    } catch (e: any) {
       setCompanies([]);
       setTotal(0);
       addToast('Không thể tải danh sách công ty', 'error');
@@ -109,7 +109,7 @@ export const CompaniesPage: React.FC = () => {
           await api.delete(`/companies/${co.id}`);
           addToast('Đã xóa công ty thành công', 'success');
           fetchCompanies();
-        } catch {
+        } catch (e: any) {
           addToast('Lỗi khi xóa công ty', 'error');
         } finally {
           setDeleting(false);

@@ -62,7 +62,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
     try {
       const r = await api.get('/activities', { params: { related_type: 'company', related_id: entity.id } });
       setActivities(r.data.data?.items || r.data.data || []);
-    } catch {
+    } catch (e: any) {
       setActivities([]);
     } finally {
       setActivitiesLoading(false);

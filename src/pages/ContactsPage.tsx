@@ -142,7 +142,7 @@ export const ContactsPage: React.FC = () => {
       const data = r.data.data;
       setContacts((data.items || []).map((c: any) => ({ ...c, score: c.lead_score || calcScore(c) })));
       setTotal(data.total || 0);
-    } catch {
+    } catch (e: any) {
       setContacts([]);
       setTotal(0);
       addToast('Không thể lấy danh sách liên hệ', 'error');

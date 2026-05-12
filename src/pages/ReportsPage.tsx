@@ -80,7 +80,7 @@ export const ReportsPage: React.FC = () => {
     try {
       const r = await api.get('/reports/sales', { params: { from: dateRange.from, to: dateRange.to } });
       setSalesData(r.data.data);
-    } catch {
+    } catch (e: any) {
       // silent fail — show empty charts
     } finally {
       setLoading(false);
@@ -105,7 +105,7 @@ export const ReportsPage: React.FC = () => {
     try {
       const r = await api.get('/reports/pipeline', { params: { from: dateRange.from, to: dateRange.to } });
       setPipelineData(r.data.data);
-    } catch {
+    } catch (e: any) {
       // silent fail
     } finally { setLoading(false); }
   };
@@ -136,7 +136,7 @@ export const ReportsPage: React.FC = () => {
     try {
       const r = await api.get('/reports/activities', { params: { from: dateRange.from, to: dateRange.to } });
       setActivityData(r.data.data);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to fetch activities", e);
     } finally { setLoading(false); }
   };
@@ -174,7 +174,7 @@ export const ReportsPage: React.FC = () => {
     try {
       const r = await api.get('/reports/customers', { params: { from: dateRange.from, to: dateRange.to } });
       setCustomerData(r.data.data);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
     } finally { setLoading(false); }
   };
@@ -210,7 +210,7 @@ export const ReportsPage: React.FC = () => {
     try {
       const r = await api.get('/reports/companies');
       setCompanyData(r.data.data);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
     } finally { setLoading(false); }
   };
@@ -242,7 +242,7 @@ export const ReportsPage: React.FC = () => {
     try {
       const r = await api.get('/reports/expenses', { params: { from: dateRange.from, to: dateRange.to } });
       setExpenseData(r.data.data);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
     } finally { setLoading(false); }
   };

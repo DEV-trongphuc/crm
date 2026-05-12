@@ -146,7 +146,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
       try {
         const authData = localStorage.getItem('minth-auth');
         if (authData) userName = JSON.parse(authData).state?.user?.full_name || 'Bạn';
-      } catch(e) {
+      } catch (e: any) {
         console.error(e);
       }
 
@@ -302,7 +302,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         setFormData((prev: any) => ({ ...prev, avatar_url: base64 }));
         addToast('Đã cập nhật ảnh đại diện', 'success');
         onUpdate?.({ ...formData, avatar_url: base64 });
-      } catch (err) {
+      } catch (err: any) {
         addToast('Lỗi khi cập nhật ảnh', 'error');
       }
     };
@@ -428,7 +428,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       const tData = ticketsRes.data.data;
       setDrawerTickets(Array.isArray(tData) ? tData : (tData?.items || []));
 
-    } catch (e) {
+    } catch (e: any) {
       console.error("Error fetching drawer data:", e);
     } finally {
       setLoadingRelated(false);
@@ -615,7 +615,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           await api.delete(`/activities/${id}`);
           fetchData();
           addToast('Đã xóa hoạt động', 'success');
-        } catch {
+        } catch (e: any) {
           addToast('Lỗi khi xóa hoạt động', 'error');
         }
       }
@@ -633,7 +633,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
           await api.delete(`/deals/${id}`);
           fetchData();
           addToast('Đã xóa cơ hội thành công', 'success');
-        } catch {
+        } catch (e: any) {
           addToast('Lỗi khi xóa cơ hội', 'error');
         }
       }
@@ -1173,7 +1173,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         try {
                                           if (typeof field.value === 'string') selected = JSON.parse(field.value);
                                           else if (Array.isArray(field.value)) selected = field.value;
-                                        } catch (e) { console.error(e); }
+                                        } catch (e: any) { console.error(e); }
                                         const isChecked = selected.includes(o);
                                         return (
                                           <label key={o} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', background: isChecked ? 'var(--color-primary)' : 'var(--color-bg)', padding: '6px 12px', borderRadius: '20px', border: `1px solid ${isChecked ? 'var(--color-primary)' : 'var(--color-border)'}`, transition: 'all 0.2s' }}>
@@ -1662,7 +1662,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                         await api.delete(`/notes/${n.id}`);
                                         setNotes(prev => prev.filter(x => x.id !== n.id));
                                         addToast('Đã xóa ghi chú', 'success');
-                                      } catch {
+                                      } catch (e: any) {
                                         addToast('Lỗi khi xóa ghi chú', 'error');
                                       }
                                     }

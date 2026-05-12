@@ -81,7 +81,7 @@ export const QuotesPage: React.FC = () => {
       setItems(data.items || []);
       setTotal(data.total || 0);
       setSummary(data.summary || { total_val: 0, accepted_val: 0, sent_count: 0, accepted_count: 0, total_count: 0 });
-    } catch {
+    } catch (e: any) {
       setItems([]);
       setTotal(0);
       addToast('Lỗi khi tải danh sách báo giá', 'error');
@@ -124,7 +124,7 @@ export const QuotesPage: React.FC = () => {
           await api.delete(`/quotes/${id}`);
           setItems(p => p.filter(i => i.id !== id));
           addToast('Đã xóa báo giá', 'success');
-        } catch {
+        } catch (e: any) {
           addToast('Lỗi khi xóa báo giá', 'error');
         } finally {
           closeConfirm();
@@ -138,7 +138,7 @@ export const QuotesPage: React.FC = () => {
       await api.put(`/quotes/${id}`, { status });
       setItems(p => p.map(i => i.id === id ? { ...i, status } : i));
       addToast(`Đã cập nhật trạng thái báo giá`, 'success');
-    } catch {
+    } catch (e: any) {
       addToast('Lỗi khi cập nhật trạng thái', 'error');
     }
   };

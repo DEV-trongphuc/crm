@@ -81,7 +81,7 @@ export const InvoicesPage: React.FC = () => {
       setItems(data.items || []);
       setTotal(data.total || 0);
       setSummary(data.summary || { total_rev: 0, paid_amt: 0, pending_amt: 0, overdue_amt: 0 });
-    } catch {
+    } catch (e: any) {
       setItems([]);
       setTotal(0);
       addToast('Không thể kết nối với máy chủ Backend', 'error');

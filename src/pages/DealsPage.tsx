@@ -187,7 +187,7 @@ export const DealsPage: React.FC = () => {
     try {
       const r = await api.get('/users');
       setAllUsers(r.data.data || []);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to fetch users", e);
     }
   };
@@ -198,7 +198,7 @@ export const DealsPage: React.FC = () => {
       const stagesData = r.data.data || [];
       const sorted = [...stagesData].sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
       setStages(sorted);
-    } catch {
+    } catch (e: any) {
       setStages([]);
     }
   };
@@ -262,7 +262,7 @@ export const DealsPage: React.FC = () => {
       });
       setItems(grouped);
       setTotal(r.data.data?.total || dataItems.length);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to fetch data", e);
       setItems({});
     } finally { setLoading(false); }

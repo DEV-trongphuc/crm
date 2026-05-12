@@ -81,7 +81,7 @@ export const ActivitiesPage: React.FC = () => {
       return contacts.map(c => ({ value: c.id, label: c.name, sublabel: c.phone || c.email, avatar: c.avatar }));
     }
     if (form.related_type === 'deal') {
-      return deals.map(d => ({ value: d.id, label: d.title, sublabel: d.value ? `${d.value.toLocaleString()} đ` : '' }));
+      return deals.map(d => ({ value: d.id, label: d.title, sublabel: d.value ? `${(d.value || 0).toLocaleString()} đ` : '' }));
     }
     if (form.related_type === 'company') {
       return companies.map(c => ({ value: c.id, label: c.name, sublabel: c.industry }));
@@ -118,7 +118,7 @@ export const ActivitiesPage: React.FC = () => {
       const data = r.data.data;
       setItems(data.items || []);
       setTotal(data.total || 0);
-    } catch {
+    } catch (e: any) {
       setItems([]);
       setTotal(0);
     } finally {
@@ -166,7 +166,7 @@ export const ActivitiesPage: React.FC = () => {
     try {
       await api.put(`/activities/${item.id}`, { status: newStatus, done_at: newStatus === 'done' ? new Date().toISOString() : null });
       setItems(prev => prev.map(a => a.id === item.id ? { ...a, status: newStatus } : a));
-    } catch {
+    } catch (e: any) {
       addToast('Lỗi khi cập nhật trạng thái', 'error');
     }
   };
@@ -182,7 +182,7 @@ export const ActivitiesPage: React.FC = () => {
           await api.delete(`/activities/${actItem.id}`);
           setItems(prev => prev.filter(a => a.id !== actItem.id));
           addToast('Đã xóa hoạt động thành công', 'success');
-        } catch {
+        } catch (e: any) {
           addToast('Lỗi khi xóa hoạt động (Demo Mode)', 'error');
           setItems(prev => prev.filter(a => a.id !== actItem.id));
         } finally {
