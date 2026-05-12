@@ -108,7 +108,7 @@ export const SettingsPage: React.FC = () => {
     setLoading(true);
     try {
       const r = await api.get('/custom-fields');
-      setCustomFields(r.data || []);
+      setCustomFields(r.data.data || []);
     } catch {
       addToast('Lỗi tải danh sách trường tùy chỉnh', 'error');
     } finally {
@@ -138,7 +138,11 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleGenericSave = async () => {
-    if (!genericForm.name) { addToast('Vui lòng nhập tên', 'error'); return; }
+    if (activeModal.type === 'field') {
+      if (!genericForm.label) { addToast('Vui lòng nhập tên trường', 'error'); return; }
+    } else {
+      if (!genericForm.name) { addToast('Vui lòng nhập tên', 'error'); return; }
+    }
 
     try {
       if (activeModal.type === 'pipeline') {

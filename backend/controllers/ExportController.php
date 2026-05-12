@@ -12,7 +12,7 @@ class ExportController {
         $type = $_GET['type'] ?? 'contact';
         
         // Allowed types
-        if (!in_array($type, ['contact', 'company', 'deal'])) {
+        if (!in_array($type, ['contact', 'company', 'deal', 'product', 'inventory'])) {
             respond(400, null, 'Loại dữ liệu xuất không hợp lệ', false);
         }
 
@@ -39,7 +39,7 @@ class ExportController {
         $sql = "";
         $params = [$auth['tenant_id']];
         $saleFilter = ($auth['role'] === 'sale') ? " AND t.owner_id = ?" : "";
-        if ($saleFilter) $params[] = $auth['user_id'];
+        if ($saleFilter && !in_array($type, ['product', 'inventory'])) $params[] = $auth['user_id'];
 
         if ($type === 'contact') {
             $baseColumns = ['id' => 'ID', 'first_name' => 'Tên', 'last_name' => 'Họ', 'email' => 'Email', 'phone' => 'Số điện thoại', 'mobile' => 'Di động', 'job_title' => 'Chức danh', 'department' => 'Phòng ban', 'source' => 'Nguồn', 'status' => 'Trạng thái', 'company_name' => 'Công ty', 'owner_name' => 'Người phụ trách', 'created_at' => 'Ngày tạo'];
@@ -66,7 +66,17 @@ class ExportController {
                     LEFT JOIN users u ON t.owner_id = u.id 
                     LEFT JOIN pipeline_stages ps ON t.stage_id = ps.id
                     WHERE t.tenant_id = ? AND t.deleted_at IS NULL $saleFilter ORDER BY t.created_at DESC";
+        } elseif ($type === 'product') {
+            $baseColumns = ['id' => 'ID', 'name' => 'Tên sản phẩm', 'sku' => 'SKU', 'category' => 'Danh mục', 'unit' => 'Đơn vị', 'base_price' => 'Giá cơ bản', 'description' => 'Mô tả', 'created_at' => 'Ngày tạo'];
+            $sql = "SELECT t.* FROM products t WHERE t.tenant_id = ? AND t.deleted_at IS NULL ORDER BY t.name ASC";
+        } elseif ($type === 'inventory') {
+            $baseColumns = ['id' => 'ID', 'product_name' => 'Sản phẩm', 'sku' => 'SKU', 'batch_code' => 'Mã lô', 'import_date' => 'Ngày nhập', 'expiry_date' => 'Hạn sử dụng', 'import_price' => 'Giá nhập', 'initial_qty' => 'Số lượng ban đầu', 'current_qty' => 'Tồn kho hiện tại', 'status' => 'Trạng thái'];
+            $sql = "SELECT b.*, p.name as product_name, p.sku 
+                    FROM inventory_batches b 
+                    JOIN products p ON b.product_id = p.id 
+                    WHERE b.tenant_id = ? AND b.status = 'active' ORDER BY b.import_date DESC";
         }
+
 
         // Generate Header Row
         $headerRow = array_values($baseColumns);

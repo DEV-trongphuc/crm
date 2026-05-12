@@ -55,23 +55,27 @@ export const DashboardPage: React.FC = () => {
       const state = getFilteredMockState();
       
       // Compute stats from mock data
-      const wonDeals = state.contacts.filter(c => state.pipeline_stages.find(s => s.id === c.stage_id)?.is_won);
-      const wonValue = wonDeals.reduce((sum, c) => sum + (Number(c.expected_revenue) || 0), 0);
-      const expenses = state.expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+      const activeDeals = state.deals.filter((d: any) => d.stage !== 'won' && d.stage !== 'lost');
+      const wonDeals = state.deals.filter((d: any) => d.stage === 'won');
+      const wonValue = wonDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
+      const activeValue = activeDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
+      const expenses = state.expenses.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
       
       setStats({
         won_value: wonValue,
-        gross_profit: wonValue * 0.4, // Mock 40% gross profit
+        gross_profit: wonValue * 0.4,
         profit: wonValue - expenses,
         new_contacts: state.contacts.length,
-        total_contacts: state.contacts.length * 12, // Mock total
+        total_contacts: state.contacts.length * 12,
         expenses: expenses,
-        tasks_due_today: state.activities.length,
-        revenue_change: '+15.2%',
-        profit_change: '+8.4%',
-        contacts_change: '+12.5%',
-        expenses_change: '+2.1%',
-        today_tasks: state.activities
+        tasks_due_today: state.activities.filter((a: any) => a.status === 'planned').length,
+        active_deals: activeDeals.length,
+        active_value: activeValue,
+        revenue_change: '+18.5%',
+        profit_change: '+12.4%',
+        contacts_change: '+5.2%',
+        expenses_change: '-2.1%',
+        today_tasks: state.activities.filter((a: any) => a.status === 'planned')
       });
 
       setRevenueChart([

@@ -206,14 +206,23 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
                           <button className="btn outline sm" onClick={() => addToast('Đang mở form tạo trường tùy chỉnh...', 'info')}><Plus size={14} /> Thêm trường</button>
                         </div>
                         <div className="grid grid-2">
-                          <div className="form-group">
-                            <label className="form-label" style={{ color: 'var(--color-primary)' }}>Mã số thuế</label>
-                            <input className="form-input" placeholder="Nhập MST..." />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label" style={{ color: 'var(--color-primary)' }}>Ngành nghề kinh doanh</label>
-                            <input className="form-input" placeholder="Ví dụ: Bán lẻ, Sản xuất..." />
-                          </div>
+                          {formData?.custom_fields ? Object.entries(formData.custom_fields).map(([key, val]: any) => (
+                            <div className="form-group" key={key}>
+                              <label className="form-label" style={{ color: 'var(--color-primary)' }}>{key}</label>
+                              <input className="form-input" placeholder={`Nhập ${key}...`} value={val || ''} readOnly />
+                            </div>
+                          )) : (
+                            <>
+                              <div className="form-group">
+                                <label className="form-label" style={{ color: 'var(--color-primary)' }}>Mã số thuế</label>
+                                <input className="form-input" placeholder="Nhập MST..." />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label" style={{ color: 'var(--color-primary)' }}>Ngành nghề kinh doanh</label>
+                                <input className="form-input" placeholder="Ví dụ: Bán lẻ, Sản xuất..." />
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
 

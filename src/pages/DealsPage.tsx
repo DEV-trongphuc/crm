@@ -8,6 +8,7 @@ import { useUIStore } from '../store/uiStore';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { CompanyDrawer } from './CompanyDrawer';
 import { DealDrawer } from './DealDrawer';
+import { ImportExportModal } from '../components/ui/ImportExportModal';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
@@ -24,6 +25,7 @@ const FMT = (n: number) => {
 
 export const DealsPage: React.FC = () => {
   const { addToast } = useUIStore();
+  const [showImportExport, setShowImportExport] = useState(false);
   const [pipelineView, setPipelineView] = useState<'deals' | 'contacts' | 'companies'>('deals');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [activeStageFilter, setActiveStageFilter] = useState<string | number>('all');
@@ -385,7 +387,6 @@ export const DealsPage: React.FC = () => {
           ><List size={18}/></button>
         </div>
 
-        {/* Toggle View */}
         <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', height: 44, marginRight: '1rem' }}>
           <button 
             className={`btn ${pipelineView === 'deals' ? 'primary' : 'ghost'}`} 
@@ -410,6 +411,10 @@ export const DealsPage: React.FC = () => {
           </button>
         </div>
 
+        <button className="btn outline" style={{ height: 44, padding: '0 1.25rem', borderRadius: 'var(--radius-lg)', marginRight: '0.5rem' }} onClick={() => setShowImportExport(true)}>
+          <Download size={16} /> Nhập/Xuất
+        </button>
+
         <button className="btn primary" style={{ height: 44, padding: '0 1.25rem', borderRadius: 'var(--radius-lg)' }} onClick={() => {
             if (pipelineView === 'deals') { setSelectedDeal(null); setShowDealDrawer(true); }
             else if (pipelineView === 'contacts') { setSelectedContact(null); setShowContactDrawer(true); }
@@ -418,6 +423,16 @@ export const DealsPage: React.FC = () => {
           <Plus size={16} /> Thêm {pipelineView === 'deals' ? 'Cơ Hội' : (pipelineView === 'contacts' ? 'Khách Hàng' : 'Doanh Nghiệp')}
         </button>
       </div>
+
+      <ImportExportModal 
+        isOpen={showImportExport} 
+        onClose={() => setShowImportExport(false)} 
+        entityName={pipelineView === 'deals' ? 'Cơ hội' : (pipelineView === 'contacts' ? 'Liên hệ' : 'Công ty')}
+        onExport={() => {
+            const type = pipelineView === 'deals' ? 'deal' : (pipelineView === 'contacts' ? 'contact' : 'company');
+            window.open(`${api.defaults.baseURL}/export?type=${type}&token=${localStorage.getItem('token')}`, '_blank');
+        }}
+      />
 
       {/* Filter Bar / Bulk Action Bar */}
       <div className="card" style={{ padding: '0.75rem 1rem', marginBottom: '0.75rem', position: 'relative' }}>

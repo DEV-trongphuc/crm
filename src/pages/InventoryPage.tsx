@@ -3,7 +3,7 @@ import {
   Package, Plus, Edit, Trash2, LayoutGrid, List, Search, 
   Filter, History, Share, Clock, CheckCircle, AlertTriangle, 
   ChevronDown, DollarSign, CalendarDays, Layers, ArrowRight,
-  TrendingDown, TrendingUp, MoreHorizontal, X
+  TrendingDown, TrendingUp, MoreHorizontal, X, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../store/uiStore';
@@ -12,6 +12,7 @@ import api from '../api/axios';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/Pagination';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { ImportExportModal } from '../components/ui/ImportExportModal';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { DEV_MODE } from '../config/env';
 
@@ -58,6 +59,7 @@ export default function InventoryPage() {
   
   // Modals
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showImportExport, setShowImportExport] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showPOModal, setShowPOModal] = useState(false);
@@ -307,6 +309,13 @@ export default function InventoryPage() {
           </div>
           <div style={{ width: '1px', height: '32px', background: 'var(--color-border)', margin: '0 8px' }} />
           <button 
+            className="btn outline"
+            style={{ height: '44px', borderRadius: 'var(--radius-lg)', marginRight: '0.5rem' }}
+            onClick={() => setShowImportExport(true)}
+          >
+            <Download size={18} /> Nhập/Xuất
+          </button>
+          <button 
             className="btn primary shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
             onClick={() => {
               console.log('Button clicked: setting tab to purchase_orders and showPOModal to true');
@@ -318,6 +327,16 @@ export default function InventoryPage() {
           </button>
         </div>
       </div>
+
+      <ImportExportModal 
+        isOpen={showImportExport} 
+        onClose={() => setShowImportExport(false)} 
+        entityName={activeTab === 'batches' ? 'Kho hàng' : 'Sản phẩm'}
+        onExport={() => {
+            const type = activeTab === 'batches' ? 'inventory' : 'product';
+            window.open(`${api.defaults.baseURL}/export?type=${type}&token=${localStorage.getItem('token')}`, '_blank');
+        }}
+      />
 
       {/* Always mounted so header button can open modal from any tab */}
       <div style={{ display: activeTab === 'purchase_orders' ? 'block' : 'none' }}>
