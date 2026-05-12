@@ -11,7 +11,7 @@ import { PeriodFilter, getDateRange } from '../components/ui/PeriodFilter';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
-import { QuoteEditorModal } from '../components/ui/QuoteEditorModal.tsx';
+import { QuoteEditorModal } from '../components/ui/QuoteEditorModal';
 import { CustomModal } from '../components/ui/CustomModal';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';

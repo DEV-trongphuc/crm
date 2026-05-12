@@ -11,7 +11,7 @@ import { PhoneLink } from '../components/ui/PhoneLink';
 import { ActivityModal } from '../components/ui/ActivityModal';
 import { MentionInput } from '../components/ui/MentionInput';
 import { CreateExpenseModal } from '../components/ui/CreateExpenseModal';
-import { QuoteEditorModal } from '../components/ui/QuoteEditorModal.tsx';
+import { QuoteEditorModal } from '../components/ui/QuoteEditorModal';
 import { Avatar } from '../components/ui/Avatar';
 import { TicketDrawer } from './TicketDrawer';
 import { EmptyCard } from '../components/ui/EmptyCard';
@@ -2133,21 +2133,30 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* CREATE DEAL MODAL */}
       <AnimatePresence>
         {showDealModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowDealModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 1000 }} onClick={() => setShowDealModal(false)}>
             <motion.div
               className="modal-sheet"
-              style={{ width: '100%', maxWidth: 500 }}
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              style={{ width: '100%', maxWidth: 520 }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 380 }}
               onClick={e => e.stopPropagation()}
             >
               <div className="modal-header">
-                <h3>Tạo cơ hội (Deal) mới</h3>
-                <button className="btn-icon-bare" onClick={() => setShowDealModal(false)}><X size={20} /></button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <DollarSign size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontWeight: 800 }}>Tạo cơ hội (Deal) mới</h3>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Liên kết với: <strong>{fullName}</strong></p>
+                  </div>
+                </div>
+                <button className="btn-icon sm" onClick={() => setShowDealModal(false)}><X size={18} /></button>
               </div>
               <div className="modal-body">
                 <div className="form-group">
                   <label className="form-label">Tên Deal *</label>
-                  <input className="form-input" placeholder="VD: Triển khai ERP cho {fullName}" value={dealForm.title} onChange={e => setDealForm({ ...dealForm, title: e.target.value })} autoFocus />
+                  <input className="form-input" placeholder={`VD: Triển khai ERP cho ${fullName}`} value={dealForm.title} onChange={e => setDealForm({ ...dealForm, title: e.target.value })} autoFocus />
                 </div>
                 <div className="form-group">
                   <label className="form-label">Giá trị dự kiến (VNĐ)</label>
@@ -2158,7 +2167,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     </div>
                   )}
                 </div>
-                <div className="grid grid-2">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Giai đoạn</label>
                     <CustomSelect
@@ -2191,23 +2200,32 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* CREATE TASK MODAL */}
       <AnimatePresence>
         {showTaskModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowTaskModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 1000 }} onClick={() => setShowTaskModal(false)}>
             <motion.div
               className="modal-sheet"
-              style={{ width: '100%', maxWidth: 500 }}
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              style={{ width: '100%', maxWidth: 520 }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 380 }}
               onClick={e => e.stopPropagation()}
             >
               <div className="modal-header">
-                <h3>Thêm công việc cho {formData.last_name}</h3>
-                <button className="btn-icon-bare" onClick={() => setShowTaskModal(false)}><X size={20} /></button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(245,158,11,0.12)', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <CheckSquare size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontWeight: 800 }}>Thêm công việc</h3>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Giao việc cho: <strong>{fullName}</strong></p>
+                  </div>
+                </div>
+                <button className="btn-icon sm" onClick={() => setShowTaskModal(false)}><X size={18} /></button>
               </div>
               <div className="modal-body">
                 <div className="form-group">
                   <label className="form-label">Tên công việc *</label>
                   <input className="form-input" placeholder="VD: Gửi báo giá, Demo tính năng..." value={taskForm.title} onChange={e => setTaskForm({ ...taskForm, title: e.target.value })} autoFocus />
                 </div>
-                <div className="grid grid-2">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Mức độ ưu tiên</label>
                     <CustomSelect
@@ -2240,23 +2258,28 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* CREATE TICKET MODAL */}
       <AnimatePresence>
         {showTicketModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowTicketModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 1000 }} onClick={() => setShowTicketModal(false)}>
             <motion.div
               className="modal-sheet"
-              style={{ width: '100%', maxWidth: 500 }}
-              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+              style={{ width: '100%', maxWidth: 540 }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 380 }}
               onClick={e => e.stopPropagation()}
             >
               <div className="modal-header">
-                <h3>Tạo Ticket hỗ trợ</h3>
-                <button className="btn-icon-bare" onClick={() => setShowTicketModal(false)}><X size={20} /></button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ width: 42, height: 42, borderRadius: '12px', background: 'rgba(239,68,68,0.1)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <HelpCircle size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontWeight: 800 }}>Tạo Ticket hỗ trợ</h3>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Khách hàng: <strong>{fullName}</strong></p>
+                  </div>
+                </div>
+                <button className="btn-icon sm" onClick={() => setShowTicketModal(false)}><X size={18} /></button>
               </div>
               <div className="modal-body">
-                <div className="form-group">
-                  <label className="form-label">Khách hàng</label>
-                  <input className="form-input" value={fullName} disabled style={{ background: 'var(--color-bg)' }} />
-                </div>
-                <div className="grid grid-2">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="form-label">Tiêu đề hỗ trợ *</label>
                     <input className="form-input" placeholder="Tóm tắt yêu cầu/lỗi..." value={ticketForm.subject} onChange={e => setTicketForm({ ...ticketForm, subject: e.target.value })} autoFocus />

@@ -79,14 +79,14 @@ export default function InventoryPage() {
   const fetchReceivers = async () => {
     try {
       const res = await api.get('/contacts');
-      if (res.data?.data) {
-        setReceivers(res.data.data.map((c: any) => ({ 
-          value: String(c.id), 
-          label: `${c.first_name} ${c.last_name || ''}`.trim(),
-          sublabel: c.phone || c.email || '',
-          avatar: c.avatar_url
-        })));
-      }
+      const raw = res.data?.data;
+      const list = Array.isArray(raw) ? raw : (raw?.items || []);
+      setReceivers(list.map((c: any) => ({
+        value: String(c.id),
+        label: `${c.first_name} ${c.last_name || ''}`.trim(),
+        sublabel: c.phone || c.email || '',
+        avatar: c.avatar_url
+      })));
     } catch (err) {
       console.error(err);
     }
@@ -257,74 +257,20 @@ export default function InventoryPage() {
 
   return (
     <div className="page-container anim-fade-up">
-      <div className="page-header mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
-            <Package size={28} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">Kho & Lô hàng</h1>
-            <p className="text-slate-500 text-sm">Quản lý nhập kho, theo dõi lô hàng và lịch sử biến động.</p>
-          </div>
+      <div className="page-header" style={{ marginBottom: '1.5rem' }}>
+        <div>
+          <h1 className="page-title">Kho &amp; Lô hàng</h1>
+          <p className="page-subtitle">Quản lý nhập kho, theo dõi lô hàng và lịch sử biến động.</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-6">
-            <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px', height: '44px' }}>
-              <button 
-                style={{ padding: '0 16px', height: '36px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'batches' ? 'var(--color-primary-light)' : 'transparent', color: activeTab === 'batches' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                onClick={() => setActiveTab('batches')}
-              >
-                Danh sách lô
-              </button>
-              <button 
-                style={{ padding: '0 16px', height: '36px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'history' ? 'var(--color-primary-light)' : 'transparent', color: activeTab === 'history' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                onClick={() => setActiveTab('history')}
-              >
-                Lịch sử biến động
-              </button>
-              <button 
-                style={{ padding: '0 16px', height: '36px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'purchase_orders' ? 'var(--color-primary-light)' : 'transparent', color: activeTab === 'purchase_orders' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                onClick={() => setActiveTab('purchase_orders')}
-              >
-                Đơn nhập hàng
-              </button>
-            </div>
-            <div style={{ width: '1px', height: '32px', background: 'var(--color-border)' }} />
-            <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px', height: '44px' }}>
-              <button 
-                title="Danh sách"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: 'var(--radius-md)', background: viewMode === 'list' ? 'var(--color-primary-light)' : 'transparent', color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                onClick={() => setViewMode('list')}
-              >
-                <List size={18} />
-              </button>
-              <button 
-                title="Lưới thẻ"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: 'var(--radius-md)', background: viewMode === 'card' ? 'var(--color-primary-light)' : 'transparent', color: viewMode === 'card' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
-                onClick={() => setViewMode('card')}
-              >
-                <LayoutGrid size={18} />
-              </button>
-            </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
+            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'batches' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'batches' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('batches')}>Danh sách lô</button>
+            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'history' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'history' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('history')}>Lịch sử biến động</button>
+            <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'purchase_orders' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'purchase_orders' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('purchase_orders')}>Đơn nhập hàng</button>
           </div>
-          <div style={{ width: '1px', height: '32px', background: 'var(--color-border)', margin: '0 8px' }} />
-          <button 
-            className="btn outline"
-            style={{ height: '44px', borderRadius: 'var(--radius-lg)', marginRight: '0.5rem' }}
-            onClick={() => setShowImportExport(true)}
-          >
-            <Download size={18} /> Nhập/Xuất
-          </button>
-          <button 
-            className="btn primary shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
-            onClick={() => {
-              console.log('Button clicked: setting tab to purchase_orders and showPOModal to true');
-              setActiveTab('purchase_orders');
-              setShowPOModal(true);
-            }}
-          >
-            <Plus size={18} /> Tạo đơn nhập hàng
-          </button>
+          <div style={{ width: '1px', height: '28px', background: 'var(--color-border)' }} />
+          <button className="btn outline" onClick={() => setShowImportExport(true)}><Download size={16} /> Nhập/Xuất</button>
+          <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }}><Plus size={16} /> Tạo đơn nhập hàng</button>
         </div>
       </div>
 
@@ -373,21 +319,21 @@ export default function InventoryPage() {
           <motion.div 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            className="mb-6 overflow-hidden"
+            style={{ marginBottom: '1.5rem', overflow: 'hidden' }}
           >
-            <div className="bg-gradient-to-r from-amber-500/10 to-rose-500/10 border border-amber-200 rounded-2xl p-4 flex items-center gap-4">
-              <div className="w-12 h-12 bg-amber-500 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-amber-500/30">
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 'var(--radius-xl)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'var(--color-warning)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(245,158,11,0.3)' }}>
                 <AlertTriangle size={24} />
               </div>
-              <div className="flex-1">
-                <h4 className="text-sm font-bold text-amber-900">Cảnh báo vận hành kho</h4>
-                <p className="text-xs text-amber-700 mt-1">
+              <div style={{ flex: 1 }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#92400e', margin: 0, marginBottom: 2 }}>Cảnh báo vận hành kho</h4>
+                <p style={{ fontSize: '0.8125rem', color: '#b45309', margin: 0, lineHeight: 1.5 }}>
                   Có <strong>{stats.lowStock}</strong> lô hàng sắp hết và <strong>{stats.expiringSoon}</strong> lô hàng sắp hết hạn trong 30 ngày tới. Vui lòng kiểm tra và lên kế hoạch nhập hàng hoặc xả kho.
                 </p>
               </div>
               <button 
                 onClick={() => setStatusFilter('low_stock')}
-                className="px-4 py-2 bg-white border border-amber-200 text-amber-700 text-xs font-bold rounded-lg hover:bg-amber-50 transition-colors"
+                style={{ padding: '6px 16px', background: 'white', border: '1px solid rgba(245,158,11,0.35)', color: '#b45309', fontSize: '0.8125rem', fontWeight: 700, borderRadius: 'var(--radius-lg)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
               >
                 Xem ngay →
               </button>
@@ -397,8 +343,8 @@ export default function InventoryPage() {
       </AnimatePresence>
 
       {/* Filters */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem', background: 'var(--color-surface)', padding: '1rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginBottom: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
-        <div className="filter-search" style={{ flex: 1, minWidth: '300px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'var(--color-surface)', padding: '0.75rem 1rem', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', marginBottom: '1.5rem', boxShadow: 'var(--shadow-sm)' }}>
+        <div className="filter-search" style={{ flex: 1, minWidth: 0 }}>
           <Search size={18} style={{ color: 'var(--color-text-muted)' }} />
           <input 
             placeholder="Tìm theo tên sản phẩm, SKU hoặc mã lô..." 
@@ -407,41 +353,50 @@ export default function InventoryPage() {
           />
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <CustomSelect
-            options={[
-              { value: 'all', label: 'Tất cả trạng thái' },
-              { value: 'in_stock', label: 'Còn hàng' },
-              { value: 'low_stock', label: 'Sắp hết hàng' },
-              { value: 'out_of_stock', label: 'Đã hết hàng' }
-            ]}
-            value={statusFilter}
-            onChange={(val) => { setStatusFilter(String(val)); setPage(1); }}
-          />
-          <CustomSelect
-            options={[
-              { value: 'date_desc', label: 'Mới nhất trước' },
-              { value: 'date_asc', label: 'Cũ nhất trước' },
-              { value: 'qty_desc', label: 'Tồn kho giảm dần' },
-              { value: 'qty_asc', label: 'Tồn kho tăng dần' }
-            ]}
-            value={sortBy}
-            onChange={(val) => { setSortBy(String(val)); setPage(1); }}
-          />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+          <div style={{ width: 160 }}>
+            <CustomSelect
+              options={[
+                { value: 'all', label: 'Tất cả trạng thái' },
+                { value: 'in_stock', label: 'Còn hàng' },
+                { value: 'low_stock', label: 'Sắp hết hàng' },
+                { value: 'out_of_stock', label: 'Đã hết hàng' }
+              ]}
+              value={statusFilter}
+              onChange={(val) => { setStatusFilter(String(val)); setPage(1); }}
+            />
+          </div>
+          <div style={{ width: 150 }}>
+            <CustomSelect
+              options={[
+                { value: 'date_desc', label: 'Mới nhất trước' },
+                { value: 'date_asc', label: 'Cũ nhất trước' },
+                { value: 'qty_desc', label: 'Tồn kho giảm dần' },
+                { value: 'qty_asc', label: 'Tồn kho tăng dần' }
+              ]}
+              value={sortBy}
+              onChange={(val) => { setSortBy(String(val)); setPage(1); }}
+            />
+          </div>
+          <div style={{ width: '1px', height: 24, background: 'var(--color-border)' }} />
+          <div style={{ display: 'flex', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: '3px' }}>
+            <button title="Danh sách" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 'var(--radius-sm)', background: viewMode === 'list' ? 'var(--color-surface)' : 'transparent', color: viewMode === 'list' ? 'var(--color-primary)' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }} onClick={() => setViewMode('list')}><List size={16} /></button>
+            <button title="Lưới thẻ" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 'var(--radius-sm)', background: viewMode === 'card' ? 'var(--color-surface)' : 'transparent', color: viewMode === 'card' ? 'var(--color-primary)' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', transition: 'all 0.15s' }} onClick={() => setViewMode('card')}><LayoutGrid size={16} /></button>
+          </div>
         </div>
       </div>
 
       {/* Content */}
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
-          <div className="animate-spin mb-4"><Package size={40} /></div>
-          <p>Đang tải dữ liệu kho...</p>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '5rem 0', color: 'var(--color-text-muted)' }}>
+          <div className="spinner" style={{ marginBottom: '1rem' }} />
+          <p style={{ fontSize: '0.875rem' }}>Đang tải dữ liệu kho...</p>
         </div>
       ) : activeTab === 'history' ? (
-        <div className="card-panel overflow-hidden anim-fade-up">
-          <div className="p-6 border-b border-slate-100">
-            <h3 className="font-bold text-slate-800">Lịch sử biến động toàn kho</h3>
-            <p className="text-xs text-slate-400">Ghi nhận mọi giao dịch nhập, xuất và bán hàng</p>
+        <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', overflow: 'hidden' }} className="anim-fade-up">
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)' }}>
+            <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', margin: 0 }}>Lịch sử biến động toàn kho</h3>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Ghi nhận mọi giao dịch nhập, xuất và bán hàng</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
@@ -548,7 +503,7 @@ export default function InventoryPage() {
                             </td>
                             <td style={{ padding: '0.875rem 0.75rem', textAlign: 'right' }}>
                               <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{b.import_price.toLocaleString()} đ</div>
-                              <div className="table-wrap" style={{ border: '1px solid var(--color-border-light)', borderRadius: 'var(--radius-lg)', maxHeight: '300px' }}>{b.unit}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{b.unit}</div>
                             </td>
                             <td style={{ padding: '0.875rem 0.75rem' }}>
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
