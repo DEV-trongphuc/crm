@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { X, User, Phone, Mail, MapPin, Briefcase, Plus, Send, History, CheckSquare, DollarSign, HelpCircle, FileText, ShoppingCart, Tag as TagIcon, Target, Pencil, Trash2, LifeBuoy, AlertCircle, Clock, UserCheck, Activity, Calendar, CheckCircle2, ChevronLeft, ChevronRight, Check, Camera, Loader2, MessageSquare } from 'lucide-react';
 import { LeadScoreRing } from '../components/ui/LeadScoreRing';
 import { TagInput } from '../components/ui/TagInput';
 import { CallLoggerModal } from '../components/ui/CallLoggerModal';
@@ -20,7 +20,7 @@ import { useUIStore } from '../store/uiStore';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import styles from './EntityDrawer.module.css';
 
 /* ─── Types ─────────────────────────────────────────────────── */
@@ -73,10 +73,184 @@ const TABS = [
   { id: 'tickets', label: 'Hỗ trợ/Khiếu nại', icon: <LifeBuoy size={16} /> },
 ];
 
+const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> = ({ activityId, initialCount = 0 }) => {
+  const { addToast } = useUIStore();
+  const [comments, setComments] = useState<any[]>([]);
+  const [expanded, setExpanded] = useState(true);
+  const [text, setText] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [attachment, setAttachment] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
+
+  useEffect(() => {
+    if (initialCount > 0 && !hasFetched) {
+      api.get(`/activities/${activityId}/comments`)
+        .then(res => {
+          setComments(res.data.data || []);
+          setHasFetched(true);
+        })
+        .catch(e => console.error(e));
+    } else if (initialCount === 0 && !hasFetched) {
+      setHasFetched(true);
+    }
+  }, [activityId, initialCount, hasFetched]);
+
+  const displayCount = hasFetched ? comments.length : initialCount;
+
+  const toggleExpand = async () => {
+    if (!expanded && !hasFetched && initialCount > 0) {
+      try {
+        const res = await api.get(`/activities/${activityId}/comments`);
+        setComments(res.data.data || []);
+        setHasFetched(true);
+      } catch (e: any) {
+        addToast(e.response?.data?.message || 'Không thể tải bình luận', 'error');
+      }
+    }
+    setExpanded(!expanded);
+  };
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Clear the input value so the same file can be selected again if needed
+    e.target.value = '';
+
+    setUploading(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await api.post('/upload', fd);
+      setAttachment(res.data.data.url);
+      addToast('Tải ảnh lên thành công', 'success');
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Lỗi khi tải ảnh lên', 'error');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const submitComment = async () => {
+    if (!text.trim() && !attachment) return;
+    if (submitting) return; // Prevent double submit
+    
+    setSubmitting(true);
+    try {
+      const payload = { content: text, attachments: attachment ? [attachment] : [] };
+      const res = await api.post(`/activities/${activityId}/comments`, payload);
+      
+      // Lấy tên người dùng hiện tại từ storage (nếu có)
+      let userName = 'Bạn';
+      try {
+        const authData = localStorage.getItem('minth-auth');
+        if (authData) userName = JSON.parse(authData).state?.user?.full_name || 'Bạn';
+      } catch(e) {}
+
+      setComments([...comments, {
+        id: res.data?.data?.id || Date.now(),
+        user_name: userName,
+        content: text,
+        attachments: attachment ? [attachment] : [],
+        created_at: new Date().toISOString()
+      }]);
+      setText('');
+      setAttachment(null);
+    } catch (e: any) {
+      addToast(e.response?.data?.message || 'Lỗi khi gửi bình luận', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: '0.75rem', borderTop: '1px dashed var(--color-border-light)', paddingTop: '0.75rem' }}>
+      <button 
+        className="btn ghost sm" 
+        style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-primary)', padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+        onClick={toggleExpand}
+      >
+        <MessageSquare size={14} /> Bình luận {displayCount > 0 && `(${displayCount})`}
+      </button>
+
+      {expanded && (
+        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {comments.map((c: any) => (
+            <div key={c.id} style={{ display: 'flex', gap: '0.75rem' }}>
+              <Avatar name={c.user_name} size="sm" />
+              <div style={{ flex: 1, background: 'white', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                  <strong style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{c.user_name}</strong>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{new Date(c.created_at).toLocaleString('vi-VN')}</span>
+                </div>
+                {c.content && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>}
+                {c.attachments && c.attachments.map((att: string, i: number) => (
+                  <div key={i} style={{ marginTop: '0.5rem' }}>
+                    <a href={att} target="_blank" rel="noreferrer">
+                      <img src={att} alt="attachment" style={{ maxWidth: '100%', maxHeight: '160px', borderRadius: '8px', border: '1px solid var(--color-border)' }} />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', alignItems: 'flex-start' }}>
+            <Avatar name="Bạn" size="sm" />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div style={{ position: 'relative' }}>
+                <textarea 
+                  className="form-input" 
+                  style={{ minHeight: '60px', padding: '8px 12px', fontSize: '0.875rem', paddingRight: '40px', opacity: submitting ? 0.7 : 1 }} 
+                  placeholder="Viết bình luận..."
+                  value={text}
+                  disabled={submitting}
+                  onChange={e => setText(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); } }}
+                />
+                <label style={{ position: 'absolute', right: '8px', bottom: '8px', cursor: submitting ? 'not-allowed' : 'pointer', color: 'var(--color-text-muted)' }}>
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading || submitting} />
+                  {uploading || submitting ? <Loader2 size={18} className="spin" /> : <Camera size={18} />}
+                </label>
+              </div>
+              
+              {attachment && (
+                <div style={{ position: 'relative', display: 'inline-block', width: 'fit-content' }}>
+                  <img src={attachment} alt="preview" style={{ height: '60px', borderRadius: '8px', border: '1px solid var(--color-primary)' }} />
+                  <button 
+                    className="btn-icon sm" 
+                    style={{ position: 'absolute', top: -6, right: -6, background: 'var(--color-danger)', color: 'white', padding: 2, height: 18, width: 18 }}
+                    onClick={() => setAttachment(null)}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              )}
+              
+              <div style={{ textAlign: 'right' }}>
+                <button 
+                  className="btn primary sm" 
+                  disabled={uploading || (!text.trim() && !attachment)}
+                  onClick={submitComment}
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <Send size={14} /> Gửi
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contact, onUpdate }) => {
   const { addToast, showConfirm, showCall } = useUIStore();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<string>('info');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [tags, setTags] = useState<string[]>([]);
   const [showCallLogger, setShowCallLogger] = useState(false);
@@ -169,7 +343,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   const fetchData = useCallback(async () => {
     if (!contact?.id) return;
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       // Load from mock store
       setNotes([]); // No notes in mock store yet
       setDrawerActivities(state.activities.filter((a: any) => a.contact_id === contact.id));
@@ -190,9 +364,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
         stage_color: d.stage_color || '#3b82f6'
       })));
       setDrawerInvoices(state.invoices.filter((i: any) => i.contact_id === contact.id));
-      setDrawerQuotes([]); // No quotes in mock store yet
-      setDrawerExpenses(state.expenses.filter((e: any) => e.contact_id === contact.id)); // Note: mock store expenses don't have contact_id yet, but I'll add logic or just show empty
+      setDrawerQuotes(state.quotes.filter((q: any) => q.contact_id === contact.id)); 
+      setDrawerExpenses(state.expenses.filter((e: any) => e.contact_id === contact.id)); 
       setDrawerTickets(state.tickets.filter((t: any) => t.customer_name === `${contact.first_name} ${contact.last_name}`.trim()));
+      setDocs(state.files.filter((f: any) => f.contact_id === contact.id));
       setLoadingRelated(false);
       return;
     }
@@ -370,6 +545,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       }
       payload.custom_fields = formData.custom_fields.map((f: any) => ({ field_id: f.id, value: f.value }));
     }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const res = await api.put(`/contacts/${contact.id}`, payload);
       const updated = res.data?.data || { ...formData, tags };
@@ -378,11 +555,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       addToast('Đã lưu thông tin khách hàng', 'success');
     } catch (e: any) {
       addToast(e?.response?.data?.message || 'Lỗi khi lưu thông tin', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const addNote = async () => {
-    if (!newNote.trim()) return;
+    if (!newNote.trim() || isSubmitting) return;
+    setIsSubmitting(true);
     const text = newNote.trim();
     try {
       await api.post(`/notes?entity_type=contact&entity_id=${contact.id}`, {
@@ -393,11 +573,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       addToast('Đã lưu ghi chú', 'success');
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Lỗi khi lưu ghi chú', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleAddTask = async () => {
-    if (!taskForm.title.trim()) return;
+    if (!taskForm.title.trim() || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await api.post('/activities', {
         related_type: 'contact',
@@ -414,6 +597,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       addToast('Đã thêm công việc mới', 'success');
     } catch (e: any) {
       addToast(e?.response?.data?.message || 'Lỗi khi lưu công việc', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -454,7 +639,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
   };
 
   const handleCreateDeal = async () => {
-    if (!dealForm.title.trim()) return;
+    if (!dealForm.title.trim() || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await api.post('/deals', {
         contact_id: contact.id,
@@ -469,11 +655,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       addToast('Đã tạo cơ hội mới thành công', 'success');
     } catch (e: any) {
       addToast(e?.response?.data?.message || 'Lỗi khi tạo cơ hội', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleCreateTicket = async () => {
-    if (!ticketForm.subject.trim()) return;
+    if (!ticketForm.subject.trim() || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await api.post('/tickets', {
         contact_id: contact.id,
@@ -488,6 +677,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       addToast('Đã gửi yêu cầu hỗ trợ', 'success');
     } catch (e: any) {
       addToast(e?.response?.data?.message || 'Lỗi khi tạo ticket', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1250,6 +1441,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   )}
                                 </div>
                               )}
+                              <ActivityComments activityId={ev.id} initialCount={Number(ev.comment_count) || 0} />
                             </div>
                           </motion.div>
                         ))}
@@ -1439,7 +1631,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                           onBlur={e => e.target.style.borderColor = 'var(--color-border)'}
                         />
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                          <button className="btn primary" onClick={addNote}><Send size={14} /> Lưu ghi chú</button>
+                          <button className="btn primary" onClick={addNote} disabled={isSubmitting || !newNote.trim()}>
+                            {isSubmitting ? <Loader2 size={14} className="spin" /> : <Send size={14} />} 
+                            {isSubmitting ? 'Đang lưu...' : 'Lưu ghi chú'}
+                          </button>
                         </div>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1981,8 +2176,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn outline" onClick={() => setShowDealModal(false)}>Hủy</button>
-                <button className="btn primary" onClick={handleCreateDeal}>Tạo Deal</button>
+                <button className="btn outline" onClick={() => setShowDealModal(false)} disabled={isSubmitting}>Hủy</button>
+                <button className="btn primary" onClick={handleCreateDeal} disabled={isSubmitting}>
+                  {isSubmitting ? 'Đang lưu...' : 'Tạo Deal'}
+                </button>
               </div>
             </motion.div>
           </div>
@@ -2028,8 +2225,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn outline" onClick={() => setShowTaskModal(false)}>Hủy</button>
-                <button className="btn primary" onClick={handleAddTask}>Lưu công việc</button>
+                <button className="btn outline" onClick={() => setShowTaskModal(false)} disabled={isSubmitting}>Hủy</button>
+                <button className="btn primary" onClick={handleAddTask} disabled={isSubmitting}>
+                  {isSubmitting ? 'Đang lưu...' : 'Lưu công việc'}
+                </button>
               </div>
             </motion.div>
           </div>
@@ -2080,8 +2279,10 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn outline" onClick={() => setShowTicketModal(false)}>Hủy</button>
-                <button className="btn primary" onClick={handleCreateTicket}>Tạo Ticket</button>
+                <button className="btn outline" onClick={() => setShowTicketModal(false)} disabled={isSubmitting}>Hủy</button>
+                <button className="btn primary" onClick={handleCreateTicket} disabled={isSubmitting}>
+                  {isSubmitting ? 'Đang tạo...' : 'Tạo Ticket'}
+                </button>
               </div>
             </motion.div>
           </div>

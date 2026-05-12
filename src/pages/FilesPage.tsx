@@ -14,7 +14,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 
 export const FilesPage: React.FC = () => {
   const { addToast, showConfirm } = useUIStore();
@@ -69,7 +69,7 @@ export const FilesPage: React.FC = () => {
   const fetchFiles = async () => {
     if (DEV_MODE) {
       setLoading(true);
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       let list = [...state.files];
 
       if (searchTerm) {

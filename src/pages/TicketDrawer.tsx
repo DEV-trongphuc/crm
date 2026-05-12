@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MessageSquare, Clock, AlertCircle, User, Paperclip, Send, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { X, MessageSquare, Clock, AlertCircle, User, Paperclip, Send, CheckCircle2, MoreHorizontal, Loader2 } from 'lucide-react';
 import { Avatar } from '../components/ui/Avatar';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { useUIStore } from '../store/uiStore';
@@ -39,6 +39,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
   const [isInternal, setIsInternal] = useState(false);
 
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (ticket?.id) {
@@ -63,7 +64,8 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
   if (!ticket) return null;
 
   const handleSend = async () => {
-    if (!newComment.trim()) return;
+    if (!newComment.trim() || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const r = await api.post(`/tickets/${ticket.id}/comments`, { body: newComment });
       setComments(r.data.data || []);
@@ -71,6 +73,8 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
       addToast('Đã thêm ghi chú', 'success');
     } catch (err) {
       addToast('Lỗi khi lưu ghi chú', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -190,8 +194,10 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                       className="btn primary sm"
                       style={{ position: 'absolute', bottom: '12px', right: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
                       onClick={handleSend}
+                      disabled={isSubmitting || !newComment.trim()}
                     >
-                      <CheckCircle2 size={14} /> Cập nhật
+                      {isSubmitting ? <Loader2 size={14} className="spin" /> : <CheckCircle2 size={14} />}
+                      {isSubmitting ? 'Đang cập nhật' : 'Cập nhật'}
                     </button>
                   </div>
                 </div>

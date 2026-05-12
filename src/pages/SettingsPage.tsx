@@ -7,7 +7,7 @@ import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 
 const ROLES = ['admin', 'manager', 'sales', 'viewer'];
@@ -41,7 +41,7 @@ export const SettingsPage: React.FC = () => {
 
   const fetchUsers = async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       setUsers([...state.users]);
       setLoading(false);
       return;
@@ -61,7 +61,7 @@ export const SettingsPage: React.FC = () => {
 
   const fetchPipelines = async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       setPipelines([...state.pipeline_stages].sort((a, b) => (a.order_index || 0) - (b.order_index || 0)));
       setLoading(false);
       return;
@@ -80,7 +80,7 @@ export const SettingsPage: React.FC = () => {
 
   const fetchTags = async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       setTags([...state.tags]);
       setLoading(false);
       return;

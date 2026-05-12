@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
@@ -57,7 +57,7 @@ export const TicketsPage: React.FC = () => {
 
   const fetchTickets = async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       let list = [...state.tickets];
       
       if (debouncedSearch) {

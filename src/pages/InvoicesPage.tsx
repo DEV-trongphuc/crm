@@ -13,7 +13,7 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 
 const PAGE_SIZE = 50;
 
@@ -39,7 +39,7 @@ export const InvoicesPage: React.FC = () => {
 
   const fetchInvoices = useCallback(async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       let list = [...state.invoices];
       
       if (search) {

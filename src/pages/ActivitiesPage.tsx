@@ -13,7 +13,7 @@ import { CalendarView } from '../components/CalendarView';
 import { LayoutList } from 'lucide-react';
 
 const PAGE_SIZE = 50;
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 
 const MOCK_ACTIVITIES: any[] = [];
 
@@ -84,7 +84,7 @@ export const ActivitiesPage: React.FC = () => {
 
   const fetchActivities = useCallback(async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       let list = [...state.activities];
       
       if (debouncedSearch) {

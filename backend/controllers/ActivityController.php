@@ -51,7 +51,8 @@ class ActivityController {
             SELECT a.*, u.full_name as user_name, u.avatar_url,
                    CONCAT(ct.first_name,' ',ct.last_name) as contact_name,
                    d.title as deal_name,
-                   c.name as company_name
+                   c.name as company_name,
+                   (SELECT COUNT(*) FROM activity_comments ac WHERE ac.activity_id = a.id) as comment_count
             FROM activities a 
             LEFT JOIN users u ON a.user_id=u.id
             LEFT JOIN contacts ct ON a.related_type='contact' AND a.related_id=ct.id AND ct.deleted_at IS NULL
@@ -200,6 +201,72 @@ class ActivityController {
         logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'UPDATE', 'activity', $id, json_encode($b));
 
         $this->show($auth,$id);
+    }
+
+    public function getComments(array $auth, int $id): void {
+        // Verify activity belongs to tenant and user has permission
+        $sql = "SELECT id FROM activities WHERE id=? AND tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND user_id=?";
+            $p[] = $auth['user_id'];
+        }
+        $check = $this->db->prepare($sql);
+        $check->execute($p);
+        if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoạt động hoặc không có quyền truy cập', false);
+
+        $stmt = $this->db->prepare("
+            SELECT c.*, u.full_name as user_name, u.avatar_url 
+            FROM activity_comments c 
+            LEFT JOIN users u ON c.user_id = u.id 
+            WHERE c.activity_id = ? AND c.tenant_id = ? 
+            ORDER BY c.created_at ASC
+        ");
+        $stmt->execute([$id, $auth['tenant_id']]);
+        
+        $comments = array_map(function($row) {
+            $row['attachments'] = $row['attachments'] ? json_decode($row['attachments'], true) : [];
+            return $row;
+        }, $stmt->fetchAll(PDO::FETCH_ASSOC));
+
+        respond(200, $comments);
+    }
+
+    public function addComment(array $auth, int $id): void {
+        // Verify activity belongs to tenant and user has permission
+        $sql = "SELECT id FROM activities WHERE id=? AND tenant_id=?";
+        $p = [$id, $auth['tenant_id']];
+        if ($auth['role'] === 'sale') {
+            $sql .= " AND user_id=?";
+            $p[] = $auth['user_id'];
+        }
+        $check = $this->db->prepare($sql);
+        $check->execute($p);
+        if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoạt động hoặc không có quyền truy cập', false);
+
+        $b = getBody();
+        if (empty($b['content']) && empty($b['attachments'])) {
+            respond(422, null, 'Nội dung hoặc đính kèm không được để trống', false);
+        }
+
+        $attachments = !empty($b['attachments']) && is_array($b['attachments']) ? json_encode($b['attachments']) : null;
+
+        $stmt = $this->db->prepare("
+            INSERT INTO activity_comments (tenant_id, activity_id, user_id, content, attachments)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        $stmt->execute([
+            $auth['tenant_id'],
+            $id,
+            $auth['user_id'],
+            $b['content'] ?? null,
+            $attachments
+        ]);
+
+        $commentId = $this->db->lastInsertId();
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], 'ADD_COMMENT', 'activity', $id);
+
+        respond(200, ['id' => $commentId], 'Đã thêm bình luận');
     }
 
     public function destroy(array $auth,int $id): void {

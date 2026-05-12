@@ -18,7 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Skeleton } from '../components/ui/Skeleton';
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n || 0);
@@ -52,7 +52,7 @@ export const DashboardPage: React.FC = () => {
   const fetchAll = useCallback(async () => {
     if (DEV_MODE) {
       setLoadingStats(true);
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       
       // Compute stats from mock data
       const wonDeals = state.contacts.filter(c => state.pipeline_stages.find(s => s.id === c.stage_id)?.is_won);

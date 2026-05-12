@@ -429,7 +429,9 @@ switch ($resource) {
     case 'activities':
         $auth = requireAuth();
         $ctrl = new ActivityController($db);
-        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
+        if     ($resourceId && $subResource === 'comments' && $method === 'GET')  $ctrl->getComments($auth, (int)$resourceId);
+        elseif ($resourceId && $subResource === 'comments' && $method === 'POST') $ctrl->addComment($auth, (int)$resourceId);
+        elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);

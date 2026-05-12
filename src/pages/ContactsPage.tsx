@@ -18,7 +18,7 @@ import { AddressSelect } from '../components/ui/AddressSelect';
 import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { useDebounce } from '../hooks/useDebounce';
 
 const PAGE_SIZE = 50;
@@ -95,7 +95,7 @@ export const ContactsPage: React.FC = () => {
 
   const fetchData = async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       let list = [...state.contacts];
       
       // Basic search

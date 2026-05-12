@@ -22,7 +22,6 @@ import { DEV_MODE } from './config/env';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
-  if (DEV_MODE) return <>{children}</>;
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 };
 

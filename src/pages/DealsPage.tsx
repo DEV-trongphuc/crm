@@ -7,9 +7,10 @@ import confetti from 'canvas-confetti';
 import { useUIStore } from '../store/uiStore';
 import { CustomerProfileDrawer } from './CustomerProfileDrawer';
 import { CompanyDrawer } from './CompanyDrawer';
+import { DealDrawer } from './DealDrawer';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import { useDebounce } from '../hooks/useDebounce';
@@ -23,7 +24,7 @@ const FMT = (n: number) => {
 
 export const DealsPage: React.FC = () => {
   const { addToast } = useUIStore();
-  const [pipelineView, setPipelineView] = useState<'contacts' | 'companies'>('contacts');
+  const [pipelineView, setPipelineView] = useState<'deals' | 'contacts' | 'companies'>('deals');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [activeStageFilter, setActiveStageFilter] = useState<string | number>('all');
   const [stages, setStages] = useState<any[]>([]);
@@ -34,8 +35,10 @@ export const DealsPage: React.FC = () => {
   // Drawers
   const [showContactDrawer, setShowContactDrawer] = useState(false);
   const [showCompanyDrawer, setShowCompanyDrawer] = useState(false);
+  const [showDealDrawer, setShowDealDrawer] = useState(false);
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
+  const [selectedDeal, setSelectedDeal] = useState<any>(null);
   
   const [dragging, setDragging] = useState<{ id: number, fromStage: number } | null>(null);
   const [transitionModal, setTransitionModal] = useState<{ isOpen: boolean; itemId: number; toStage: number; fromStage: number; note: string } | null>(null);
@@ -77,7 +80,9 @@ export const DealsPage: React.FC = () => {
           const lowerSearch = debouncedSearch.toLowerCase();
           const nameMatch = pipelineView === 'contacts' 
             ? `${item.first_name || ''} ${item.last_name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch)
-            : `${item.name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch);
+            : (pipelineView === 'companies'
+                ? `${item.name || ''} ${item.email || ''}`.toLowerCase().includes(lowerSearch)
+                : `${item.title || ''} ${item.company_name || ''}`.toLowerCase().includes(lowerSearch));
           
           if (!nameMatch) return false;
         }
@@ -197,15 +202,17 @@ export const DealsPage: React.FC = () => {
 
   const fetchData = async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
-      let list = pipelineView === 'contacts' ? [...state.contacts] : [...state.companies];
+      const state = getFilteredMockState();
+      let list = pipelineView === 'contacts' ? [...state.contacts] : (pipelineView === 'companies' ? [...state.companies] : [...state.deals]);
       
       if (debouncedSearch) {
         const s = debouncedSearch.toLowerCase();
         if (pipelineView === 'contacts') {
           list = list.filter(c => `${c.first_name} ${c.last_name}`.toLowerCase().includes(s) || c.email?.toLowerCase().includes(s));
-        } else {
+        } else if (pipelineView === 'companies') {
           list = list.filter(c => c.name.toLowerCase().includes(s) || c.email?.toLowerCase().includes(s));
+        } else {
+          list = list.filter(c => c.title?.toLowerCase().includes(s) || c.company_name?.toLowerCase().includes(s));
         }
       }
       
@@ -228,7 +235,7 @@ export const DealsPage: React.FC = () => {
 
     setLoading(true);
     try {
-      const endpoint = pipelineView === 'contacts' ? '/contacts' : '/companies';
+      const endpoint = pipelineView === 'contacts' ? '/contacts' : (pipelineView === 'companies' ? '/companies' : '/deals');
       const params: any = {
         page: viewMode === 'kanban' ? 1 : page,
         limit: viewMode === 'kanban' ? 500 : limit,
@@ -309,7 +316,7 @@ export const DealsPage: React.FC = () => {
     if (!transitionModal.note.trim()) { addToast('Vui lòng nhập ghi chú bắt buộc (Audit Trail)', 'warning'); return; }
 
     try {
-      const endpoint = pipelineView === 'contacts' ? `/contacts/${transitionModal.itemId}/stage` : `/companies/${transitionModal.itemId}/stage`;
+      const endpoint = pipelineView === 'contacts' ? `/contacts/${transitionModal.itemId}/stage` : (pipelineView === 'companies' ? `/companies/${transitionModal.itemId}/stage` : `/deals/${transitionModal.itemId}/stage`);
       await api.patch(endpoint, { 
         stage_id: transitionModal.toStage,
         note: transitionModal.note
@@ -320,7 +327,7 @@ export const DealsPage: React.FC = () => {
       const toStage = stages.find(s => s.id === transitionModal.toStage);
       if (toStage?.is_won) {
         confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-        addToast(`TUYỆT VỜI! Chúc mừng bạn đã chốt thành công "${pipelineView === 'contacts' ? item?.first_name : item?.name}"`, 'success');
+        addToast(`TUYỆT VỜI! Chúc mừng bạn đã chốt thành công "${pipelineView === 'contacts' ? item?.first_name : (pipelineView === 'companies' ? item?.name : item?.title)}"`, 'success');
       } else {
         addToast('Đã chuyển trạng thái & lưu Audit Log', 'success');
       }
@@ -329,7 +336,7 @@ export const DealsPage: React.FC = () => {
     setTransitionModal(null);
   };
 
-  const totalRevenue = Object.values(filteredItems).flat().reduce((sum, d) => sum + (Number(d.expected_revenue) || 0), 0);
+  const totalRevenue = Object.values(filteredItems).flat().reduce((sum, d) => sum + (Number(d.expected_revenue) || Number(d.value) || 0), 0);
 
   const filterPills = [
     { id: '', label: 'Tất cả' },
@@ -354,7 +361,7 @@ export const DealsPage: React.FC = () => {
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Target size={24} color="var(--color-primary)" />
-            Pipeline {pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp'}
+            Pipeline {pipelineView === 'deals' ? 'Cơ hội' : (pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp')}
           </h1>
           <p className="page-subtitle" style={{ fontSize: '0.9375rem', marginTop: '4px' }}>
             <strong>{Object.values(items).flat().length}</strong> thẻ đang quản lý · Tổng giá trị dự kiến: <strong style={{ color: 'var(--color-primary)', fontSize: '1.25rem', marginLeft: '4px' }}>{FMT(totalRevenue)}</strong>
@@ -379,7 +386,14 @@ export const DealsPage: React.FC = () => {
         </div>
 
         {/* Toggle View */}
-        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', height: 44 }}>
+        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', height: 44, marginRight: '1rem' }}>
+          <button 
+            className={`btn ${pipelineView === 'deals' ? 'primary' : 'ghost'}`} 
+            style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
+            onClick={() => setPipelineView('deals')}
+          >
+            <DollarSign size={16} /> Cơ hội
+          </button>
           <button 
             className={`btn ${pipelineView === 'contacts' ? 'primary' : 'ghost'}`} 
             style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
@@ -395,6 +409,14 @@ export const DealsPage: React.FC = () => {
             <Building2 size={16} /> Doanh nghiệp
           </button>
         </div>
+
+        <button className="btn primary" style={{ height: 44, padding: '0 1.25rem', borderRadius: 'var(--radius-lg)' }} onClick={() => {
+            if (pipelineView === 'deals') { setSelectedDeal(null); setShowDealDrawer(true); }
+            else if (pipelineView === 'contacts') { setSelectedContact(null); setShowContactDrawer(true); }
+            else { setSelectedCompany(null); setShowCompanyDrawer(true); }
+        }}>
+          <Plus size={16} /> Thêm {pipelineView === 'deals' ? 'Cơ Hội' : (pipelineView === 'contacts' ? 'Khách Hàng' : 'Doanh Nghiệp')}
+        </button>
       </div>
 
       {/* Filter Bar / Bulk Action Bar */}
@@ -644,7 +666,8 @@ export const DealsPage: React.FC = () => {
                       <span style={{ background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '2px 8px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 700 }}>{stageItems.length}</span>
                     </div>
                     <button className="btn ghost sm" onClick={() => {
-                      if (pipelineView === 'contacts') { setSelectedContact({ stage_id: stage.id }); setShowContactDrawer(true); }
+                      if (pipelineView === 'deals') { setSelectedDeal({ stage_id: stage.id }); setShowDealDrawer(true); }
+                      else if (pipelineView === 'contacts') { setSelectedContact({ stage_id: stage.id }); setShowContactDrawer(true); }
                       else { setSelectedCompany({ stage_id: stage.id }); setShowCompanyDrawer(true); }
                     }} style={{ padding: '4px', color: 'var(--color-text-light)' }} title="Thêm vào cột này"><Plus size={18} /></button>
                   </div>
@@ -657,7 +680,7 @@ export const DealsPage: React.FC = () => {
                 <div style={{ padding: '1rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   <AnimatePresence>
                     {stageItems.map(item => {
-                      const itemName = pipelineView === 'contacts' ? `${item.first_name} ${item.last_name || ''}`.trim() : item.name;
+                      const itemName = pipelineView === 'contacts' ? `${item.first_name} ${item.last_name || ''}`.trim() : (pipelineView === 'companies' ? item.name : item.title);
                       return (
                       <motion.div key={item.id}
                         draggable
@@ -670,7 +693,8 @@ export const DealsPage: React.FC = () => {
                           cursor: 'grab', userSelect: 'none', position: 'relative'
                         }}
                         onClick={() => {
-                          if (pipelineView === 'contacts') { setSelectedContact(item); setShowContactDrawer(true); }
+                          if (pipelineView === 'deals') { setSelectedDeal(item); setShowDealDrawer(true); }
+                          else if (pipelineView === 'contacts') { setSelectedContact(item); setShowContactDrawer(true); }
                           else { setSelectedCompany(item); setShowCompanyDrawer(true); }
                         }}
                         whileHover={{ y: -2, boxShadow: '0 8px 16px rgba(0,0,0,0.08)' }}
@@ -738,15 +762,16 @@ export const DealsPage: React.FC = () => {
                   <th style={{ width: 44, padding: '1rem', borderBottom: '1px solid var(--color-border)' }}>
                     <CustomCheckbox checked={pagedItems.every(item => selected.has(item.id)) && pagedItems.length > 0} onChange={togglePageAll} />
                   </th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Tên {pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp'}</th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Dự kiến</th>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Tên {pipelineView === 'deals' ? 'Cơ hội' : (pipelineView === 'contacts' ? 'Khách hàng' : 'Doanh nghiệp')}</th>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Giá trị</th>
                   <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Giai đoạn</th>
-                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>Liên hệ</th>
+                  <th style={{ padding: '1rem', borderBottom: '1px solid var(--color-border)', textAlign: 'left', fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{pipelineView === 'deals' ? 'Tỉ lệ / Chốt' : 'Liên hệ'}</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedItems.map(item => {
-                  const itemName = pipelineView === 'contacts' ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : item.name;
+                  const itemName = pipelineView === 'contacts' ? `${item.first_name || ''} ${item.last_name || ''}`.trim() : (pipelineView === 'companies' ? item.name : item.title);
+                  const itemValue = Number(item.expected_revenue) || Number(item.value) || 0;
                   const stage = stages.find(s => s.id === item.stage_id);
                   return (
                     <tr 
@@ -770,7 +795,8 @@ export const DealsPage: React.FC = () => {
                         </div>
                       </td>
                       <td style={{ padding: '1rem' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.875rem' }}>{FMT(Number(item.expected_revenue) || 0)}</span>
+                        <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.875rem' }}>{FMT(Number(item.expected_revenue) || Number(item.value) || 0)}</span>
+                        {pipelineView === 'deals' && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{item.probability || 50}% win</div>}
                         {pipelineView === 'contacts' && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{item.win_probability || 50}% win</div>}
                       </td>
                       <td style={{ padding: '1rem' }}>
@@ -811,6 +837,16 @@ export const DealsPage: React.FC = () => {
           onClose={() => { setShowCompanyDrawer(false); fetchData(); }}
           entity={selectedCompany}
           onSave={() => fetchData()}
+        />
+      )}
+
+      {showDealDrawer && (
+        <DealDrawer
+          isOpen={showDealDrawer}
+          onClose={() => { setShowDealDrawer(false); fetchData(); }}
+          deal={selectedDeal}
+          onSave={() => fetchData()}
+          stages={stages}
         />
       )}
 

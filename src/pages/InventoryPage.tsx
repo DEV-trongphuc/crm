@@ -12,7 +12,7 @@ import api from '../api/axios';
 import { useDebounce } from '../hooks/useDebounce';
 import { Pagination } from '../components/ui/Pagination';
 import { CustomSelect } from '../components/ui/CustomSelect';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { DEV_MODE } from '../config/env';
 
 const PAGE_SIZE = 20;
@@ -98,7 +98,7 @@ export default function InventoryPage() {
 
   const fetchBatches = async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       let list = [...state.batches];
 
       if (debouncedSearch) {

@@ -15,7 +15,7 @@ import { QuoteEditorModal } from '../components/ui/QuoteEditorModal.tsx';
 import { CustomModal } from '../components/ui/CustomModal';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 
 const PAGE_SIZE = 20;
 
@@ -41,7 +41,7 @@ export const QuotesPage: React.FC = () => {
   const fetchQuotes = useCallback(async () => {
     if (DEV_MODE) {
       setLoading(true);
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       let list = [...state.quotes];
 
       if (search) {

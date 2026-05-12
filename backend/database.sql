@@ -1863,6 +1863,33 @@ ALTER TABLE `file_categories`
 ALTER TABLE `file_categories`
   ADD CONSTRAINT `file_categories_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE;
 
+--
+-- Table structure for table `activity_comments`
+--
+CREATE TABLE `activity_comments` (
+  `id` int(11) NOT NULL,
+  `tenant_id` int(11) NOT NULL,
+  `activity_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `content` text DEFAULT NULL,
+  `attachments` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`attachments`)),
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `activity_comments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `activity_id` (`activity_id`),
+  ADD KEY `tenant_id` (`tenant_id`);
+
+ALTER TABLE `activity_comments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `activity_comments`
+  ADD CONSTRAINT `activity_comments_ibfk_1` FOREIGN KEY (`tenant_id`) REFERENCES `tenants` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `activity_comments_ibfk_2` FOREIGN KEY (`activity_id`) REFERENCES `activities` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `activity_comments_ibfk_3` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`);
+
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

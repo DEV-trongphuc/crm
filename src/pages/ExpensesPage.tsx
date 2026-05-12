@@ -16,7 +16,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 
 const PAGE_SIZE = 50;
 
@@ -92,7 +92,7 @@ export const ExpensesPage: React.FC = () => {
 
   const fetchExpenses = useCallback(async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       let list = [...state.expenses];
       
       if (search) {

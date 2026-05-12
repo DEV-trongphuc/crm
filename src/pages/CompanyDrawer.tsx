@@ -9,7 +9,7 @@ import { TagInput } from '../components/ui/TagInput';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { ActivityModal } from '../components/ui/ActivityModal';
 import styles from './EntityDrawer.module.css'; // Reusing the same drawer CSS
 import { numberToText } from '../utils/numberToText';

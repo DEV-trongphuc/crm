@@ -8,7 +8,7 @@ import { Pagination } from '../components/ui/Pagination';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { PhoneLink } from '../components/ui/PhoneLink';
 import { useDebounce } from '../hooks/useDebounce';
 
@@ -37,7 +37,7 @@ export const CompaniesPage: React.FC = () => {
 
   const fetchCompanies = useCallback(async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       let list = [...state.companies];
       
       if (debouncedSearch) {

@@ -7,7 +7,7 @@ import type { Period, DateRange } from '../components/ui/PeriodFilter';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { Skeleton, TableSkeleton } from '../components/ui/Skeleton';
 import { Avatar } from '../components/ui/Avatar';
 
@@ -43,7 +43,7 @@ export const ReportsPage: React.FC = () => {
   const fetchSales = async () => {
     if (DEV_MODE) {
       setLoading(true);
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       const wonValue = state.contacts.filter(c => state.pipeline_stages.find(s => s.id === c.stage_id)?.is_won)
         .reduce((sum, c) => sum + (Number(c.expected_revenue) || 0), 0);
       
@@ -90,7 +90,7 @@ export const ReportsPage: React.FC = () => {
   const fetchPipeline = async () => {
     if (DEV_MODE) {
       setLoading(true);
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       setPipelineData(state.pipeline_stages.map(s => ({
         stage: s.name,
         count: state.contacts.filter(c => c.stage_id === s.id).length,
@@ -113,7 +113,7 @@ export const ReportsPage: React.FC = () => {
   const fetchActivities = async () => {
     if (DEV_MODE) {
       setLoading(true);
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       const types = ['call', 'email', 'meeting', 'task', 'note'];
       setActivityData({
         by_type: types.map(t => ({
@@ -144,7 +144,7 @@ export const ReportsPage: React.FC = () => {
   const fetchCustomers = async () => {
     if (DEV_MODE) {
       setLoading(true);
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       setCustomerData({
         by_source: [
           { source: 'Facebook', count: 45 },
@@ -182,7 +182,7 @@ export const ReportsPage: React.FC = () => {
   const fetchCompanies = async () => {
     if (DEV_MODE) {
       setLoading(true);
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       setCompanyData({
         by_industry: [
           { industry: 'Công nghệ', count: 25 },
@@ -218,7 +218,7 @@ export const ReportsPage: React.FC = () => {
   const fetchExpenses = async () => {
     if (DEV_MODE) {
       setLoading(true);
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       const totalExp = state.expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
       setExpenseData({
         by_category: [

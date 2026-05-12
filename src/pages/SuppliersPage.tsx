@@ -11,7 +11,7 @@ import { EmptyCard } from '../components/ui/EmptyCard';
 import { AddressSelect } from '../components/ui/AddressSelect';
 import { Pagination } from '../components/ui/Pagination';
 import { DEV_MODE } from '../config/env';
-import { useMockStore } from '../store/mockStore';
+import { useMockStore, getFilteredMockState } from '../store/mockStore';
 
 export const SuppliersPage: React.FC = () => {
   const { addToast, showConfirm } = useUIStore();
@@ -28,7 +28,7 @@ export const SuppliersPage: React.FC = () => {
 
   const fetchSuppliers = async () => {
     if (DEV_MODE) {
-      const state = useMockStore.getState();
+      const state = getFilteredMockState();
       let list = [...state.suppliers];
       
       if (searchTerm) {

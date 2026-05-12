@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShoppingCart, Plus, Search, Filter, Calendar, 
-  ChevronRight, ArrowUpRight, CheckCircle2, Clock, XCircle,
+  ChevronRight, ArrowUpRight, CheckCircle2, Clock, XCircle, Loader2,
   Truck, Package, Trash2, PlusCircle, MinusCircle, AlertCircle,
   DollarSign
 } from 'lucide-react';
@@ -25,6 +25,7 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
   const navigate = useNavigate();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -103,7 +104,9 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
     e.preventDefault();
     if (!formData.supplier_id) return addToast('Vui lòng chọn nhà cung cấp', 'error');
     if (formData.items.length === 0) return addToast('Vui lòng thêm ít nhất một sản phẩm', 'error');
+    if (isSubmitting) return;
 
+    setIsSubmitting(true);
     try {
       await api.post('/purchase-orders', {
         ...formData,
@@ -116,21 +119,27 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
       fetchOrders();
     } catch (err: any) {
       addToast(err.response?.data?.message || 'Lỗi khi lưu đơn hàng', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleReceive = (id: number) => {
+    if (isSubmitting) return;
     showConfirm({
       title: 'Nhập kho hàng hóa',
       message: 'Hệ thống sẽ cộng số lượng sản phẩm vào kho và ghi nhận công nợ. Bạn xác nhận đã nhận đủ hàng?',
       confirmText: 'Xác nhận nhập kho',
       onConfirm: async () => {
+        setIsSubmitting(true);
         try {
           await api.post(`/purchase-orders/${id}/receive`);
           addToast('Đã nhập kho thành công', 'success');
           fetchOrders();
         } catch (err: any) {
           addToast(err.response?.data?.message || 'Lỗi khi nhập kho', 'error');
+        } finally {
+          setIsSubmitting(false);
         }
       }
     });
@@ -398,10 +407,10 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                   </div>
                 ) : (
                   <>
-                    <button className="btn secondary" onClick={() => setShowModal(false)}>Hủy bỏ</button>
-                    <button className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 2rem' }} onClick={handleSubmit}>
-                      Xác nhận nhập hàng
-                      <ArrowUpRight size={18} />
+                    <button className="btn secondary" onClick={() => setShowModal(false)} disabled={isSubmitting}>Hủy bỏ</button>
+                    <button className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0 2rem' }} onClick={handleSubmit} disabled={isSubmitting}>
+                      {isSubmitting ? <Loader2 size={18} className="spin" /> : 'Xác nhận nhập hàng'}
+                      {!isSubmitting && <ArrowUpRight size={18} />}
                     </button>
                   </>
                 )}
