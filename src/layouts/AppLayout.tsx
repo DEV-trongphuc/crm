@@ -32,7 +32,7 @@ const NAV_ITEMS = [
   { to: '/products', icon: Layers, label: 'Sản phẩm' },
   { to: '/suppliers', icon: Truck, label: 'Nhà cung cấp' },
   { to: '/inventory', icon: Package, label: 'Kho & Lô hàng' },
-  { to: '/invoices', icon: FileSpreadsheet, label: 'Invoices' },
+  { to: '/invoices', icon: FileSpreadsheet, label: 'Hóa đơn' },
   { to: '/expenses', icon: Wallet, label: 'Chi phí' },
   { to: '/files', icon: Folder, label: 'Tài liệu' },
   { to: '/tickets', icon: LifeBuoy, label: 'Hỗ trợ' },

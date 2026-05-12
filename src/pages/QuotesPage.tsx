@@ -126,6 +126,8 @@ export const QuotesPage: React.FC = () => {
           addToast('Đã xóa báo giá', 'success');
         } catch {
           addToast('Lỗi khi xóa báo giá', 'error');
+        } finally {
+          closeConfirm();
         }
       }
     });
@@ -147,12 +149,13 @@ export const QuotesPage: React.FC = () => {
       message: 'Bạn có chắc chắn muốn chuyển bản báo giá này thành hóa đơn không?',
       onConfirm: async () => {
         try {
-          const r = await api.post(`/quotes/${id}/convert`);
+          await api.post(`/quotes/${id}/convert`);
           addToast('Đã chuyển thành hóa đơn thành công', 'success');
           fetchQuotes();
-          // Optional: redirect to invoice detail
         } catch (e: any) {
           addToast(e.response?.data?.message || 'Lỗi khi chuyển đổi', 'error');
+        } finally {
+          closeConfirm();
         }
       }
     });

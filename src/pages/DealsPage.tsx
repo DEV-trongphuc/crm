@@ -11,6 +11,7 @@ import { DealDrawer } from './DealDrawer';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
+import { useAuthStore } from '../store/authStore';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { CustomCheckbox } from '../components/ui/CustomCheckbox';
@@ -224,9 +225,9 @@ export const DealsPage: React.FC = () => {
       
       const grouped: Record<number, any[]> = {};
       list.forEach((d: any) => {
-        const sid = d.stage_id || (stages.length > 0 ? stages[0].id : 0);
-        if (!grouped[sid]) grouped[sid] = [];
-        grouped[sid].push(d);
+        const sid = d.stage_id || (stages.length > 0 ? stages[0].id : 'unassigned');
+        if (!grouped[sid as any]) grouped[sid as any] = [];
+        grouped[sid as any].push(d);
       });
       
       setItems(grouped);
@@ -347,13 +348,13 @@ export const DealsPage: React.FC = () => {
     { id: 'won', label: 'Đã chốt' }
   ];
 
+  const currentUserId = useAuthStore.getState().user?.id;
   const handlePillClick = (id: string) => {
     setActiveFilterPill(id);
     if (id === 'my') {
-       // logic to filter by current user
-       setFilterAssignee('1'); // Assuming '1' is the current user ID for demo, usually from auth store
+      setFilterAssignee(String(currentUserId || 1));
     } else {
-       setFilterAssignee('');
+      setFilterAssignee('');
     }
   };
 

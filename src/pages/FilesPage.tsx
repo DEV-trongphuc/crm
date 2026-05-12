@@ -35,7 +35,7 @@ export const FilesPage: React.FC = () => {
     if (DEV_MODE) return;
     try {
       const res = await api.get('/file-categories');
-      const cats = res.data.data.map((c: any) => ({
+      const cats = (res.data.data || []).map((c: any) => ({
         ...c,
         icon: c.icon_type === 'hard-drive' ? <HardDrive size={18} /> :
               c.icon_type === 'file-text' ? <FileText size={18} /> :
@@ -107,12 +107,10 @@ export const FilesPage: React.FC = () => {
     }
   };
 
-  useEffect(() => { fetchFiles(); }, [page, category, searchTerm]);
-
-  // Reset page when category or search changes
+  // fetchFiles with auto-reset page on filter change
   useEffect(() => {
-    setPage(1);
-  }, [category, searchTerm]);
+    fetchFiles();
+  }, [page, category, searchTerm]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -214,17 +212,22 @@ export const FilesPage: React.FC = () => {
     if (!mime) return <File size={24} />;
     if (mime.includes('image')) return <FileImage size={24} className="text-rose-500" />;
     if (mime.includes('video')) return <FileVideo size={24} className="text-indigo-500" />;
-    if (mime.includes('json')) return <FileJson size={24} className="text-amber-500" />;
-    if (mime.includes('javascript') || mime.includes('typescript')) return <FileCode size={24} className="text-blue-500" />;
-    return <FileText size={24} className="text-slate-400" />;
-  };
-
-  const formatSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
+  const FMT_SIZE = (bytes: number) => {
+    if (!bytes || isNaN(bytes)) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const getFileIcon = (name: string) => {
+    const ext = name.split('.').pop()?.toLowerCase();
+    if (['pdf'].includes(ext!)) return { icon: <FileText size={20} />, color: '#ef4444', bg: '#fef2f2' };
+    if (['doc', 'docx'].includes(ext!)) return { icon: <FileText size={20} />, color: '#3b82f6', bg: '#eff6ff' };
+    if (['xls', 'xlsx'].includes(ext!)) return { icon: <FileSpreadsheet size={20} />, color: '#10b981', bg: '#ecfdf5' };
+    if (['jpg', 'jpeg', 'png', 'svg'].includes(ext!)) return { icon: <Image size={20} />, color: '#8b5cf6', bg: '#f5f3ff' };
+    if (['zip', 'rar', '7z'].includes(ext!)) return { icon: <Archive size={20} />, color: '#f59e0b', bg: '#fffbeb' };
+    return { icon: <File size={20} />, color: '#64748b', bg: '#f8fafc' };
   };
 
   return (
@@ -277,7 +280,7 @@ export const FilesPage: React.FC = () => {
              {categories.map(cat => (
                <button
                  key={cat.id}
-                 onClick={() => setCategory(cat.id)}
+                 onClick={() => { setPage(1); setCategory(cat.id); }}
                  style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 'var(--radius-lg)', transition: 'all 0.2s', cursor: 'pointer', background: category === cat.id ? 'var(--color-surface)' : 'transparent', border: category === cat.id ? '1px solid var(--color-border)' : '1px solid transparent', boxShadow: category === cat.id ? 'var(--shadow-sm)' : 'none', color: category === cat.id ? 'var(--color-primary)' : 'var(--color-text-light)' }}
                >
                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
@@ -313,7 +316,7 @@ export const FilesPage: React.FC = () => {
                   type="text"
                   placeholder="Tìm kiếm tài liệu..." 
                   value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
+                  onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
                   style={{ width: '100%', padding: '12px 16px 12px 48px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', outline: 'none', fontSize: '0.875rem', fontWeight: 500, background: 'var(--color-surface)' }}
                 />
              </div>
@@ -424,14 +427,14 @@ export const FilesPage: React.FC = () => {
                               <tr key={f.id} className="hover-row" style={{ borderBottom: '1px solid var(--color-border-light)' }}>
                                 <td style={{ padding: '1.25rem 2rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                      <div style={{ width: '40px', height: '40px', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {getFileIcon(f.mime_type)}
+                                      <div style={{ width: '40px', height: '40px', background: getFileIcon(f.name).bg, color: getFileIcon(f.name).color, borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {getFileIcon(f.name).icon}
                                       </div>
                                       <span style={{ fontWeight: 700, color: 'var(--color-text)', fontSize: '0.875rem' }}>{f.name}</span>
                                     </div>
                                 </td>
                                 <td style={{ padding: '1.25rem 1.5rem' }}>
-                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{formatSize(f.file_size)}</span>
+                                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)' }}>{FMT_SIZE(f.file_size || f.size)}</span>
                                 </td>
                                 <td style={{ padding: '1.25rem 1.5rem' }}>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

@@ -12,8 +12,6 @@ import { useDebounce } from '../hooks/useDebounce';
 import { CustomSelect } from '../components/ui/CustomSelect';
 import { Pagination } from '../components/ui/Pagination';
 
-const MOCK_TICKETS: any[] = [];
-
 const TICKET_STATUSES = [
   { id: 'open', label: 'Mới mở', color: '#3b82f6' },
   { id: 'in_progress', label: 'Đang xử lý', color: '#f59e0b' },
@@ -30,7 +28,7 @@ const PRIORITIES = [
 ];
 
 export const TicketsPage: React.FC = () => {
-  const { addToast } = useUIStore();
+  const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [tickets, setTickets] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
@@ -103,8 +101,8 @@ export const TicketsPage: React.FC = () => {
         api.get('/contacts?limit=1000'),
         api.get('/users')
       ]);
-      setContacts(cRes.data.data?.items || cRes.data.data || []);
-      setUsers(uRes.data.data || []);
+      const cData = cRes.data.data; setContacts(Array.isArray(cData) ? cData : (cData?.items || []));
+      const uData = uRes.data.data; setUsers(Array.isArray(uData) ? uData : (uData?.items || []));
     } catch (e) {
       console.error('Failed to fetch related data', e);
     }

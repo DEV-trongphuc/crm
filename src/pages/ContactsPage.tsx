@@ -157,7 +157,7 @@ export const ContactsPage: React.FC = () => {
 
   useEffect(() => {
     // Fetch sales/users for assignment once
-    api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => {});
+    api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
   }, []);
 
   useEffect(() => {

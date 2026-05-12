@@ -15,38 +15,86 @@ const mockAdapter = (config: any): Promise<any> => {
 
     // Mapping API endpoints to Mock Store data
     if (url.includes('/comments')) {
-      // Fake some comments for demo purposes
       responseData = [
-        { id: 1, user_name: 'Minh Khôi (Manager)', content: 'Tuyệt vời, cố gắng theo sát khách này nhé!', attachments: [], created_at: new Date(Date.now() - 86400000).toISOString() }
+        { id: 1, user_name: 'Minh Khôi (Manager)', content: 'Tuyệt vời, cố gắng theo sát khách này nhé! Nhớ nhắc khách về chương trình khuyến mãi tháng này.', attachments: [], created_at: new Date(Date.now() - 86400000).toISOString() },
+        { id: 2, user_name: 'Bảo Trâm (Sale 2)', content: 'Khách này mình đã chăm sóc từ đợt trước, họ rất quan tâm tới giải pháp bảo mật.', attachments: [], created_at: new Date(Date.now() - 43200000).toISOString() }
       ];
     } else if (url.includes('/contacts')) {
-      responseData = { items: state.contacts, total: state.contacts.length };
+      const companyId = config.params?.company_id;
+      let items = state.contacts;
+      if (companyId) items = items.filter((c: any) => String(c.company_id) === String(companyId));
+      responseData = { items, total: items.length };
     } else if (url.includes('/users')) {
       responseData = state.users;
     } else if (url.includes('/deals')) {
-      responseData = state.deals;
+      const contactId = config.params?.contact_id;
+      const companyId = config.params?.company_id;
+      let items = state.deals;
+      if (contactId) items = items.filter((d: any) => String(d.contact_id) === String(contactId));
+      if (companyId) items = items.filter((d: any) => String(d.company_id) === String(companyId));
+      responseData = { items, total: items.length };
     } else if (url.includes('/activities')) {
-      responseData = state.activities;
+      const contactId = config.params?.related_id || config.params?.contact_id;
+      let items = state.activities;
+      if (contactId) items = items.filter((a: any) => String(a.contact_id) === String(contactId));
+      responseData = { items, total: items.length };
     } else if (url.includes('/expenses')) {
-      responseData = state.expenses;
+      const contactId = config.params?.contact_id;
+      let items = state.expenses || [];
+      if (contactId) items = items.filter((e: any) => String(e.contact_id) === String(contactId));
+      responseData = items;
     } else if (url.includes('/invoices')) {
-      responseData = state.invoices;
+      const contactId = config.params?.contact_id;
+      let items = state.invoices;
+      if (contactId) items = items.filter((i: any) => String(i.contact_id) === String(contactId));
+      responseData = { items, total: items.length };
     } else if (url.includes('/tickets')) {
-      responseData = state.tickets;
+      const contactId = config.params?.contact_id;
+      let items = state.tickets;
+      if (contactId) items = items.filter((t: any) => String(t.contact_id) === String(contactId));
+      responseData = { items, total: items.length };
     } else if (url.includes('/products')) {
-      responseData = state.products;
+      responseData = { items: state.products, total: state.products.length };
+    } else if (url.includes('/inventory') && !url.includes('logs')) {
+      responseData = { 
+        items: state.batches, 
+        total: state.batches.length,
+        summary: { total_items: 450, out_of_stock: 2, capital_value: 1250000000 } 
+      };
     } else if (url.includes('/batches')) {
       responseData = state.batches;
     } else if (url.includes('/notifications')) {
       responseData = state.notifications;
     } else if (url.includes('/quotes')) {
-      responseData = state.quotes;
+      const contactId = config.params?.contact_id;
+      let items = state.quotes;
+      if (contactId) items = items.filter((q: any) => String(q.contact_id) === String(contactId));
+      responseData = { items, total: items.length };
     } else if (url.includes('/pipeline-stages')) {
       responseData = state.pipeline_stages;
     } else if (url.includes('/tags')) {
       responseData = state.tags;
+    } else if (url.includes('/inventory/global-logs')) {
+      responseData = state.inventory_logs;
+    } else if (url.match(/\/inventory\/logs\/\d+/)) {
+      const batchId = parseInt(url.split('/').pop() || '0', 10);
+      responseData = state.inventory_logs.filter((l: any) => l.batch_id === batchId);
+    } else if (url.includes('/companies')) {
+      responseData = { items: state.companies, total: state.companies.length };
     } else if (url.includes('/suppliers')) {
-      responseData = state.suppliers;
+      responseData = { items: state.suppliers, total: state.suppliers.length };
+    } else if (url.includes('/files')) {
+      const companyId = config.params?.company_id;
+      let items = state.files;
+      if (companyId) items = items.filter((f: any) => String(f.company_id) === String(companyId));
+      responseData = { items, total: items.length };
+    } else if (url.includes('/notes')) {
+      const entityId = config.params?.entity_id;
+      let items = state.activities.filter((a: any) => a.type === 'note');
+      if (entityId) items = items.filter((a: any) => String(a.contact_id) === String(entityId));
+      responseData = items; // Notes usually return array directly or wrapped depending on implementation, but CPD expects array
+    } else if (url.includes('/pipeline-stages')) {
+      // Already handled above, but ensure this branch works too
     } else if (url.includes('/dashboard/stats')) {
       const activeDeals = state.deals.filter((d: any) => d.stage !== 'won' && d.stage !== 'lost');
       const dealsValue = activeDeals.reduce((sum: number, d: any) => sum + (d.value || 0), 0);
@@ -163,6 +211,8 @@ api.interceptors.response.use(
         const { access_token, refresh_token } = data.data;
         localStorage.setItem('access_token', access_token);
         if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
+        // Sync new token to Zustand store
+        try { const { useAuthStore } = await import('../store/authStore' as any); const s = useAuthStore.getState(); if (s.user) useAuthStore.setState({ accessToken: access_token }); } catch {}
         original.headers.Authorization = `Bearer ${access_token}`;
         return api(original);
       } catch {

@@ -14,7 +14,7 @@ import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 
 export const SuppliersPage: React.FC = () => {
-  const { addToast, showConfirm } = useUIStore();
+  const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [suppliers, setSuppliers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -97,10 +97,12 @@ export const SuppliersPage: React.FC = () => {
       onConfirm: async () => {
         try {
           await api.delete(`/suppliers/${id}`);
+          setSuppliers(prev => prev.filter(s => s.id !== id));
           addToast('Đã xóa nhà cung cấp', 'success');
-          fetchSuppliers();
         } catch {
           addToast('Lỗi khi xóa nhà cung cấp', 'error');
+        } finally {
+          closeConfirm();
         }
       }
     });

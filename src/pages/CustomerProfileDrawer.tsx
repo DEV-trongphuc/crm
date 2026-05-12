@@ -66,7 +66,7 @@ const TABS = [
   { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <FileText size={16} /> },
   { id: 'timeline', label: 'Lịch sử tương tác', icon: <History size={16} /> },
   { id: 'scoring', label: 'Scoring', icon: <Target size={16} /> },
-  { id: 'invoices', label: 'Invoices', icon: <DollarSign size={16} /> },
+  { id: 'invoices', label: 'Hóa đơn', icon: <DollarSign size={16} /> },
   { id: 'deals', label: 'Cơ hội', icon: <DollarSign size={16} /> },
   { id: 'quotes', label: 'Báo giá', icon: <FileText size={16} /> },
   { id: 'expenses', label: 'Chi phí', icon: <DollarSign size={16} /> },
@@ -123,7 +123,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
     fd.append('file', file);
     try {
       const res = await api.post('/upload', fd);
-      setAttachment(res.data.data.url);
+      setAttachment(res.data.data?.url ?? '');
       addToast('Tải ảnh lên thành công', 'success');
     } catch (e: any) {
       addToast(e.response?.data?.message || 'Lỗi khi tải ảnh lên', 'error');
@@ -386,7 +386,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       // Fetch Tasks (Activities)
       const tasksRes = await api.get(`/activities?related_type=contact&related_id=${contact.id}`);
-      const rawActivities = tasksRes.data.data.items || [];
+      const rawActivities = tasksRes.data.data?.items || [];
       setDrawerActivities(rawActivities);
       setTasks(rawActivities.filter((a: any) => a.type === 'task').map((a: any) => ({
         id: a.id,
@@ -398,7 +398,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
       // Fetch Deals
       const dealsRes = await api.get(`/deals?contact_id=${contact.id}`);
-      setDeals((dealsRes.data.data.items || []).map((d: any) => ({
+      setDeals((dealsRes.data.data?.items || []).map((d: any) => ({
         id: d.id,
         title: d.title,
         value: d.value,
@@ -453,7 +453,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
 
   useEffect(() => {
     if (isOpen) {
-      api.get('/users').then(r => setUsers(r.data.data || [])).catch(() => { });
+      api.get('/users').then(r => { const d = r.data.data; setUsers(Array.isArray(d) ? d : (d?.items || [])); }).catch(() => {});
       api.get('/tags').then(r => setAllTags(r.data.data || [])).catch(() => { });
       api.get('/contacts?limit=1000').then(r => setContacts(r.data.data?.items || r.data.data || [])).catch(() => { });
       api.get('/pipeline-stages')
@@ -765,7 +765,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 const uploadRes = await api.post('/upload', formDataUpload, {
                                   headers: { 'Content-Type': 'multipart/form-data' }
                                 });
-                                finalUrl = uploadRes.data.data.url;
+                                finalUrl = uploadRes.data.data?.url ?? '';
                               }
 
                               await api.put(`/contacts/${contact.id}`, { avatar_url: finalUrl });

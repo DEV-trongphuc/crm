@@ -109,7 +109,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
           tax_rate: 10,
         });
         api.get(`/quotes/${quote.id}`).then(r => {
-          setItems(r.data.data.items || []);
+          setItems(r.data.data?.items || []);
           // Note: selectedContact and selectedDeal are handled by separate useEffects
         });
       } else {

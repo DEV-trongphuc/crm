@@ -73,7 +73,7 @@ export default function InventoryPage() {
   const [adjustForm, setAdjustForm] = useState({ new_qty: '', reason: 'Điều chỉnh kiểm kho' });
   const [receivers, setReceivers] = useState<{value: string, label: string, sublabel?: string, avatar?: string}[]>([]);
 
-  const { showConfirm, addToast } = useUIStore();
+  const { showConfirm, addToast, closeConfirm } = useUIStore();
 
 
   const fetchReceivers = async () => {
@@ -145,8 +145,8 @@ export default function InventoryPage() {
 
   const fetchBatchLogs = async (batchId: number) => {
     if (DEV_MODE) {
-      // Logic for batch logs from mock store if available
-      setLogs([]); 
+      const state = getFilteredMockState();
+      setLogs(state.inventory_logs.filter((l: any) => l.batch_id === batchId) as any);
       return;
     }
     try {
@@ -159,8 +159,8 @@ export default function InventoryPage() {
 
   const fetchGlobalLogs = async () => {
     if (DEV_MODE) {
-      // Mock global logs could be derived from activities or just static
-      setGlobalLogs([]);
+      const state = getFilteredMockState();
+      setGlobalLogs(state.inventory_logs as any);
       return;
     }
     try {
@@ -191,6 +191,7 @@ export default function InventoryPage() {
             addToast('Đã lưu trữ lô hàng', 'success');
             fetchBatches();
           }
+          closeConfirm();
         } catch (err) {
           addToast('Không thể kết nối máy chủ', 'error');
         }
@@ -393,51 +394,75 @@ export default function InventoryPage() {
           <p style={{ fontSize: '0.875rem' }}>Đang tải dữ liệu kho...</p>
         </div>
       ) : activeTab === 'history' ? (
-        <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)', overflow: 'hidden' }} className="anim-fade-up">
-          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)' }}>
-            <h3 style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--color-text)', margin: 0 }}>Lịch sử biến động toàn kho</h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>Ghi nhận mọi giao dịch nhập, xuất và bán hàng</p>
+        <div style={{ background: 'var(--color-surface)', borderRadius: '20px', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          {/* Header */}
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--color-bg)' }}>
+            <div>
+              <h3 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--color-text)', margin: 0 }}>Lịch sử biến động toàn kho</h3>
+              <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>Ghi nhận mọi giao dịch nhập, xuất và bán hàng</p>
+            </div>
+            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', background: 'var(--color-border)', padding: '4px 12px', borderRadius: '99px' }}>
+              {globalLogs.length} giao dịch
+            </span>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
+          {/* Table */}
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100">
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Thời gian</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Sản phẩm / Lô</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Loại</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">Biến động</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Lý do</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Người thực hiện</th>
+                <tr style={{ background: 'var(--color-bg)' }}>
+                  {['Thời gian', 'Sản phẩm / Lô', 'Loại giao dịch', 'Biến động', 'Lý do', 'Người thực hiện'].map(h => (
+                    <th key={h} style={{ padding: '0.75rem 1.25rem', fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', borderBottom: '2px solid var(--color-border)' }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
-                {globalLogs.map(log => (
-                  <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-4 text-sm text-slate-600">
-                      {new Date(log.created_at).toLocaleString('vi-VN')}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-slate-800">{log.product_name}</div>
-                      <div className="text-[10px] text-slate-400 font-mono">#{log.batch_code}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {log.action_type === 'IMPORT' ? (
-                        <span className="badge badge-success">Nhập kho</span>
-                      ) : log.action_type === 'SALE' ? (
-                        <span className="badge badge-primary">Bán hàng</span>
-                      ) : log.action_type === 'EXPORT_INTERNAL' ? (
-                        <span className="badge badge-warning">Xuất nội bộ</span>
-                      ) : (
-                        <span className="badge badge-info">Điều chỉnh</span>
-                      )}
-                    </td>
-                    <td className={`px-6 py-4 text-right font-black ${log.qty_change > 0 ? 'text-success' : 'text-danger'}`}>
-                      {log.qty_change > 0 ? '+' : ''}{log.qty_change}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-600">{log.reason}</td>
-                    <td className="px-6 py-4 text-sm font-bold text-slate-700">{log.creator_name}</td>
-                  </tr>
-                ))}
+              <tbody>
+                {globalLogs.map((log, i) => {
+                  const isIn = log.qty_change > 0;
+                  const typeConfig = log.action_type === 'IMPORT'
+                    ? { label: 'Nhập kho', color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0' }
+                    : log.action_type === 'SALE'
+                    ? { label: 'Bán hàng', color: '#3b82f6', bg: '#eff6ff', border: '#bfdbfe' }
+                    : log.action_type === 'EXPORT_INTERNAL'
+                    ? { label: 'Xuất nội bộ', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' }
+                    : { label: 'Điều chỉnh', color: '#8b5cf6', bg: '#f5f3ff', border: '#ddd6fe' };
+                  return (
+                    <tr key={log.id}
+                      style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(124,58,237,0.02)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <td style={{ padding: '0.875rem 1.25rem', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>{new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600, marginTop: '2px' }}>{new Date(log.created_at).toLocaleDateString('vi-VN')}</div>
+                      </td>
+                      <td style={{ padding: '0.875rem 1.25rem' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{log.product_name}</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontFamily: 'monospace', marginTop: '3px', fontWeight: 600 }}>#{log.batch_code}</div>
+                      </td>
+                      <td style={{ padding: '0.875rem 1.25rem' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.7rem', fontWeight: 800, color: typeConfig.color, background: typeConfig.bg, border: `1px solid ${typeConfig.border}`, padding: '4px 10px', borderRadius: '99px' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: typeConfig.color, display: 'inline-block' }} />
+                          {typeConfig.label}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.875rem 1.25rem' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '0.9rem', fontWeight: 900, color: isIn ? '#10b981' : '#ef4444', background: isIn ? '#ecfdf5' : '#fef2f2', padding: '5px 12px', borderRadius: '10px' }}>
+                          <span style={{ fontSize: '1rem' }}>{isIn ? '↑' : '↓'}</span>
+                          {isIn ? '+' : ''}{log.qty_change}
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.875rem 1.25rem', fontSize: '0.8rem', color: 'var(--color-text)', fontWeight: 600, maxWidth: '180px' }}>{log.reason}</td>
+                      <td style={{ padding: '0.875rem 1.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'linear-gradient(135deg,#7c3aed,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                            {log.creator_name?.charAt(0)}
+                          </div>
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text)' }}>{log.creator_name}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -457,117 +482,138 @@ export default function InventoryPage() {
       ) : (
         <>
           {viewMode === 'list' ? (
-            <div className="card-panel overflow-hidden">
-              <div className="overflow-x-auto">
+            <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                   <thead>
-                    <tr>
-                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>Lô hàng & SKU</th>
-                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>Ngày nhập / HSD</th>
-                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Giá vốn</th>
-                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)', textAlign: 'center' }}>Tồn kho</th>
-                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>
-                      <th style={{ padding: '0.75rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', textTransform: 'uppercase', borderBottom: '1px solid var(--color-border)', textAlign: 'right' }}>Thao tác</th>
+                    <tr style={{ background: 'var(--color-bg)' }}>
+                      <th style={{ padding: '0.875rem 1.25rem', fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--color-border)' }}>Lô hàng & SKU</th>
+                      <th style={{ padding: '0.875rem 1rem', fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--color-border)' }}>Ngày nhập / HSD</th>
+                      <th style={{ padding: '0.875rem 1rem', fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Giá vốn</th>
+                      <th style={{ padding: '0.875rem 1rem', fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--color-border)', textAlign: 'center' }}>Tồn kho</th>
+                      <th style={{ padding: '0.875rem 1rem', fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--color-border)' }}>Trạng thái</th>
+                      <th style={{ padding: '0.875rem 1.25rem', fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', borderBottom: '2px solid var(--color-border)', textAlign: 'right' }}>Thao tác</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredBatches.map((b, i) => {
                       const isNewDate = i === 0 || b.import_date !== filteredBatches[i-1].import_date;
+                      const pct = b.initial_qty > 0 ? Math.min((b.current_qty / b.initial_qty) * 100, 100) : 0;
+                      const catColor = b.category === 'Hardware' ? { bg: '#eff6ff', text: '#3b82f6' } :
+                        b.category === 'Network' ? { bg: '#f0fdf4', text: '#10b981' } :
+                        b.category === 'Software' ? { bg: '#fdf4ff', text: '#a855f7' } :
+                        b.category === 'Security' ? { bg: '#fff7ed', text: '#f97316' } :
+                        { bg: '#f8fafc', text: '#64748b' };
                       return (
                         <React.Fragment key={b.id}>
                           {isNewDate && (
-                            <tr style={{ background: 'rgba(0,0,0,0.02)' }}>
-                              <td colSpan={6} style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                  <CalendarDays size={14} />
+                            <tr>
+                              <td colSpan={6} style={{ padding: '0.5rem 1.25rem', background: 'linear-gradient(90deg, rgba(124,58,237,0.06) 0%, transparent 100%)', borderTop: '1px solid var(--color-border-light)', borderBottom: '1px solid var(--color-border-light)', borderLeft: '3px solid var(--color-primary)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '7px', fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                                  <CalendarDays size={12} />
                                   Nhập ngày: {new Date(b.import_date).toLocaleDateString('vi-VN')}
                                 </div>
                               </td>
                             </tr>
                           )}
-                          <tr className="group" style={{ transition: 'background-color 0.2s', borderBottom: '1px solid var(--color-border-light)' }}>
-                            <td style={{ padding: '0.875rem 0.75rem' }}>
-                              <div style={{ fontWeight: 600, color: 'var(--color-text)' }}>{b.product_name}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                                <span style={{ fontSize: '10px', background: 'var(--color-surface)', color: 'var(--color-text-muted)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--color-border)', fontFamily: 'monospace', textTransform: 'uppercase' }}>{b.sku || 'No SKU'}</span>
-                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 500 }}>#{b.batch_code}</span>
+                          <tr
+                            className="group"
+                            style={{ borderBottom: '1px solid var(--color-border-light)', transition: 'background 0.15s' }}
+                            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(124,58,237,0.03)')}
+                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                          >
+                            <td style={{ padding: '0.875rem 1.25rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                {b.category && (
+                                  <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '3px 7px', borderRadius: '6px', background: catColor.bg, color: catColor.text, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                    {b.category}
+                                  </span>
+                                )}
+                                <div>
+                                  <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)' }}>{b.product_name}</div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+                                    <span style={{ fontSize: '0.65rem', background: 'var(--color-bg)', color: 'var(--color-text-muted)', padding: '1px 5px', borderRadius: '4px', border: '1px solid var(--color-border)', fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{b.sku || 'No SKU'}</span>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>#{b.batch_code}</span>
+                                  </div>
+                                </div>
                               </div>
                             </td>
-                            <td style={{ padding: '0.875rem 0.75rem' }}>
-                              <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 500 }}>{b.import_date}</div>
+                            <td style={{ padding: '0.875rem 1rem' }}>
+                              <div style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 600 }}>{new Date(b.import_date).toLocaleDateString('vi-VN')}</div>
                               {b.expiry_date && (
-                                <div style={{ fontSize: '0.75rem', marginTop: '4px', fontWeight: 500, color: new Date(b.expiry_date) < new Date() ? 'var(--color-danger)' : 'var(--color-text-light)' }}>
-                                  HSD: {b.expiry_date}
+                                <div style={{ fontSize: '0.7rem', marginTop: '3px', fontWeight: 600, color: new Date(b.expiry_date) < new Date() ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                  <Clock size={10} /> HSD: {new Date(b.expiry_date).toLocaleDateString('vi-VN')}
                                 </div>
                               )}
                             </td>
-                            <td style={{ padding: '0.875rem 0.75rem', textAlign: 'right' }}>
-                              <div style={{ fontWeight: 700, color: 'var(--color-text)' }}>{b.import_price.toLocaleString()} đ</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{b.unit}</div>
+                            <td style={{ padding: '0.875rem 1rem', textAlign: 'right' }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)' }}>{b.import_price.toLocaleString()} đ</div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: 2, fontWeight: 600 }}>{b.unit}</div>
                             </td>
-                            <td style={{ padding: '0.875rem 0.75rem' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-text)' }}>
-                                  {b.current_qty} / {b.initial_qty}
+                            <td style={{ padding: '0.875rem 1rem' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 800, color: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                                  {b.current_qty} <span style={{ color: 'var(--color-text-muted)', fontWeight: 500 }}>/ {b.initial_qty}</span>
                                 </div>
-                                <div style={{ width: '64px', height: '6px', background: 'var(--color-border)', borderRadius: 'var(--radius-full)', marginTop: '6px', overflow: 'hidden' }}>
-                                  <div 
-                                    style={{ height: '100%', borderRadius: 'var(--radius-full)', background: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-primary)', width: `${Math.min((b.current_qty / b.initial_qty) * 100, 100)}%` }}
-                                  />
+                                <div style={{ width: '80px', height: '7px', background: 'var(--color-border)', borderRadius: '99px', overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', borderRadius: '99px', background: pct <= 10 ? 'linear-gradient(90deg,#ef4444,#f97316)' : pct <= 30 ? 'linear-gradient(90deg,#f59e0b,#eab308)' : 'linear-gradient(90deg,#7c3aed,#6366f1)', width: `${pct}%`, transition: 'width 0.5s ease' }} />
                                 </div>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--color-text-muted)', fontWeight: 700 }}>{pct.toFixed(0)}%</span>
                               </div>
                             </td>
-                            <td style={{ padding: '0.875rem 0.75rem' }}>
+                            <td style={{ padding: '0.875rem 1rem' }}>
                               {b.current_qty <= 0 ? (
-                                <span className="badge badge-danger">Hết hàng</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', background: '#fef2f2', padding: '4px 10px', borderRadius: '99px', border: '1px solid #fecaca' }}>
+                                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#ef4444', display: 'inline-block' }} /> Hết hàng
+                                </span>
                               ) : b.current_qty <= 5 ? (
-                                <span className="badge badge-warning">Sắp hết</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b', background: '#fffbeb', padding: '4px 10px', borderRadius: '99px', border: '1px solid #fde68a' }}>
+                                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} /> Sắp hết
+                                </span>
                               ) : (
-                                <span className="badge badge-success">Còn hàng</span>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 700, color: '#10b981', background: '#ecfdf5', padding: '4px 10px', borderRadius: '99px', border: '1px solid #a7f3d0' }}>
+                                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', display: 'inline-block' }} /> Còn hàng
+                                </span>
                               )}
                             </td>
-                            <td style={{ padding: '0.875rem 0.75rem', textAlign: 'right' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px', opacity: 0, transition: 'opacity 0.2s' }} className="group-hover-visible">
-                                <button 
-                                  className="p-2 hover:bg-amber-50 hover:text-amber-600 rounded-lg transition-colors text-slate-400"
-                                  title="Xuất nội bộ (Hỏng/Tặng)"
-                                  onClick={() => {
-                                    setSelectedBatch(b);
-                                    setExportForm({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' });
-                                    setShowExportModal(true);
-                                  }}
+                            <td style={{ padding: '0.875rem 1.25rem', textAlign: 'right' }}>
+                              <div className="group-hover-visible" style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '10px', padding: '3px', opacity: 0, transition: 'opacity 0.2s', boxShadow: 'var(--shadow-sm)' }}>
+                                <button
+                                  title="Xuất nội bộ"
+                                  onClick={() => { setSelectedBatch(b); setExportForm({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' }); setShowExportModal(true); }}
+                                  style={{ width: 30, height: 30, borderRadius: '7px', border: 'none', background: 'transparent', color: '#f59e0b', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = '#fffbeb')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                 >
-                                  <Share size={16} />
+                                  <Share size={14} />
                                 </button>
-                                <button 
-                                  className="p-2 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors text-slate-400"
+                                <button
                                   title="Lịch sử lô hàng"
-                                  onClick={() => {
-                                    setSelectedBatch(b);
-                                    fetchBatchLogs(b.id);
-                                    setShowHistoryModal(true);
-                                  }}
+                                  onClick={() => { setSelectedBatch(b); fetchBatchLogs(b.id); setShowHistoryModal(true); }}
+                                  style={{ width: 30, height: 30, borderRadius: '7px', border: 'none', background: 'transparent', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = '#eff6ff')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                 >
-                                  <History size={16} />
+                                  <History size={14} />
                                 </button>
-                                <button 
-                                  className="p-2 hover:bg-slate-100 hover:text-slate-800 rounded-lg transition-colors text-slate-400"
+                                <button
                                   title="Điều chỉnh tồn kho"
-                                  onClick={() => {
-                                    setSelectedBatch(b);
-                                    setAdjustForm({ new_qty: String(b.current_qty), reason: 'Điều chỉnh kiểm kho' });
-                                    setShowAdjustModal(true);
-                                  }}
+                                  onClick={() => { setSelectedBatch(b); setAdjustForm({ new_qty: String(b.current_qty), reason: 'Điều chỉnh kiểm kho' }); setShowAdjustModal(true); }}
+                                  style={{ width: 30, height: 30, borderRadius: '7px', border: 'none', background: 'transparent', color: '#8b5cf6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = '#f5f3ff')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                 >
-                                  <Edit size={16} />
+                                  <Edit size={14} />
                                 </button>
                                 {b.current_qty <= 0 && (
-                                  <button 
-                                    className="p-2 hover:bg-rose-50 hover:text-rose-600 rounded-lg transition-colors text-slate-400"
+                                  <button
                                     title="Lưu trữ lô hàng"
                                     onClick={() => archiveBatch(b.id)}
+                                    style={{ width: 30, height: 30, borderRadius: '7px', border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                   >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={14} />
                                   </button>
                                 )}
                               </div>
@@ -581,81 +627,143 @@ export default function InventoryPage() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredBatches.map(b => (
-                <motion.div 
-                  key={b.id}
-                  layout
-                  className={`card-panel group hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-t-4 ${b.current_qty <= 0 ? 'border-danger' : b.current_qty <= 5 ? 'border-warning' : 'border-primary'}`}
-                >
-                  <div className="p-5">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex-1">
-                        <h3 className="font-bold text-slate-800 line-clamp-1">{b.product_name}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono uppercase">{b.sku || 'No SKU'}</span>
-                          <span className="text-xs text-slate-400 font-medium">#{b.batch_code}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
+              {filteredBatches.map(b => {
+                const pct = b.initial_qty > 0 ? Math.min((b.current_qty / b.initial_qty) * 100, 100) : 0;
+                const catColor = b.category === 'Hardware' ? { bg: 'linear-gradient(135deg,#3b82f6,#6366f1)', chip: '#eff6ff', chipText: '#3b82f6' } :
+                  b.category === 'Network' ? { bg: 'linear-gradient(135deg,#10b981,#059669)', chip: '#f0fdf4', chipText: '#10b981' } :
+                  b.category === 'Software' ? { bg: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', chip: '#fdf4ff', chipText: '#8b5cf6' } :
+                  b.category === 'Security' ? { bg: 'linear-gradient(135deg,#f97316,#ef4444)', chip: '#fff7ed', chipText: '#f97316' } :
+                  b.category === 'AV' ? { bg: 'linear-gradient(135deg,#ec4899,#8b5cf6)', chip: '#fdf2f8', chipText: '#ec4899' } :
+                  { bg: 'linear-gradient(135deg,#64748b,#475569)', chip: '#f8fafc', chipText: '#64748b' };
+                const statusStyle = b.current_qty <= 0
+                  ? { color: '#ef4444', bg: '#fef2f2', border: '#fecaca', dot: '#ef4444', label: 'Hết hàng' }
+                  : b.current_qty <= 5
+                  ? { color: '#f59e0b', bg: '#fffbeb', border: '#fde68a', dot: '#f59e0b', label: 'Sắp hết' }
+                  : { color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0', dot: '#10b981', label: 'Còn hàng' };
+
+                return (
+                  <motion.div
+                    key={b.id}
+                    layout
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{
+                      background: 'var(--color-surface)',
+                      borderRadius: '16px',
+                      border: '1px solid var(--color-border)',
+                      overflow: 'hidden',
+                      boxShadow: 'var(--shadow-sm)',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-3px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 16px 40px rgba(0,0,0,0.1)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-sm)'; }}
+                  >
+                    {/* Gradient Header */}
+                    <div style={{ background: catColor.bg, padding: '1.125rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '4px' }}>
+                          {b.category || 'General'}
                         </div>
+                        <h3 style={{ fontSize: '0.9rem', fontWeight: 800, color: '#fff', lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                          {b.product_name}
+                        </h3>
                       </div>
-                      <div className="flex flex-col items-end">
-                        <div className="text-lg font-black text-slate-700">{b.import_price.toLocaleString()} đ</div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{b.unit}</div>
+                      {/* Stock Ring */}
+                      <div style={{ position: 'relative', width: 48, height: 48, flexShrink: 0, marginLeft: '12px' }}>
+                        <svg width="48" height="48" viewBox="0 0 48 48" style={{ transform: 'rotate(-90deg)' }}>
+                          <circle cx="24" cy="24" r="19" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="4" />
+                          <circle cx="24" cy="24" r="19" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="4"
+                            strokeDasharray={`${2 * Math.PI * 19}`}
+                            strokeDashoffset={`${2 * Math.PI * 19 * (1 - pct / 100)}`}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900, color: '#fff' }}>
+                          {pct.toFixed(0)}%
+                        </div>
                       </div>
                     </div>
 
-                    <div className="bg-slate-50 rounded-xl p-4 mb-4">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tồn kho hiện tại</span>
-                        <span className={`text-sm font-black ${b.current_qty <= 5 ? 'text-danger' : 'text-slate-700'}`}>
-                          {b.current_qty} <span className="text-slate-400 font-medium">/ {b.initial_qty}</span>
+                    {/* Body */}
+                    <div style={{ padding: '1rem 1.25rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
+                      {/* SKU + Batch */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, padding: '2px 6px', borderRadius: '5px', background: catColor.chip, color: catColor.chipText, fontFamily: 'monospace', textTransform: 'uppercase' }}>
+                          {b.sku || 'NO-SKU'}
+                        </span>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>#{b.batch_code}</span>
+                      </div>
+
+                      {/* Stock info */}
+                      <div style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '0.75rem 1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Tồn kho</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 900, color: b.current_qty <= 5 ? '#ef4444' : 'var(--color-text)' }}>
+                            {b.current_qty}<span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-muted)' }}> / {b.initial_qty} {b.unit}</span>
+                          </span>
+                        </div>
+                        <div style={{ height: '6px', background: 'var(--color-border)', borderRadius: '99px', overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: '99px', transition: 'width 0.6s ease',
+                            background: pct <= 10 ? 'linear-gradient(90deg,#ef4444,#f97316)' : pct <= 30 ? 'linear-gradient(90deg,#f59e0b,#eab308)' : catColor.bg,
+                            width: `${pct}%`
+                          }} />
+                        </div>
+                      </div>
+
+                      {/* Meta info */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                          <CalendarDays size={12} /> {new Date(b.import_date).toLocaleDateString('vi-VN')}
+                        </div>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: 700, color: statusStyle.color, background: statusStyle.bg, padding: '3px 9px', borderRadius: '99px', border: `1px solid ${statusStyle.border}` }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusStyle.dot, display: 'inline-block' }} />
+                          {statusStyle.label}
                         </span>
                       </div>
-                      <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden shadow-inner">
-                        <div 
-                          className={`h-full rounded-full transition-all duration-1000 ${b.current_qty <= 5 ? 'bg-danger' : 'bg-gradient-to-r from-primary to-blue-500'}`}
-                          style={{ width: `${Math.min((b.current_qty / b.initial_qty) * 100, 100)}%` }}
-                        />
+
+                      {/* Price */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--color-border-light)' }}>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Giá vốn</span>
+                        <span style={{ fontSize: '0.95rem', fontWeight: 900, color: 'var(--color-text)' }}>{b.import_price.toLocaleString()} đ</span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="flex items-center gap-2 text-slate-500">
-                        <CalendarDays size={14} className="text-slate-400" />
-                        <div className="text-xs font-medium">Nhập: <span className="text-slate-700">{b.import_date}</span></div>
-                      </div>
-                      {b.expiry_date && (
-                        <div className="flex items-center gap-2 text-slate-500">
-                          <Clock size={14} className={new Date(b.expiry_date) < new Date() ? 'text-danger' : 'text-slate-400'} />
-                          <div className="text-xs font-medium">HSD: <span className={new Date(b.expiry_date) < new Date() ? 'text-danger font-bold' : 'text-slate-700'}>{b.expiry_date}</span></div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-4 border-t border-slate-100">
-                      <button 
+                    {/* Action Footer */}
+                    <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--color-border-light)', display: 'flex', gap: '6px', background: 'var(--color-bg)' }}>
+                      <button
                         onClick={() => { setSelectedBatch(b); setExportForm({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' }); setShowExportModal(true); }}
-                        className="flex-1 h-9 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-700 flex items-center justify-center gap-2 text-xs font-bold transition-colors"
+                        style={{ flex: 1, height: 36, borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: '#f59e0b', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', transition: 'all 0.15s' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fffbeb'; (e.currentTarget as HTMLElement).style.borderColor = '#fde68a'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--color-surface)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)'; }}
                       >
-                        <Share size={14} /> Xuất nội bộ
+                        <Share size={13} /> Xuất kho
                       </button>
-                      <button 
+                      <button
                         onClick={() => { setSelectedBatch(b); fetchBatchLogs(b.id); setShowHistoryModal(true); }}
-                        className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-blue-100 text-slate-400 hover:text-blue-600 flex items-center justify-center transition-colors"
                         title="Lịch sử"
+                        style={{ width: 36, height: 36, borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: '#3b82f6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#eff6ff'; (e.currentTarget as HTMLElement).style.borderColor = '#bfdbfe'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--color-surface)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)'; }}
                       >
-                        <History size={16} />
+                        <History size={14} />
                       </button>
-                      <button 
+                      <button
                         onClick={() => { setSelectedBatch(b); setAdjustForm({ new_qty: String(b.current_qty), reason: 'Điều chỉnh kiểm kho' }); setShowAdjustModal(true); }}
-                        className="w-9 h-9 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-400 hover:text-slate-800 flex items-center justify-center transition-colors"
                         title="Điều chỉnh"
+                        style={{ width: 36, height: 36, borderRadius: '10px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: '#8b5cf6', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f5f3ff'; (e.currentTarget as HTMLElement).style.borderColor = '#ddd6fe'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--color-surface)'; (e.currentTarget as HTMLElement).style.borderColor = 'var(--color-border)'; }}
                       >
-                        <Edit size={16} />
+                        <Edit size={14} />
                       </button>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           )}
 

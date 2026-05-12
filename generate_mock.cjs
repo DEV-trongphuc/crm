@@ -5,151 +5,332 @@ const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 const randElem = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const randomDate = (start, end) => new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 
-const INDUSTRIES = ['Công nghệ & Viễn thông', 'Tài chính - Ngân hàng', 'Bất động sản & Xây dựng', 'Y tế & Dược phẩm'];
+const INDUSTRIES = ['Công nghệ & Viễn thông', 'Tài chính - Ngân hàng', 'Bất động sản & Xây dựng', 'Y tế & Dược phẩm', 'Sản xuất & Phân phối', 'Giáo dục', 'Bán lẻ', 'Logistics'];
 const USERS = [
-  { id: 1, full_name: "Phúc Trọng (Admin)", email: "admin@domation.crm", role: "admin", avatar: "https://i.pravatar.cc/150?u=1" },
-  { id: 2, full_name: "Thế Anh (Sale 1)", email: "sale1@domation.crm", role: "sale", avatar: "https://i.pravatar.cc/150?u=2" },
-  { id: 3, full_name: "Bảo Trâm (Sale 2)", email: "sale2@domation.crm", role: "sale", avatar: "https://i.pravatar.cc/150?u=3" },
-  { id: 5, full_name: "Minh Khôi (Manager)", email: "manager@domation.crm", role: "manager", avatar: "https://i.pravatar.cc/150?u=5" }
+  { id: 1, full_name: "Phúc Trọng (Admin)", email: "admin@minth.io", role: "admin", avatar_url: "https://i.pravatar.cc/150?u=1" },
+  { id: 2, full_name: "Thế Anh (Sale 1)", email: "sale1@minth.io", role: "sale", avatar_url: "https://i.pravatar.cc/150?u=2" },
+  { id: 3, full_name: "Bảo Trâm (Sale 2)", email: "sale2@minth.io", role: "sale", avatar_url: "https://i.pravatar.cc/150?u=3" },
+  { id: 5, full_name: "Minh Khôi (Manager)", email: "manager@minth.io", role: "manager", avatar_url: "https://i.pravatar.cc/150?u=5" }
 ];
 
-const COMPANIES = [
-  { id: 1, name: "Tập đoàn Công nghệ Viễn thông Tiến Phát", industry: "Công nghệ & Viễn thông", address: "Tòa nhà Tiến Phát, Quận 1, TP.HCM", tax_id: "0312345678", status: "active", stage_id: "won" },
-  { id: 2, name: "Ngân hàng TMCP Thịnh Vượng", industry: "Tài chính - Ngân hàng", address: "Số 9 Lê Duẩn, Quận 1, TP.HCM", tax_id: "0300123456", status: "active", stage_id: "contacted" },
-  { id: 3, name: "Công ty CP Xây dựng Hòa Bình Mới", industry: "Bất động sản & Xây dựng", address: "235 Đồng Khởi, Quận 1, TP.HCM", tax_id: "0309876543", status: "active", stage_id: "demo" },
-  { id: 4, name: "Hệ thống Y tế Sức Khỏe Vàng", industry: "Y tế & Dược phẩm", address: "123 Pasteur, Quận 3, TP.HCM", tax_id: "0305556667", status: "active", stage_id: "proposal" }
-];
-
-const CONTACTS = [
-  { id: 1, first_name: "Lê", last_name: "Hoàng Tuấn", email: "tuan.le@tienphat.vn", phone: "0903123456", mobile: "0912345678", job_title: "Giám đốc CNTT", department: "Khối Công nghệ", birthday: "1985-04-12", source: "website", expected_revenue: 500000000, company_id: 1, company_name: COMPANIES[0].name, owner_id: 2, owner_name: "Thế Anh (Sale 1)", custom_fields: [], stage_id: "lead", tags: ["VIP", "Tech"] },
-  { id: 2, first_name: "Trần", last_name: "Minh Tâm", email: "tam.tran@thinhvuong.bank", phone: "0988765432", mobile: "", job_title: "Trưởng phòng Mua sắm", department: "Hành chính Quản trị", birthday: "1990-08-22", source: "referral", expected_revenue: 1200000000, company_id: 2, company_name: COMPANIES[1].name, owner_id: 3, owner_name: "Bảo Trâm (Sale 2)", custom_fields: [], stage_id: "demo", tags: ["Banking"] },
-  { id: 3, first_name: "Phạm", last_name: "Thị Lan Anh", email: "lananh.pham@hoabinh.vn", phone: "0933456789", mobile: "0966778899", job_title: "CEO", department: "Ban Giám Đốc", birthday: "1982-11-05", source: "event", expected_revenue: 80000000, company_id: 3, company_name: COMPANIES[2].name, owner_id: 2, owner_name: "Thế Anh (Sale 1)", custom_fields: [], stage_id: "proposal", tags: ["Decision Maker"] },
-  { id: 4, first_name: "Nguyễn", last_name: "Văn Hùng", email: "hung.nguyen@suckhoevang.com", phone: "0977112233", mobile: "", job_title: "Trưởng khoa IT", department: "CNTT", birthday: "1988-01-15", source: "website", expected_revenue: 300000000, company_id: 4, company_name: COMPANIES[3].name, owner_id: 3, owner_name: "Bảo Trâm (Sale 2)", custom_fields: [], stage_id: "won", tags: ["Healthcare", "VIP"] },
-  { id: 5, first_name: "Vũ", last_name: "Đức Kiên", email: "kien.vu@tienphat.vn", phone: "0909988776", mobile: "0944556677", job_title: "Phó Giám đốc", department: "Khối Vận hành", birthday: "1986-09-30", source: "referral", expected_revenue: 450000000, company_id: 1, company_name: COMPANIES[0].name, owner_id: 1, owner_name: "Phúc Trọng (Admin)", custom_fields: [], stage_id: "contacted", tags: [] },
+const COMPANY_NAMES = [
+  "Tập đoàn Vingroup (Demo)", "Ngân hàng Techcombank", "Công ty CP FPT Software", "Hệ thống Y tế Vinmec", "Đại học Bách Khoa HN",
+  "Công ty Xây dựng Hòa Bình", "Tổng Công ty Viettel", "Sữa Việt Nam Vinamilk", "Tập đoàn Masan", "Thế Giới Di Động",
+  "Công ty CP Shopee Việt Nam", "Grab Việt Nam", "Tập đoàn Điện lực EVN", "Ngân hàng Vietcombank", "Bất động sản Novaland",
+  "Dược phẩm Hậu Giang", "Tổng công ty Hàng không VNA", "Tập đoàn Hòa Phát", "Công ty CP Tiki", "Ngân hàng VPBank"
 ];
 
 const PIPELINE_STAGES = [
   { id: 'lead', name: 'Lead mới', color: '#8b5cf6', prob: 10 },
-  { id: 'contacted', name: 'Liên hệ', color: '#3b82f6', prob: 30 },
+  { id: 'contacted', name: 'Tiếp cận', color: '#3b82f6', prob: 30 },
   { id: 'demo', name: 'Demo/Meeting', color: '#eab308', prob: 50 },
-  { id: 'proposal', name: 'Đề xuất/Báo giá', color: '#f97316', prob: 70 },
-  { id: 'won', name: 'Chốt (Thắng)', color: '#10b981', prob: 100 },
+  { id: 'proposal', name: 'Báo giá/Thương thảo', color: '#f97316', prob: 75 },
+  { id: 'won', name: 'Chốt thành công', color: '#10b981', prob: 100 },
   { id: 'lost', name: 'Từ chối', color: '#ef4444', prob: 0 }
 ];
 
-const DEALS = [
-  { id: 1, title: "Triển khai hệ thống Cloud Server", value: 150000000, stage_id: 'lead', contact_id: 1, company_id: 1, owner_id: 2, created_at: new Date(Date.now() - 2*86400000).toISOString() },
-  { id: 2, title: "Cung cấp thiết bị mạng Core Switch", value: 320000000, stage_id: 'contacted', contact_id: 5, company_id: 1, owner_id: 1, created_at: new Date(Date.now() - 5*86400000).toISOString() },
-  { id: 3, title: "Giải pháp bảo mật thanh toán", value: 850000000, stage_id: 'demo', contact_id: 2, company_id: 2, owner_id: 3, created_at: new Date(Date.now() - 10*86400000).toISOString() },
-  { id: 4, title: "Bảo trì phần mềm quản lý ERP", value: 45000000, stage_id: 'proposal', contact_id: 3, company_id: 3, owner_id: 2, created_at: new Date(Date.now() - 15*86400000).toISOString() },
-  { id: 5, title: "Cung cấp máy chủ lưu trữ y tế", value: 520000000, stage_id: 'won', contact_id: 4, company_id: 4, owner_id: 3, created_at: new Date(Date.now() - 20*86400000).toISOString() },
-  { id: 6, title: "Nâng cấp đường truyền mạng bệnh viện", value: 120000000, stage_id: 'proposal', contact_id: 4, company_id: 4, owner_id: 3, created_at: new Date(Date.now() - 7*86400000).toISOString() },
-  { id: 7, title: "Hệ thống tổng đài ảo CSKH", value: 68000000, stage_id: 'contacted', contact_id: 2, company_id: 2, owner_id: 3, created_at: new Date(Date.now() - 1*86400000).toISOString() },
+const COMPANIES = COMPANY_NAMES.map((name, i) => ({
+  id: i + 1,
+  name,
+  industry: randElem(INDUSTRIES),
+  address: `Số ${randInt(1, 500)} Đường ${randElem(['Lê Lợi', 'Nguyễn Huệ', 'Trần Hưng Đạo', 'Láng Hạ', 'Giải Phóng'])}, ${randElem(['Hà Nội', 'TP.HCM', 'Đà Nẵng'])}`,
+  tax_id: `010${randInt(1000000, 9999999)}`,
+  status: 'active',
+  stage_id: randElem(PIPELINE_STAGES).id
+}));
+
+const LAST_NAMES = ['Nguyễn', 'Trần', 'Lê', 'Phạm', 'Vũ', 'Đặng', 'Bùi', 'Đỗ', 'Hồ', 'Ngô'];
+const FIRST_NAMES = ['Hoàng Nam', 'Quốc Hưng', 'Thị Lan Anh', 'Văn Hùng', 'Thanh Bình', 'Minh Đức', 'Thu Hà', 'Đức Kiên', 'Minh Tâm', 'Thị Mai'];
+
+const CONTACTS = [];
+for (let i = 1; i <= 40; i++) {
+  const company = COMPANIES[i % COMPANIES.length];
+  const owner = USERS[i % USERS.length];
+  CONTACTS.push({
+    id: i,
+    first_name: randElem(LAST_NAMES),
+    last_name: randElem(FIRST_NAMES),
+    email: `contact${i}@${company.name.toLowerCase().replace(/\s+/g, '').replace(/[()]/g, '')}.com`,
+    phone: `09${randInt(10000000, 99999999)}`,
+    job_title: randElem(['Giám đốc', 'Trưởng phòng IT', 'Procurement Manager', 'CEO', 'CFO', 'Technical Lead']),
+    department: randElem(['Khối Công nghệ', 'IT', 'Mua sắm', 'Ban Giám đốc', 'Tài chính']),
+    birthday: randomDate(new Date(1970, 0, 1), new Date(1995, 11, 31)).toISOString().split('T')[0],
+    source: randElem(['website', 'referral', 'event', 'direct']),
+    expected_revenue: randInt(5, 500) * 10000000,
+    company_id: company.id,
+    company_name: company.name,
+    owner_id: owner.id,
+    owner_name: owner.full_name,
+    stage_id: randElem(PIPELINE_STAGES).id,
+    tags: [randElem(['VIP', 'Decision Maker', 'Tech', 'Healthcare', 'Banking', 'Education'])]
+  });
+}
+
+const DEALS = [];
+const ACTIVITIES = [];
+const QUOTES = [];
+const INVOICES = [];
+const FILES = [];
+const TICKETS = [];
+
+const ACTIVITY_TEMPLATES = [
+  { subject: "Gọi tư vấn báo giá hạ tầng", type: "call", body: "Khách hàng quan tâm tới giải pháp Cloud, cần báo giá chi tiết cấu hình 4 node. Yêu cầu bàn giao trong tháng 6.", metadata: { duration: '5:42', recording_url: 'https://cdn.samplelib.com/mp3/sample-3s.mp3' } },
+  { subject: "Gửi tài liệu kỹ thuật & Datasheet", type: "email", body: "Đã gửi bản vẽ sơ đồ mạng và tài liệu datasheet thiết bị Cisco. Chờ khách hàng phản hồi về phần firewall.", metadata: { opens: 3, last_open: new Date().toISOString() } },
+  { subject: "Họp khảo sát hiện trạng phòng máy", type: "meeting", body: "Đã tới site khảo sát phòng máy. Cần lưu ý phần điện dự phòng và điều hòa. Khách yêu cầu khảo sát thêm đợt 2.", metadata: { zoom_link: 'https://zoom.us/j/123456789', participants: ['Nguyễn Văn Hùng', 'Phúc Trọng', 'Minh Khôi'] } },
+  { subject: "Thương thảo hợp đồng & Chiết khấu", type: "call", body: "Khách đề nghị chiết khấu thêm 5%. Đang trình sếp duyệt phương án tặng kèm gói bảo trì 6 tháng.", metadata: { duration: '12:15' } }
 ];
 
-const ACTIVITIES = [
-  { id: 1, subject: "Gửi báo giá hệ thống Cloud", type: "email", contact_id: 1, deal_id: 1, body: "Đã gửi báo giá chi tiết gồm chi phí server và license. Khách hàng hẹn chiều mai phản hồi.", user_name: "Thế Anh (Sale 1)", owner_id: 2, created_at: new Date(Date.now() - 2*3600000).toISOString() },
-  { id: 2, subject: "Gọi tư vấn bảo mật thanh toán", type: "call", contact_id: 2, deal_id: 3, body: "Khách hàng rất quan tâm tới tiêu chuẩn PCI-DSS. Đã hẹn lịch demo vào tuần sau.", user_name: "Bảo Trâm (Sale 2)", owner_id: 3, created_at: new Date(Date.now() - 24*3600000).toISOString() },
-  { id: 3, subject: "Khảo sát hạ tầng mạng", type: "meeting", contact_id: 5, deal_id: 2, body: "Đã tới datacenter kiểm tra vị trí lắp đặt Core Switch. Cần cáp quang loại single-mode.", user_name: "Phúc Trọng (Admin)", owner_id: 1, created_at: new Date(Date.now() - 48*3600000).toISOString() },
-  { id: 4, subject: "Demo giải pháp lưu trữ hình ảnh y tế", type: "meeting", contact_id: 4, deal_id: 5, body: "Demo thành công. Bác sĩ trưởng khoa đánh giá cao tốc độ truy xuất.", user_name: "Bảo Trâm (Sale 2)", owner_id: 3, created_at: new Date(Date.now() - 72*3600000).toISOString() }
-];
+CONTACTS.forEach((contact, idx) => {
+  const numDeals = randInt(1, 2);
+  for (let d = 0; d < numDeals; d++) {
+    const dealId = DEALS.length + 1;
+    const stage = randElem(PIPELINE_STAGES);
+    const deal = {
+      id: dealId,
+      title: `Dự án ${randElem(['Cloud', 'Hardware', 'Network', 'Software', 'Security'])} - ${contact.company_name}`,
+      value: randInt(50, 1500) * 1000000,
+      stage_id: stage.id,
+      stage: stage.name,
+      probability: stage.prob,
+      expected_close: new Date(Date.now() + 60 * 86400000).toISOString(),
+      contact_id: contact.id,
+      company_id: contact.company_id,
+      owner_id: contact.owner_id,
+      created_at: new Date(Date.now() - 30 * 86400000).toISOString()
+    };
+    DEALS.push(deal);
+
+    // 2. Activities & Tasks for this deal
+    for (let i = 0; i < 3; i++) {
+      const template = ACTIVITY_TEMPLATES[i % ACTIVITY_TEMPLATES.length];
+      ACTIVITIES.push({
+        id: ACTIVITIES.length + 1,
+        subject: template.subject,
+        type: template.type,
+        status: 'done',
+        priority: 'medium',
+        contact_id: contact.id,
+        contact_name: `${contact.last_name} ${contact.first_name}`,
+        deal_id: deal.id,
+        deal_name: deal.title,
+        body: template.body,
+        notes: template.body,
+        user_name: USERS[idx % USERS.length].full_name,
+        owner_id: USERS[idx % USERS.length].id,
+        created_at: new Date(Date.now() - (i + 1) * 86400000).toISOString(),
+        due_date: new Date(Date.now() - (i + 1) * 86400000).toISOString(),
+        color: template.type === 'call' ? '#3b82f6' : template.type === 'email' ? '#8b5cf6' : '#eab308',
+        metadata: template.metadata || {},
+        related_type: 'deal',
+        related_id: deal.id
+      });
+    }
+
+    // Task
+    ACTIVITIES.push({
+      id: ACTIVITIES.length + 1,
+      subject: `Theo dõi tiến độ deal: ${deal.title}`,
+      type: "task",
+      status: "planned",
+      priority: randElem(['low', 'medium', 'high']),
+      contact_id: contact.id,
+      contact_name: `${contact.last_name} ${contact.first_name}`,
+      deal_id: deal.id,
+      deal_name: deal.title,
+      due_date: new Date(Date.now() + 5 * 86400000).toISOString(),
+      user_name: USERS[idx % USERS.length].full_name,
+      owner_id: USERS[idx % USERS.length].id,
+      created_at: new Date().toISOString(),
+      related_type: 'deal',
+      related_id: deal.id
+    });
+
+    // Quote
+    if (stage.prob >= 50) {
+      const quoteId = QUOTES.length + 1;
+      const quote = {
+        id: quoteId,
+        quote_number: `Q-2024-${String(quoteId).padStart(3, '0')}`,
+        title: `Báo giá cho ${deal.title}`,
+        contact_id: contact.id,
+        company_id: contact.company_id,
+        deal_id: deal.id,
+        subtotal: deal.value * 0.9,
+        tax: deal.value * 0.1,
+        total: deal.value,
+        status: stage.id === 'won' ? "approved" : "sent",
+        created_at: deal.created_at,
+        valid_until: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
+      };
+      QUOTES.push(quote);
+
+      if (quote.status === 'approved') {
+        const invoiceId = INVOICES.length + 1;
+        INVOICES.push({
+          id: invoiceId,
+          invoice_number: `INV-2024-${String(invoiceId).padStart(3, '0')}`,
+          title: `Hóa đơn cho ${quote.title}`,
+          quote_id: quote.id,
+          contact_id: contact.id,
+          company_id: contact.company_id,
+          total: quote.total,
+          status: randElem(['paid', 'pending']),
+          created_at: quote.created_at,
+          due_date: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0]
+        });
+      }
+    }
+  }
+
+  // Files
+  const extensions = ['pdf', 'docx', 'xlsx', 'jpg', 'zip'];
+  extensions.forEach((ext, i) => {
+    FILES.push({
+      id: FILES.length + 1,
+      name: `Tai_lieu_${i+1}_${contact.company_name.replace(/\s+/g, '_')}.${ext}`,
+      size: randInt(1, 20) * 1024000,
+      file_size: randInt(1, 20) * 1024000,
+      category: randElem(['contract', 'document', 'technical']),
+      contact_id: contact.id,
+      company_id: contact.company_id,
+      created_at: new Date(Date.now() - (i + 5) * 86400000).toISOString(),
+      uploader_name: randElem(USERS).full_name,
+      mime_type: ext === 'pdf' ? 'application/pdf' : 'application/octet-stream',
+      file_path: "#"
+    });
+  });
+
+  // Ticket
+  TICKETS.push({
+    id: TICKETS.length + 1,
+    subject: `Yêu cầu hỗ trợ triển khai - ${contact.last_name}`,
+    contact_id: contact.id,
+    company_id: contact.company_id,
+    priority: randElem(['medium', 'high']),
+    status: randElem(['open', 'in_progress']),
+    category: "Implementation",
+    description: "Cần hỗ trợ cấu hình hệ thống tại site khách hàng.",
+    created_at: new Date().toISOString()
+  });
+
+  // Notes
+  ACTIVITIES.push({
+    id: ACTIVITIES.length + 1,
+    subject: "Ghi chú nội bộ",
+    type: "note",
+    status: 'planned',
+    contact_id: contact.id,
+    contact_name: `${contact.last_name} ${contact.first_name}`,
+    body: `Cần đặc biệt lưu ý khách hàng này. @Thế_Anh cập nhật trạng thái thường xuyên nhé.`,
+    user_name: USERS[idx % USERS.length].full_name,
+    owner_id: USERS[idx % USERS.length].id,
+    created_at: new Date().toISOString()
+  });
+});
 
 const PRODUCTS = [
-  { id: 1, name: "Dell PowerEdge R750", sku: "DELL-R750", category: "Hardware", price: 125000000 },
-  { id: 2, name: "Cisco Catalyst 9300", sku: "CISCO-C9300", category: "Hardware", price: 85000000 },
-  { id: 3, name: "License Windows Server 2022", sku: "MS-WS2022", category: "Software", price: 25000000 },
+  { id: 1, name: "Server Dell PowerEdge R750", sku: "DELL-R750", category: "Hardware", price: 185000000, unit: "Cái" },
+  { id: 2, name: "Switch Cisco Catalyst 9300", sku: "CISCO-C9300", category: "Network", price: 95000000, unit: "Cái" },
+  { id: 3, name: "WiFi 6 Access Point Aruba 535", sku: "ARUBA-535", category: "Network", price: 22000000, unit: "Cái" },
+  { id: 4, name: "License Microsoft Server 2022", sku: "MS-WS-2022", category: "Software", price: 45000000, unit: "License" },
+  { id: 5, name: "Storage SAN Dell Unity 380", sku: "DELL-UNITY-380", category: "Hardware", price: 1200000000, unit: "Bộ" },
+  { id: 6, name: "FortiGate 100F Firewall", sku: "FG-100F", category: "Security", price: 115000000, unit: "Cái" },
+  { id: 7, name: "HP EliteBook 840 G10", sku: "HP-EB-840", category: "Hardware", price: 32000000, unit: "Cái" },
+  { id: 8, name: "Office 365 Business Premium", sku: "MS-O365-BP", category: "Software", price: 450000, unit: "User/Month" },
+  { id: 9, name: "Logitech Rally Plus System", sku: "LOGI-RALLY", category: "AV", price: 85000000, unit: "Bộ" },
+  { id: 10, name: "Veeam Backup & Replication", sku: "VEEAM-B-R", category: "Software", price: 25000000, unit: "License" },
 ];
 
-const BATCHES = [
-  { id: 1, product_id: 1, product_name: "Dell PowerEdge R750", sku: "DELL-R750", unit: "Máy", batch_code: "BATCH-DELL-26A", import_date: "2026-05-01", expiry_date: null, import_price: 105000000, initial_qty: 10, current_qty: 4, status: "active" },
-  { id: 2, product_id: 2, product_name: "Cisco Catalyst 9300", sku: "CISCO-C9300", unit: "Thiết bị", batch_code: "BATCH-CISCO-26A", import_date: "2026-04-15", expiry_date: null, import_price: 70000000, initial_qty: 5, current_qty: 0, status: "active" },
-  { id: 3, product_id: 3, product_name: "License Windows Server 2022", sku: "MS-WS2022", unit: "Key", batch_code: "BATCH-MS-26B", import_date: "2026-05-10", expiry_date: "2027-05-10", import_price: 20000000, initial_qty: 50, current_qty: 48, status: "active" },
-];
+const BATCHES = [];
+for (let i = 1; i <= 30; i++) {
+  const p = randElem(PRODUCTS);
+  BATCHES.push({
+    id: i,
+    product_id: p.id,
+    product_name: p.name,
+    sku: p.sku,
+    unit: p.unit,
+    batch_code: `LOT-${p.sku}-${randElem(['MAY24', 'JUN24', 'JUL24'])}`,
+    import_date: randomDate(new Date(2024, 0, 1), new Date()).toISOString().split('T')[0],
+    import_price: p.price * 0.85,
+    initial_qty: randInt(50, 200),
+    current_qty: randInt(5, 50),
+    status: "active"
+  });
+}
 
-const INVENTORY_LOGS = [
-  { id: 1, batch_id: 1, product_name: "Dell PowerEdge R750", batch_code: "BATCH-DELL-26A", action_type: "IMPORT", qty_change: 10, reason: "Nhập hàng từ Dell EMC", creator_name: "Phúc Trọng", created_at: "2026-05-01T08:00:00Z" },
-  { id: 2, batch_id: 1, product_name: "Dell PowerEdge R750", batch_code: "BATCH-DELL-26A", action_type: "SALE", qty_change: -6, reason: "Xuất bán dự án Y tế", creator_name: "Bảo Trâm", created_at: "2026-05-05T14:30:00Z" },
-  { id: 3, batch_id: 2, product_name: "Cisco Catalyst 9300", batch_code: "BATCH-CISCO-26A", action_type: "IMPORT", qty_change: 5, reason: "Nhập hàng dự án", creator_name: "Phúc Trọng", created_at: "2026-04-15T09:15:00Z" },
-  { id: 4, batch_id: 2, product_name: "Cisco Catalyst 9300", batch_code: "BATCH-CISCO-26A", action_type: "SALE", qty_change: -5, reason: "Xuất bán dự án Ngân hàng", creator_name: "Thế Anh", created_at: "2026-04-20T10:00:00Z" },
-  { id: 5, batch_id: 3, product_name: "License Windows Server 2022", batch_code: "BATCH-MS-26B", action_type: "EXPORT_INTERNAL", qty_change: -2, reason: "Cài đặt test lab nội bộ", creator_name: "Phúc Trọng", created_at: "2026-05-11T16:45:00Z" },
-];
+const INVENTORY_LOGS = BATCHES.flatMap((b, idx) => ([
+  {
+    id: idx * 2 + 1,
+    batch_id: b.id,
+    product_name: b.product_name,
+    batch_code: b.batch_code,
+    action_type: "IMPORT",
+    qty_change: b.initial_qty,
+    reason: "Nhập hàng định kỳ",
+    creator_name: "Phúc Trọng",
+    created_at: b.import_date
+  },
+  {
+    id: idx * 2 + 2,
+    batch_id: b.id,
+    product_name: b.product_name,
+    batch_code: b.batch_code,
+    action_type: "SALE",
+    qty_change: -(b.initial_qty - b.current_qty),
+    reason: "Xuất bán dự án",
+    creator_name: randElem(USERS).full_name,
+    created_at: new Date().toISOString()
+  }
+]));
 
-const TICKETS = [];
-const NOTIFICATIONS = [
-  { id: 1, title: 'Báo giá được duyệt', content: 'Khách hàng Sức Khỏe Vàng đã đồng ý báo giá', is_read: 0, created_at: new Date().toISOString() },
-  { id: 2, title: 'Lịch hẹn sắp tới', content: 'Demo lúc 14:00 chiều nay với anh Tâm', is_read: 0, created_at: new Date(Date.now() - 3600000).toISOString() }
+const SUPPLIERS = [
+  { id: 1, name: "Tập đoàn FPT Trading", contact_name: "Nguyễn Văn Hùng", phone: "0243.7654.321", email: "hungnv@fpt.com", address: "Duy Tân, Cầu Giấy, Hà Nội" },
+  { id: 2, name: "Công ty TNHH Dell EMC Việt Nam", contact_name: "Minh Đức", phone: "0901.234.567", email: "duc@dell.com", address: "Lotte Center, Hà Nội" },
+  { id: 3, name: "Cisco Systems Vietnam", contact_name: "Thanh Bình", phone: "0987.654.321", email: "binh@cisco.com", address: "Diamond Plaza, TP.HCM" },
+  { id: 4, name: "Công ty CP Sao Bắc Đẩu", contact_name: "Thu Hà", phone: "0243.9999.888", email: "ha@saobacdau.vn", address: "Trần Hưng Đạo, Hà Nội" },
+  { id: 5, name: "Công ty CP Dịch vụ Công nghệ CMC", contact_name: "Đức Kiên", phone: "0243.8888.777", email: "kien@cmc.com", address: "CMC Tower, Duy Tân, Hà Nội" },
+  { id: 6, name: "Microsoft Vietnam", contact_name: "Minh Tâm", phone: "0909.111.222", email: "tam@microsoft.com", address: "Keangnam Landmark, Hà Nội" },
+  { id: 7, name: "Công ty CP Đầu tư Thế Giới Số (Digiworld)", contact_name: "Hoàng Nam", phone: "0283.888.666", email: "nam@dgw.com.vn", address: "Nam Kỳ Khởi Nghĩa, TP.HCM" },
+  { id: 8, name: "Công ty CP Phân phối Synnex FPT", contact_name: "Quốc Hưng", phone: "0243.555.444", email: "hung@synnexfpt.com", address: "FPT Tower, Hà Nội" },
 ];
 
 const CONTENT = `
 import { create } from 'zustand';
 
-const USERS = ${JSON.stringify(USERS, null, 2)};
-const COMPANIES = ${JSON.stringify(COMPANIES, null, 2)};
-const CONTACTS = ${JSON.stringify(CONTACTS, null, 2)};
-const DEALS = ${JSON.stringify(DEALS, null, 2)};
-const ACTIVITIES = ${JSON.stringify(ACTIVITIES, null, 2)};
-const EXPENSES: any[] = [];
-const INVOICES: any[] = [];
-const PRODUCTS = ${JSON.stringify(PRODUCTS, null, 2)};
-const BATCHES = ${JSON.stringify(BATCHES, null, 2)};
-const INVENTORY_LOGS = ${JSON.stringify(INVENTORY_LOGS, null, 2)};
-const TICKETS: any[] = [];
-const NOTIFICATIONS = ${JSON.stringify(NOTIFICATIONS, null, 2)};
-const TAGS: any[] = [];
-const PIPELINE_STAGES = ${JSON.stringify(PIPELINE_STAGES, null, 2)};
-
-interface MockState {
-  users: any[];
-  companies: any[];
-  contacts: any[];
-  deals: any[];
-  activities: any[];
-  expenses: any[];
-  invoices: any[];
-  tickets: any[];
-  products: any[];
-  batches: any[];
-  inventory_logs: any[];
-  notifications: any[];
-  quotes: any[];
-  pipeline_stages: any[];
-  tags: any[];
-  suppliers: any[];
-  files: any[];
-  addContact: (c: any) => void;
-  addDeal: (d: any) => void;
-  updateDeal: (updated: any) => void;
-  markNotificationRead: (id: any) => void;
-  addActivity: (a: any) => void;
-}
-
-export const useMockStore = create<MockState>()((set) => ({
-  users: USERS,
-  companies: COMPANIES,
-  contacts: CONTACTS,
-  deals: DEALS,
-  activities: ACTIVITIES,
-  expenses: EXPENSES,
-  invoices: INVOICES,
-  tickets: TICKETS,
-  products: PRODUCTS,
-  batches: BATCHES,
-  inventory_logs: INVENTORY_LOGS,
-  notifications: NOTIFICATIONS,
-  quotes: [],
-  pipeline_stages: PIPELINE_STAGES,
-  tags: TAGS,
-  suppliers: [],
-  files: [],
-  addContact: (c) => set((s) => ({ contacts: [c, ...s.contacts] })),
-  addDeal: (d) => set((s) => ({ deals: [d, ...s.deals] })),
-  updateDeal: (updated) => set((s) => ({ deals: s.deals.map((d: any) => d.id === updated.id ? updated : d) })),
-  markNotificationRead: (id) => set((s) => ({ notifications: s.notifications.map((n: any) => n.id === id ? { ...n, is_read: 1 } : n) })),
-  addActivity: (a) => set((s) => ({ activities: [a, ...s.activities] })),
+export const useMockStore = create<any>()((set) => ({
+  users: ${JSON.stringify(USERS, null, 2)},
+  companies: ${JSON.stringify(COMPANIES, null, 2)},
+  contacts: ${JSON.stringify(CONTACTS, null, 2)},
+  deals: ${JSON.stringify(DEALS, null, 2)},
+  activities: ${JSON.stringify(ACTIVITIES, null, 2)},
+  expenses: [
+    { id: 1, title: "Lương nhân viên tháng 5", amount: 450000000, category: "Payroll", created_at: "2024-05-30" },
+    { id: 2, title: "Thuê văn phòng Keangnam", amount: 120000000, category: "Rent", created_at: "2024-05-01" },
+    { id: 3, title: "Marketing Campaign Q2", amount: 250000000, category: "Marketing", created_at: "2024-05-10" },
+    { id: 4, title: "Chi phí hạ tầng Cloud", amount: 85000000, category: "IT", created_at: "2024-05-15" }
+  ],
+  invoices: ${JSON.stringify(INVOICES, null, 2)},
+  tickets: ${JSON.stringify(TICKETS, null, 2)},
+  products: ${JSON.stringify(PRODUCTS, null, 2)},
+  batches: ${JSON.stringify(BATCHES, null, 2)},
+  inventory_logs: ${JSON.stringify(INVENTORY_LOGS, null, 2)},
+  notifications: [
+    { id: 1, title: 'Báo giá đã được duyệt', content: 'Khách hàng Techcombank đã duyệt báo giá hạ tầng Cloud.', is_read: 0, created_at: new Date().toISOString() }
+  ],
+  quotes: ${JSON.stringify(QUOTES, null, 2)},
+  pipeline_stages: ${JSON.stringify(PIPELINE_STAGES, null, 2)},
+  tags: [
+    { id: 1, name: "VIP", color: "#f59e0b", count: 12 },
+    { id: 2, name: "Banking", color: "#3b82f6", count: 8 },
+    { id: 3, name: "Education", color: "#10b981", count: 5 }
+  ],
+  suppliers: ${JSON.stringify(SUPPLIERS, null, 2)},
+  files: ${JSON.stringify(FILES, null, 2)},
 }));
 
 export const getFilteredMockState = () => useMockStore.getState();
 `;
 
 fs.writeFileSync(path.join(__dirname, 'src', 'store', 'mockStore.ts'), CONTENT);
-console.log('Generated mockStore.ts');
+console.log('Generated ULTRA-VIVID mockStore.ts (every contact is fully loaded).');

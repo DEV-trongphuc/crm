@@ -14,7 +14,6 @@ const ROLES = ['admin', 'manager', 'sales', 'viewer'];
 const R_LABEL: Record<string, string> = { admin: 'Quản trị viên', manager: 'Quản lý', sales: 'Sale', viewer: 'Xem' };
 const R_COLOR: Record<string, string> = { admin: 'danger', manager: 'warning', sales: 'info', viewer: 'cool' };
 
-const MOCK_USERS: any[] = [];
 
 const TABS = [
   { id: 'users', label: 'Người dùng', icon: Users },
@@ -459,7 +458,7 @@ export const SettingsPage: React.FC = () => {
                             await api.put(`/custom-fields/${f.id}`, { is_required: !f.is_required });
                             fetchCustomFields();
                           } catch (e) {
-                            console.error(e);
+                            addToast('Lỗi cập nhật trường', 'error');
                           }
                         }} 
                       />

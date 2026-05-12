@@ -17,8 +17,6 @@ import { useMockStore, getFilteredMockState } from '../store/mockStore';
 
 const PAGE_SIZE = 50;
 
-const MOCK_INVOICES: any[] = [];
-
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -92,7 +90,7 @@ export const InvoicesPage: React.FC = () => {
     }
   }, [page, dateRange, statusFilter, search]);
 
-  useEffect(() => { fetchInvoices(); setPage(1); }, [fetchInvoices]);
+  useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
 
   // ESC key to close modals
   useEffect(() => {
@@ -193,7 +191,7 @@ export const InvoicesPage: React.FC = () => {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Invoices</h1>
+          <h1 className="page-title">Hóa đơn & Thu tiền</h1>
           <p className="page-subtitle">Quản lý giao dịch tài chính và trạng thái thanh toán</p>
         </div>
         <div className="flex gap-2">

@@ -21,7 +21,7 @@ const TABS = [
   { id: 'info', label: 'Thông tin chung', icon: <User size={16} /> },
   { id: 'activities', label: 'Lịch sử & Ghi chú', icon: <History size={16} /> },
   { id: 'docs', label: 'Hồ sơ & Tài liệu', icon: <FileBadge size={16} /> },
-  { id: 'invoices', label: 'Invoices', icon: <FileText size={16} /> },
+  { id: 'invoices', label: 'Lịch sử Giao dịch', icon: <FileText size={16} /> },
   { id: 'settings', label: 'Thiết lập & Cổng TT', icon: <Settings size={16} /> },
   { id: 'tags', label: 'Tags & Custom', icon: <TagIcon size={16} /> },
 ];

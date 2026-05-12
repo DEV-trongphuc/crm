@@ -168,52 +168,66 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
             onAction={() => setShowModal(true)}
           />
         ) : (
-          <div className="card-panel p-0 overflow-hidden border-slate-200/60 shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200/60">
-                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Mã đơn</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Nhà cung cấp</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Ngày đặt</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Tổng tiền</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Trạng thái</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Thao tác</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {orders.map(o => (
-                    <tr key={o.id} className="hover:bg-slate-50/50 transition-colors group">
-                      <td className="px-6 py-4 font-bold text-slate-900">{o.po_number}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                            <Truck size={14} />
-                          </div>
-                          <span className="font-semibold text-slate-700">{o.supplier_name}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-500 text-sm">{new Date(o.order_date).toLocaleDateString('vi-VN')}</td>
-                      <td className="px-6 py-4 font-bold text-primary">
-                        {new Intl.NumberFormat('vi-VN').format(o.total)} đ
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`badge ${o.status === 'received' ? 'success' : o.status === 'ordered' ? 'warning' : 'info'} py-1 px-3 rounded-full text-[10px] uppercase font-black tracking-wider`}>
-                          {o.status === 'received' ? 'Đã nhập kho' : o.status === 'ordered' ? 'Đã đặt hàng' : 'Nháp'}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {orders.map((o, i) => {
+              const statusConfig = o.status === 'received'
+                ? { label: 'Đã nhập kho', color: '#10b981', bg: '#ecfdf5', border: '#a7f3d0' }
+                : o.status === 'ordered'
+                ? { label: 'Đã đặt hàng', color: '#f59e0b', bg: '#fffbeb', border: '#fde68a' }
+                : { label: 'Nháp', color: '#64748b', bg: '#f8fafc', border: '#e2e8f0' };
+              return (
+                <motion.div key={o.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
+                  style={{ background: 'var(--color-surface)', borderRadius: '16px', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: 'var(--shadow-xs)', display: 'flex', alignItems: 'stretch', transition: 'box-shadow 0.2s' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 24px rgba(0,0,0,0.08)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-xs)'}
+                >
+                  {/* Left accent */}
+                  <div style={{ width: 5, background: statusConfig.color, flexShrink: 0 }} />
+                  {/* Content */}
+                  <div style={{ flex: 1, padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+                    {/* Supplier Icon */}
+                    <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'linear-gradient(135deg,#7c3aed,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Truck size={20} style={{ color: '#fff' }} />
+                    </div>
+                    {/* Order info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '3px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-muted)', fontFamily: 'monospace', background: 'var(--color-bg)', padding: '2px 7px', borderRadius: '6px', border: '1px solid var(--color-border)' }}>{o.po_number}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.65rem', fontWeight: 800, color: statusConfig.color, background: statusConfig.bg, border: `1px solid ${statusConfig.border}`, padding: '2px 8px', borderRadius: '99px' }}>
+                          <span style={{ width: 5, height: 5, borderRadius: '50%', background: statusConfig.color, display: 'inline-block' }} />
+                          {statusConfig.label}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {o.status === 'ordered' && (
-                          <button className="btn outline sm inline-flex items-center gap-2" onClick={() => handleReceive(o.id)}>
-                            <Package size={14} /> Nhập kho
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{o.supplier_name}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px', fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+                        <Calendar size={11} /> {new Date(o.order_date).toLocaleDateString('vi-VN')}
+                      </div>
+                    </div>
+                    {/* Total */}
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--color-primary)' }}>{new Intl.NumberFormat('vi-VN').format(o.total)} đ</div>
+                      <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: '2px' }}>Tổng giá trị</div>
+                    </div>
+                    {/* Action */}
+                    {o.status === 'ordered' && (
+                      <button
+                        onClick={() => handleReceive(o.id)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg,#10b981,#059669)', color: '#fff', fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(16,185,129,0.3)', transition: 'opacity 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget as HTMLElement).style.opacity = '0.85'}
+                        onMouseLeave={e => (e.currentTarget as HTMLElement).style.opacity = '1'}
+                      >
+                        <Package size={14} /> Nhập kho
+                      </button>
+                    )}
+                    {o.status === 'received' && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.75rem', fontWeight: 700, color: '#10b981', flexShrink: 0 }}>
+                        <CheckCircle2 size={16} /> Hoàn tất
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>

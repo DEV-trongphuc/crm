@@ -62,10 +62,17 @@ export const ActivitiesPage: React.FC = () => {
   const [companies, setCompanies] = useState<any[]>([]);
 
   useEffect(() => {
-    if (showModal && !DEV_MODE) {
-      api.get('/contacts', { params: { limit: 1000 } }).then(r => setContacts(r.data.data.items || [])).catch(() => {});
-      api.get('/deals', { params: { limit: 1000 } }).then(r => setDeals(r.data.data.items || [])).catch(() => {});
-      api.get('/companies', { params: { limit: 1000 } }).then(r => setCompanies(r.data.data.items || [])).catch(() => {});
+    if (showModal) {
+      if (DEV_MODE) {
+        const s = getFilteredMockState();
+        setContacts(s.contacts || []);
+        setDeals(s.deals || []);
+        setCompanies(s.companies || []);
+      } else {
+        api.get('/contacts', { params: { limit: 1000 } }).then(r => setContacts(r.data.data?.items || [])).catch(() => {});
+        api.get('/deals', { params: { limit: 1000 } }).then(r => setDeals(r.data.data?.items || r.data.data || [])).catch(() => {});
+        api.get('/companies', { params: { limit: 1000 } }).then(r => setCompanies(r.data.data?.items || [])).catch(() => {});
+      }
     }
   }, [showModal]);
 
@@ -164,21 +171,25 @@ export const ActivitiesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (act: any) => {
-    showConfirm(
-      'Xóa hoạt động?',
-      `Bạn có chắc chắn muốn xóa vĩnh viễn "${act.subject}"?`,
-      async () => {
+  const { closeConfirm } = useUIStore();
+  const handleDelete = async (actItem: any) => {
+    showConfirm({
+      title: 'Xóa hoạt động?',
+      message: `Bạn có chắc chắn muốn xóa vĩnh viễn "${actItem.subject}"?`,
+      isDanger: true,
+      onConfirm: async () => {
         try {
-          await api.delete(`/activities/${act.id}`);
+          await api.delete(`/activities/${actItem.id}`);
+          setItems(prev => prev.filter(a => a.id !== actItem.id));
           addToast('Đã xóa hoạt động thành công', 'success');
-          fetchActivities();
         } catch {
           addToast('Lỗi khi xóa hoạt động (Demo Mode)', 'error');
-          setItems(prev => prev.filter(a => a.id !== act.id));
+          setItems(prev => prev.filter(a => a.id !== actItem.id));
+        } finally {
+          closeConfirm();
         }
       }
-    );
+    });
   };
 
   const navigateToRelated = (item: any, e: React.MouseEvent) => {

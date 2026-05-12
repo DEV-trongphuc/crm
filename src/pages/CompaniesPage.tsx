@@ -17,8 +17,6 @@ const ST_LABEL: Record<string, string> = { active: 'Hoạt động', inactive: '
 const ST_CLASS: Record<string, string> = { active: 'success', inactive: 'danger', prospect: 'warning' };
 const PAGE_SIZE = 50;
 
-const MOCK_COMPANIES: any[] = [];
-
 export const CompaniesPage: React.FC = () => {
   const { addToast, showConfirm, closeConfirm } = useUIStore();
   const [companies, setCompanies] = useState<any[]>([]);
@@ -327,7 +325,9 @@ export const CompaniesPage: React.FC = () => {
         onClose={() => setShowImportExport(false)} 
         entityName="Công ty" 
         onExport={(format) => {
-          window.open(`${api.defaults.baseURL}/export?type=company&token=${localStorage.getItem('token')}`, '_blank');
+          const authRaw = localStorage.getItem('minth-auth');
+          const authToken = authRaw ? JSON.parse(authRaw)?.state?.accessToken : '';
+          window.open(`${api.defaults.baseURL}/export?type=company&token=${authToken}`, '_blank');
         }}
       />
     </div>

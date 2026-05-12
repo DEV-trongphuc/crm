@@ -55,11 +55,11 @@ export const DashboardPage: React.FC = () => {
       const state = getFilteredMockState();
       
       // Compute stats from mock data
-      const activeDeals = state.deals.filter((d: any) => d.stage !== 'won' && d.stage !== 'lost');
-      const wonDeals = state.deals.filter((d: any) => d.stage === 'won');
+      const activeDeals = state.deals.filter((d: any) => d.stage_id !== 'won' && d.stage_id !== 'lost');
+      const wonDeals = state.deals.filter((d: any) => d.stage_id === 'won');
       const wonValue = wonDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
       const activeValue = activeDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
-      const expenses = state.expenses.reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
+      const expenses = (state.expenses || []).reduce((sum: number, e: any) => sum + (Number(e.amount) || 0), 0);
       
       setStats({
         won_value: wonValue,
@@ -437,9 +437,7 @@ export const DashboardPage: React.FC = () => {
                 <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={38} />
                 <Tooltip formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Chi phí']} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
                 <Area type="monotone" dataKey="revenue" stroke="#7c3aed" strokeWidth={3} fill="url(#revGrad)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                {revenueChart[0]?.cost !== undefined && (
-                  <Bar dataKey="cost" fill="#ef4444" fillOpacity={0.5} radius={[3, 3, 0, 0]} barSize={12} />
-                )}
+                <Area type="monotone" dataKey="cost" stroke="#ef4444" strokeWidth={2} fill="#ef4444" fillOpacity={0.05} dot={false} />
               </ComposedChart>
             </ResponsiveContainer>
           )}
