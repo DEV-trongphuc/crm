@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DEV_MODE } from '../../config/env';
 import { AlertCircle, Terminal, X, Send, User, Mail, Building, Phone, Loader2, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUIStore } from '../../store/uiStore';
+import { useAuthStore } from '../../store/authStore';
 import { CustomSelect } from './CustomSelect';
 
 export const DemoIndicator: React.FC = () => {
   const { addToast } = useUIStore();
+  const { clearAuth } = useAuthStore();
+  const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -54,6 +58,11 @@ export const DemoIndicator: React.FC = () => {
     }
   };
 
+  const handleSwitchRole = () => {
+    clearAuth();
+    navigate('/login');
+  };
+
   return (
     <>
       <motion.div 
@@ -91,8 +100,13 @@ export const DemoIndicator: React.FC = () => {
           }}>
             <Terminal size={14} />
           </div>
-          <span style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.02em' }}>
-            DEMO MODE: <span style={{ color: '#c4b5fd' }}>DOMATION MOCKUP</span>
+          <span 
+            onClick={handleSwitchRole}
+            style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.02em', cursor: 'pointer', transition: 'opacity 0.2s' }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+          >
+            DEMO MODE: <span style={{ color: '#c4b5fd', textDecoration: 'underline' }}>SWITCH ROLE ACCOUNT</span>
           </span>
           <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.2)' }} />
           
