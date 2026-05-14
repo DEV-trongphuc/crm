@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Search, Building2, X, Loader2, Pencil, Trash2, Globe, Phone, Mail, Users, LayoutGrid, List, Filter, RefreshCw, Download, DollarSign } from 'lucide-react';
+import { Plus, Search, Building2, X, Loader2, Pencil, Trash2, Globe, Phone, Mail, Users, LayoutGrid, List, Filter, RefreshCw, Download, DollarSign, Briefcase } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { useUIStore } from '../store/uiStore';
@@ -214,7 +214,8 @@ export const CompaniesPage: React.FC = () => {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex gap-2 items-center">
-                    <span className="flex items-center gap-1 text-xs text-light"><Users size={12} />{co.contact_count || 0}</span>
+                    <span className="flex items-center gap-1 text-xs text-light" title="Người liên hệ"><Users size={12} />{co.contact_count || 0}</span>
+                    <span className="flex items-center gap-1 text-xs text-light" title="Quy mô"><Briefcase size={12} />{co.size || '1-10'} nv</span>
                     {co.stage_name && <span className="badge sm" style={{ background: (co.stage_color || '#7c3aed') + '15', color: co.stage_color || '#7c3aed', fontSize: '0.65rem' }}>{co.stage_name}</span>}
                   </div>
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
@@ -281,10 +282,9 @@ export const CompaniesPage: React.FC = () => {
                           {co.phone && <PhoneLink phone={co.phone} style={{ fontSize: '0.875rem' }} />}
                           <p className="text-xs text-light">{co.email}</p>
                         </div>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
                         {co.stage_name ? <span className="badge sm" style={{ background: (co.stage_color || '#7c3aed') + '15', color: co.stage_color || '#7c3aed' }}>{co.stage_name}</span> : '—'}
                       </td>
+                      <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{co.size || '—'}</td>
                       <td style={{ padding: '1rem', fontWeight: 700, fontSize: '0.875rem' }}>
                         {co.expected_revenue > 0 ? new Intl.NumberFormat('vi-VN').format(co.expected_revenue) + ' đ' : '—'}
                       </td>
