@@ -348,7 +348,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                               <div className="timeline-icon bg-primary" style={{ position: 'absolute', left: '-2rem', top: '0', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
                                 <History size={14} />
                               </div>
-                              <div className="timeline-content" style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)', textAlign: 'left' }}>
+                              <div className="timeline-content" style={{ padding: '0.75rem 1rem', background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)', textAlign: 'left' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                   <strong style={{ fontSize: '0.875rem' }}>{n.author_name || n.user_name || 'Hệ thống'}</strong>
                                   <span className="text-xs text-muted">{new Date(n.created_at).toLocaleString('vi-VN')}</span>
@@ -362,7 +362,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                             <div className="timeline-icon bg-success" style={{ position: 'absolute', left: '-2rem', top: '0', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>
                               <CheckCircle2 size={14} />
                             </div>
-                            <div className="timeline-content" style={{ padding: '0.75rem 1rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)' }}>
+                            <div className="timeline-content" style={{ padding: '0.75rem 1rem', background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)', textAlign: 'left' }}>
                               <p style={{ fontSize: '0.875rem', margin: 0 }}><strong>System</strong> chuyển sang trạng thái "{stages.find(s=>s.id===formData?.stage_id)?.name || 'Lead mới'}".</p>
                             </div>
                           </div>
