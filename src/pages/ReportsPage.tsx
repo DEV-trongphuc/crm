@@ -44,33 +44,53 @@ export const ReportsPage: React.FC = () => {
     if (DEV_MODE) {
       setLoading(true);
       const state = getFilteredMockState();
-      const wonValue = state.contacts.filter((c: any) => state.pipeline_stages.find((s: any) => s.id === c.stage_id)?.is_won)
-        .reduce((sum: number, c: any) => sum + (Number(c.expected_revenue) || 0), 0);
-      
+
+      // Revenue = tổng value của deals đã chốt (stage_id === 'won')
+      const wonDeals = (state.deals || []).filter((d: any) => d.stage_id === 'won');
+      const wonValue = wonDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
+
+      // Tổng tất cả deals để tính thống kê
+      const allDeals = state.deals || [];
+      const totalDealValue = allDeals.reduce((sum: number, d: any) => sum + (Number(d.value) || 0), 0);
+
+      // Doanh thu theo owner
+      const byOwner = state.users.map((u: any) => {
+        const userDeals = allDeals.filter((d: any) => d.owner_id === u.id);
+        return {
+          id: u.id,
+          name: u.full_name,
+          deals: userDeals.length,
+          revenue: userDeals.reduce((s: number, d: any) => s + (Number(d.value) || 0), 0)
+        };
+      }).filter((o: any) => o.deals > 0);
+
+      // Sinh dữ liệu 8 tháng gần nhất với giá trị thực
+      const BASE = totalDealValue > 0 ? totalDealValue / 8 : 500_000_000;
+      const now = new Date();
+      const byMonth = Array.from({ length: 8 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (7 - i), 1);
+        const label = `T${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const factor = 0.6 + (i / 7) * 0.8 + (Math.sin(i) * 0.1);
+        return {
+          month: label,
+          revenue: Math.round(BASE * factor),
+          target: Math.round(BASE * (0.7 + (i / 7) * 0.6)),
+        };
+      });
+
       setSalesData({
         summary: {
-          total_revenue: wonValue,
+          total_revenue: wonValue || totalDealValue * 0.3,
           revenue_change: '+12.4%',
-          deals: 45,
+          deals: allDeals.length,
           deals_change: '+5.2%',
           contacts: state.contacts.length,
           contacts_change: '+8.1%',
-          win_rate: 68,
+          win_rate: allDeals.length > 0 ? Math.round((wonDeals.length / allDeals.length) * 100) : 68,
           win_rate_change: '+2.5%'
         },
-        by_month: [
-          { month: 'T08', revenue: wonValue * 0.7, target: wonValue * 0.8 },
-          { month: 'T09', revenue: wonValue * 0.85, target: wonValue * 0.8 },
-          { month: 'T10', revenue: wonValue * 0.9, target: wonValue * 1.0 },
-          { month: 'T11', revenue: wonValue * 1.1, target: wonValue * 1.0 },
-          { month: 'T12', revenue: wonValue, target: wonValue * 1.1 }
-        ],
-        by_owner: state.users.slice(0, 4).map((u: any, i: number) => ({
-          id: u.id,
-          name: u.full_name,
-          deals: 12 - i,
-          revenue: wonValue * (0.4 - i * 0.1)
-        }))
+        by_month: byMonth,
+        by_owner: byOwner
       });
       setLoading(false);
       return;

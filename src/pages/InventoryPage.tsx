@@ -105,7 +105,7 @@ export default function InventoryPage() {
       if (statusFilter !== 'all') {
         if (statusFilter === 'in_stock') list = list.filter(b => b.current_qty > 0);
         else if (statusFilter === 'out_of_stock') list = list.filter(b => b.current_qty <= 0);
-        else if (statusFilter === 'low_stock') list = list.filter(b => b.current_qty > 0 && b.current_qty <= 5);
+        else if (statusFilter === 'low_stock') list = list.filter(b => b.current_qty > 0 && b.initial_qty > 0 && (b.current_qty / b.initial_qty) <= 0.10);
       }
 
       setBatches(list);
@@ -256,7 +256,7 @@ export default function InventoryPage() {
   const stats = {
     totalValue: summary.capital_value || 0,
     totalBatches: total,
-    lowStock: batches.filter(b => b.current_qty > 0 && b.current_qty <= 5).length, // Keep client-side for "low stock" if not in summary
+    lowStock: batches.filter(b => b.current_qty > 0 && b.initial_qty > 0 && (b.current_qty / b.initial_qty) <= 0.10).length,
     outOfStock: summary.out_of_stock || 0,
     expiringSoon: batches.filter(b => b.expiry_date && new Date(b.expiry_date) <= new Date(now + 30 * 24 * 60 * 60 * 1000) && b.current_qty > 0).length
   };
@@ -325,7 +325,9 @@ export default function InventoryPage() {
           <motion.div 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
-            style={{ marginBottom: '1.5rem', overflow: 'hidden' }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{ marginBottom: '1.5rem' }}
           >
             <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 'var(--radius-xl)', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
               <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'var(--color-warning)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(245,158,11,0.3)' }}>
@@ -399,11 +401,11 @@ export default function InventoryPage() {
           <p style={{ fontSize: '0.875rem' }}>Đang tải dữ liệu kho...</p>
         </div>
       ) : activeTab === 'history' ? (
-        <div className="card overflow-hidden anim-fade-up">
-          <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div className="card anim-fade-up" style={{ overflow: 'hidden' }}>
+          <div className="flex items-center justify-between" style={{ padding: '1.25rem', borderBottom: '1px solid var(--color-border-light)' }}>
             <div>
               <h3 className="font-bold m-0" style={{ color: 'var(--color-text)' }}>Lịch sử biến động toàn kho</h3>
-              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Ghi nhận mọi giao dịch nhập, xuất và bán hàng</p>
+              <p className="text-xs" style={{ color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>Ghi nhận mọi giao dịch nhập, xuất và bán hàng</p>
             </div>
             <span className="badge info">{globalLogs.length} giao dịch</span>
           </div>
@@ -434,11 +436,11 @@ export default function InventoryPage() {
                     <tr key={log.id} className="table-row-hover">
                       <td>
                         <div className="font-bold text-sm">{new Date(log.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
-                        <div className="text-xs text-light mt-0.5">{new Date(log.created_at).toLocaleDateString('vi-VN')}</div>
+                        <div className="text-xs text-light" style={{ marginTop: '0.125rem' }}>{new Date(log.created_at).toLocaleDateString('vi-VN')}</div>
                       </td>
                       <td>
                         <div className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>{log.product_name}</div>
-                        <div className="text-[10px] text-light font-mono mt-0.5">#{log.batch_code}</div>
+                        <div className="text-light" style={{ fontSize: '10px', fontFamily: 'monospace', marginTop: '0.125rem' }}>#{log.batch_code}</div>
                       </td>
                       <td>
                         <span className={`badge ${typeClass}`}>
@@ -446,14 +448,14 @@ export default function InventoryPage() {
                         </span>
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <div className={`font-black text-sm ${isIn ? 'text-success' : 'text-danger'}`}>
+                        <div className={`font-bold text-sm`} style={{ color: isIn ? 'var(--color-success)' : 'var(--color-danger)' }}>
                           {isIn ? '+' : ''}{log.qty_change}
                         </div>
                       </td>
-                      <td><div className="text-sm max-w-[200px] truncate" style={{ color: 'var(--color-text-muted)' }} title={log.reason}>{log.reason}</div></td>
+                      <td><div className="text-sm truncate" style={{ color: 'var(--color-text-muted)', maxWidth: '200px' }} title={log.reason}>{log.reason}</div></td>
                       <td>
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black shrink-0">
+                          <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 900, flexShrink: 0 }}>
                             {log.creator_name?.charAt(0)}
                           </div>
                           <span className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>{log.creator_name}</span>
@@ -481,7 +483,7 @@ export default function InventoryPage() {
       ) : (
         <>
           {viewMode === 'list' ? (
-            <div className="card overflow-hidden" style={{ borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
+            <div className="card" style={{ borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border)' }}>
               <div className="table-wrap">
                 <table>
                   <thead>
@@ -528,22 +530,22 @@ export default function InventoryPage() {
                               <td>
                                 <div className="font-bold text-sm">{new Date(b.import_date).toLocaleDateString('vi-VN')}</div>
                                 {b.expiry_date && (
-                                  <div className={`text-xs flex items-center gap-1 mt-0.5 ${new Date(b.expiry_date) < new Date() ? 'text-danger font-bold' : ''}`} style={{ color: new Date(b.expiry_date) < new Date() ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
+                                  <div className={`text-xs flex items-center gap-1 ${new Date(b.expiry_date) < new Date() ? 'font-bold' : ''}`} style={{ marginTop: '0.25rem', color: new Date(b.expiry_date) < new Date() ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
                                     <Clock size={12} /> HSD: {new Date(b.expiry_date).toLocaleDateString('vi-VN')}
                                   </div>
                                 )}
                               </td>
                               <td style={{ textAlign: 'right' }}>
-                                <div className="font-black text-sm">{(b.import_price || 0).toLocaleString()} đ</div>
-                                <div className="text-[10px] text-muted">{b.unit}</div>
+                                <div className="font-bold text-sm">{(b.import_price || 0).toLocaleString()} đ</div>
+                                <div className="text-muted" style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 600, marginTop: '2px' }}>{b.unit}</div>
                               </td>
-                              <td>
-                                <div className="flex flex-col items-center gap-1">
-                                  <div className={`text-sm font-black`} style={{ color: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-text)' }}>
-                                    {b.current_qty} <span className="text-xs font-medium" style={{ color: 'var(--color-text-light)' }}>/ {b.initial_qty}</span>
+                              <td style={{ textAlign: 'center' }}>
+                                <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: '5px' }}>
+                                  <div style={{ fontSize: '0.875rem', fontWeight: 700, color: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-text)', whiteSpace: 'nowrap' }}>
+                                    {b.current_qty} <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--color-text-light)' }}>/ {b.initial_qty}</span>
                                   </div>
-                                  <div className="w-[80px] h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-border)' }}>
-                                    <div className={`h-full rounded-full transition-all duration-500 ${pct <= 10 ? 'bg-danger' : pct <= 30 ? 'bg-warning' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
+                                  <div style={{ width: '80px', height: '10px', borderRadius: '100px', background: 'var(--color-border)', position: 'relative', overflow: 'hidden', flexShrink: 0 }}>
+                                    <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', borderRadius: '100px', width: `${Math.max(pct, pct > 0 ? 6 : 0)}%`, minWidth: pct > 0 ? '6px' : '0', background: pct <= 10 ? 'var(--color-danger)' : pct <= 30 ? 'var(--color-warning)' : 'var(--color-primary)', transition: 'width 0.5s' }} />
                                   </div>
                                 </div>
                               </td>
@@ -557,7 +559,7 @@ export default function InventoryPage() {
                               )}
                             </td>
                             <td style={{ textAlign: 'right' }}>
-                              <div className="flex gap-2 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex gap-2 justify-end group-hover-visible">
                                 <button className="btn-icon sm text-warning" title="Xuất nội bộ" onClick={() => { setSelectedBatch(b); setExportForm({ qty: '', reason: 'Hàng tặng/Quà tặng', receiver_id: '' }); setShowExportModal(true); }}>
                                   <Share size={14} />
                                 </button>
@@ -669,7 +671,7 @@ export default function InventoryPage() {
             </div>
           )}
 
-          <div className="mt-8 flex justify-end">
+          <div className="flex justify-end" style={{ marginTop: '2rem' }}>
             <Pagination 
               total={total} 
               page={page} 

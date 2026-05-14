@@ -244,6 +244,13 @@ const PRODUCTS = [
 const BATCHES = [];
 for (let i = 1; i <= 30; i++) {
   const p = randElem(PRODUCTS);
+  const initial_qty = randInt(50, 200);
+  // Đảm bảo current_qty luôn là % có nghĩa so với initial_qty (10-80%)
+  // Một số lô cố ý thấp (sắp hết) để demo warning
+  const stockRatio = i % 5 === 0 ? (0.03 + Math.random() * 0.07)  // ~3-10%: sắp hết
+                   : i % 7 === 0 ? (0.10 + Math.random() * 0.15)  // ~10-25%: cảnh báo
+                   : (0.30 + Math.random() * 0.50);               // ~30-80%: bình thường
+  const current_qty = Math.max(1, Math.round(initial_qty * stockRatio));
   BATCHES.push({
     id: i,
     product_id: p.id,
@@ -253,9 +260,9 @@ for (let i = 1; i <= 30; i++) {
     batch_code: `LOT-${p.sku}-${randElem(['MAY24', 'JUN24', 'JUL24'])}`,
     import_date: randomDate(new Date(2024, 0, 1), new Date()).toISOString().split('T')[0],
     import_price: p.price * 0.85,
-    initial_qty: randInt(50, 200),
-    current_qty: randInt(5, 50),
-    status: "active"
+    initial_qty,
+    current_qty,
+    status: 'active'
   });
 }
 
@@ -284,16 +291,25 @@ const INVENTORY_LOGS = BATCHES.flatMap((b, idx) => ([
   }
 ]));
 
+// Tính total_ordered cho mỗi supplier dựa vào BATCHES (phân bổ round-robin)
 const SUPPLIERS = [
-  { id: 1, name: "Tập đoàn FPT Trading", contact_name: "Nguyễn Văn Hùng", phone: "0243.7654.321", email: "hungnv@fpt.com", address: "Duy Tân, Cầu Giấy, Hà Nội" },
-  { id: 2, name: "Công ty TNHH Dell EMC Việt Nam", contact_name: "Minh Đức", phone: "0901.234.567", email: "duc@dell.com", address: "Lotte Center, Hà Nội" },
-  { id: 3, name: "Cisco Systems Vietnam", contact_name: "Thanh Bình", phone: "0987.654.321", email: "binh@cisco.com", address: "Diamond Plaza, TP.HCM" },
-  { id: 4, name: "Công ty CP Sao Bắc Đẩu", contact_name: "Thu Hà", phone: "0243.9999.888", email: "ha@saobacdau.vn", address: "Trần Hưng Đạo, Hà Nội" },
-  { id: 5, name: "Công ty CP Dịch vụ Công nghệ CMC", contact_name: "Đức Kiên", phone: "0243.8888.777", email: "kien@cmc.com", address: "CMC Tower, Duy Tân, Hà Nội" },
-  { id: 6, name: "Microsoft Vietnam", contact_name: "Minh Tâm", phone: "0909.111.222", email: "tam@microsoft.com", address: "Keangnam Landmark, Hà Nội" },
-  { id: 7, name: "Công ty CP Đầu tư Thế Giới Số (Digiworld)", contact_name: "Hoàng Nam", phone: "0283.888.666", email: "nam@dgw.com.vn", address: "Nam Kỳ Khởi Nghĩa, TP.HCM" },
-  { id: 8, name: "Công ty CP Phân phối Synnex FPT", contact_name: "Quốc Hưng", phone: "0243.555.444", email: "hung@synnexfpt.com", address: "FPT Tower, Hà Nội" },
-];
+  { id: 1, name: "Tập đoàn FPT Trading", contact_name: "Nguyễn Văn Hùng", phone: "0243.7654.321", email: "hungnv@fpt.com", address: "Duy Tân, Cầu Giấy, Hà Nội", tax_code: "0101248141", product_categories: "Server, Storage, Network" },
+  { id: 2, name: "Công ty TNHH Dell EMC Việt Nam", contact_name: "Minh Đức", phone: "0901.234.567", email: "duc@dell.com", address: "Lotte Center, Hà Nội", tax_code: "0105843261", product_categories: "Server, Storage, PC" },
+  { id: 3, name: "Cisco Systems Vietnam", contact_name: "Thanh Bình", phone: "0987.654.321", email: "binh@cisco.com", address: "Diamond Plaza, TP.HCM", tax_code: "0301234567", product_categories: "Network, Security" },
+  { id: 4, name: "Công ty CP Sao Bắc Đẩu", contact_name: "Thu Hà", phone: "0243.9999.888", email: "ha@saobacdau.vn", address: "Trần Hưng Đạo, Hà Nội", tax_code: "0102018222", product_categories: "IT Services, Hardware" },
+  { id: 5, name: "Công ty CP Dịch vụ Công nghệ CMC", contact_name: "Đức Kiên", phone: "0243.8888.777", email: "kien@cmc.com", address: "CMC Tower, Duy Tân, Hà Nội", tax_code: "0100683487", product_categories: "Cloud, Infrastructure" },
+  { id: 6, name: "Microsoft Vietnam", contact_name: "Minh Tâm", phone: "0909.111.222", email: "tam@microsoft.com", address: "Keangnam Landmark, Hà Nội", tax_code: "0312345678", product_categories: "Software, Licensing" },
+  { id: 7, name: "Công ty CP Đầu tư Thế Giới Số (Digiworld)", contact_name: "Hoàng Nam", phone: "0283.888.666", email: "nam@dgw.com.vn", address: "Nam Kỳ Khởi Nghĩa, TP.HCM", tax_code: "0302567891", product_categories: "Laptop, Accessories" },
+  { id: 8, name: "Công ty CP Phân phối Synnex FPT", contact_name: "Quốc Hưng", phone: "0243.555.444", email: "hung@synnexfpt.com", address: "FPT Tower, Hà Nội", tax_code: "0101823456", product_categories: "Distribution, Hardware" },
+].map((s, idx) => {
+  // Phân bố batches cho từng supplier và tính tổng giá trị đã mua
+  const supplierBatches = BATCHES.filter((_, bi) => bi % 8 === idx);
+  const total_ordered = supplierBatches.reduce((sum, b) => sum + (b.initial_qty * b.import_price), 0)
+    + randInt(50, 300) * 1000000; // thêm một số ngẫu nhiên để realistic hơn
+  const order_count = randInt(3, 15);
+  const lastOrderDate = new Date(Date.now() - randInt(7, 90) * 86400000).toISOString().split('T')[0];
+  return { ...s, total_ordered, order_count, last_order_date: lastOrderDate };
+});
 
 const CONTENT = `
 import { create } from 'zustand';

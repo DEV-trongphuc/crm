@@ -437,7 +437,7 @@ export const DashboardPage: React.FC = () => {
                 <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={38} />
                 <Tooltip formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Chi phí']} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
                 <Area type="monotone" dataKey="revenue" stroke="#7c3aed" strokeWidth={3} fill="url(#revGrad)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                <Area type="monotone" dataKey="cost" stroke="#ef4444" strokeWidth={2} fill="#ef4444" fillOpacity={0.05} dot={false} />
+                <Bar dataKey="cost" name="Chi phí" fill="#ef4444" fillOpacity={0.75} radius={[3, 3, 0, 0]} maxBarSize={14} />
               </ComposedChart>
             </ResponsiveContainer>
           )}
