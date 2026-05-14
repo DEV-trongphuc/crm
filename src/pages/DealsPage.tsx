@@ -27,7 +27,7 @@ const FMT = (n: number) => {
 export const DealsPage: React.FC = () => {
   const { addToast } = useUIStore();
   const [showImportExport, setShowImportExport] = useState(false);
-  const [pipelineView, setPipelineView] = useState<'deals' | 'contacts' | 'companies'>('deals');
+  const [pipelineView, setPipelineView] = useState<'deals' | 'contacts' | 'companies'>('contacts');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
   const [activeStageFilter, setActiveStageFilter] = useState<string | number>('all');
   const [stages, setStages] = useState<any[]>([]);
@@ -390,18 +390,18 @@ export const DealsPage: React.FC = () => {
 
         <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', height: 44, marginRight: '1rem' }}>
           <button 
-            className={`btn ${pipelineView === 'deals' ? 'primary' : 'ghost'}`} 
-            style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
-            onClick={() => setPipelineView('deals')}
-          >
-            <DollarSign size={16} /> Cơ hội
-          </button>
-          <button 
             className={`btn ${pipelineView === 'contacts' ? 'primary' : 'ghost'}`} 
             style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
             onClick={() => setPipelineView('contacts')}
           >
             <User size={16} /> Khách hàng
+          </button>
+          <button 
+            className={`btn ${pipelineView === 'deals' ? 'primary' : 'ghost'}`} 
+            style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
+            onClick={() => setPipelineView('deals')}
+          >
+            <DollarSign size={16} /> Cơ hội
           </button>
           <button 
             className={`btn ${pipelineView === 'companies' ? 'primary' : 'ghost'}`} 
