@@ -1,5 +1,6 @@
 
 import { create } from 'zustand';
+import { useAuthStore } from './authStore';
 
 export const useMockStore = create<any>()((set) => ({
   users: [
@@ -12408,4 +12409,47 @@ export const useMockStore = create<any>()((set) => ({
 ],
 }));
 
-export const getFilteredMockState = () => useMockStore.getState();
+export const getFilteredMockState = () => {
+  const state = useMockStore.getState();
+  
+  // Safe way to get user since this might be called outside React lifecycle
+  let user = null;
+  try {
+    user = useAuthStore.getState().user;
+  } catch (e) {
+    // If store isn't ready
+  }
+  
+  if (!user || user.role === 'admin' || user.role === 'manager') {
+    return state;
+  }
+
+  // Common filter function for Sale role
+  const filterByOwner = (arr: any[]) => {
+    if (!arr) return [];
+    return arr.filter(item => 
+      String(item.owner_id) === String(user.id) || 
+      String(item.user_id) === String(user.id) ||
+      String(item.sale_id) === String(user.id) ||
+      (item.uploader_name && String(item.uploader_name).includes(user.full_name)) ||
+      (item.user_name && String(item.user_name) === String(user.full_name))
+    );
+  };
+  
+  const myContacts = filterByOwner(state.contacts || []);
+  const myCompanyIds = new Set(myContacts.map((c: any) => String(c.company_id)));
+  const myCompanies = (state.companies || []).filter((c: any) => myCompanyIds.has(String(c.id)));
+
+  return {
+    ...state,
+    contacts: myContacts,
+    deals: filterByOwner(state.deals || []),
+    activities: filterByOwner(state.activities || []),
+    tickets: filterByOwner(state.tickets || []),
+    companies: myCompanies,
+    invoices: filterByOwner(state.invoices || []),
+    quotes: filterByOwner(state.quotes || []),
+    files: filterByOwner(state.files || []),
+    expenses: filterByOwner(state.expenses || [])
+  };
+};
