@@ -342,8 +342,8 @@ switch ($resource) {
     case 'import':
         $auth = requireAuth();
         $ctrl = new ImportController($db);
-        if ($resourceId === 'template' && $method === 'GET') $ctrl->template();
-        elseif ($resourceId === 'contacts' && $method === 'POST') $ctrl->contacts($auth);
+        if ($resourceId === 'template' && $method === 'GET') $ctrl->template($auth);
+        elseif ($resourceId === 'process' && $method === 'POST') $ctrl->process($auth);
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
