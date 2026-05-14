@@ -212,7 +212,7 @@ export const FilesPage: React.FC = () => {
     if (!mime) return <File size={24} />;
     if (mime.includes('image')) return <FileImage size={24} className="text-rose-500" />;
     if (mime.includes('video')) return <FileVideo size={24} className="text-indigo-500" />;
-    return <File size={24} className="text-slate-500" />;
+    return <File size={24} style={{ color: 'var(--color-text-muted)' }} />;
   };
 
   const formatSize = (bytes: number) => {

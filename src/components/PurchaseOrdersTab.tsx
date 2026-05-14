@@ -195,12 +195,12 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                             <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                               <Truck size={16} />
                             </div>
-                            <span className="font-bold text-sm text-slate-800">{o.supplier_name}</span>
+                            <span className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>{o.supplier_name}</span>
                           </div>
                         </td>
                         <td>
-                          <div className="text-sm font-medium flex items-center gap-1.5 text-slate-600">
-                            <Calendar size={14} className="text-slate-400" /> {new Date(o.order_date).toLocaleDateString('vi-VN')}
+                          <div className="text-sm font-medium flex items-center gap-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                            <Calendar size={14} style={{ color: 'var(--color-text-light)' }} /> {new Date(o.order_date).toLocaleDateString('vi-VN')}
                           </div>
                         </td>
                         <td style={{ textAlign: 'right' }}>

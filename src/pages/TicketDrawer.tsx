@@ -122,7 +122,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                   </div>
                   <h2 className={styles.title} style={{ fontSize: '1.25rem' }}>{formData.subject}</h2>
                   <p className={styles.subtitle} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                    <User size={14} /> {formData.customer_name} • Mở lúc: {new Date(formData.created_at).toLocaleString('vi-VN')}
+                    <User size={14} /> {formData.customer_name} • Mở lúc: {formData.created_at ? new Date(formData.created_at).toLocaleString('vi-VN') : '—'}
                   </p>
                 </div>
               </div>
@@ -158,7 +158,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                         <div style={{ maxWidth: '85%' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                             <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{msg.user_name || msg.user}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{new Date(msg.created_at || msg.time).toLocaleString('vi-VN')}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)' }}>{(msg.created_at || msg.time) ? new Date(msg.created_at || msg.time).toLocaleString('vi-VN') : ''}</span>
                           </div>
                           <div style={{ 
                             padding: '0.875rem 1.25rem', 

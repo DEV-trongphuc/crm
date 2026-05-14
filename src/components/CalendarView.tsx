@@ -108,11 +108,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventClick, onDate
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid var(--color-border)', backgroundColor: 'rgba(0,0,0,0.02)' }}>
         <div className="flex items-center gap-4">
            <div className="flex bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
-              <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" onClick={prevMonth}><ChevronLeft size={16} /></button>
-              <span className="px-4 py-1.5 font-bold text-slate-800 capitalize text-sm min-w-[120px] text-center">
+              <button className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface-hover)]" onClick={prevMonth}><ChevronLeft size={16} /></button>
+              <span className="px-4 py-1.5 font-bold capitalize text-sm min-w-[120px] text-center" style={{ color: 'var(--color-text)' }}>
                 {monthName} {year}
               </span>
-              <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors" onClick={nextMonth}><ChevronRight size={16} /></button>
+              <button className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface-hover)]" onClick={nextMonth}><ChevronRight size={16} /></button>
            </div>
            <button className="text-xs font-bold text-primary hover:underline" onClick={() => setCurrentDate(new Date())}>Hôm nay</button>
         </div>

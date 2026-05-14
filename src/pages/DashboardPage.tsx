@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   TrendingUp, Users, DollarSign, Download, Trophy,
@@ -90,10 +89,10 @@ export const DashboardPage: React.FC = () => {
         { month: 'T01', revenue: wonValue, cost: expenses }
       ]);
 
-      setPipelineFunnel(state.pipeline_stages.map(s => ({
+      setPipelineFunnel(state.pipeline_stages.map((s: any) => ({
         ...s,
-        deal_count: state.contacts.filter(c => c.stage_id === s.id).length,
-        total_value: state.contacts.filter(c => c.stage_id === s.id).reduce((sum, c) => sum + (Number(c.expected_revenue) || 0), 0)
+        deal_count: state.contacts.filter((c: any) => c.stage_id === s.id).length,
+        total_value: state.contacts.filter((c: any) => c.stage_id === s.id).reduce((sum: number, c: any) => sum + (Number(c.expected_revenue) || 0), 0)
       })));
 
       setLeadSources([
@@ -103,13 +102,13 @@ export const DashboardPage: React.FC = () => {
         { source: 'Other', count: 5, color: '#6b7280' }
       ]);
 
-      setLeaderboard(state.users.slice(0, 3).map((u, i) => ({
+      setLeaderboard(state.users.slice(0, 3).map((u: any, i: number) => ({
         ...u,
         won_value: wonValue * (0.5 - i * 0.1),
         won_count: 5 - i
       })));
 
-      setTagStats(state.tags.map(t => ({
+      setTagStats(state.tags.map((t: any) => ({
         tag: t.name,
         count: t.count || 0,
         color: t.color
@@ -536,7 +535,7 @@ export const DashboardPage: React.FC = () => {
                 <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginTop: '2px' }}>Leads có tag theo kỳ được chọn</p>
               </div>
               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-primary)', background: 'var(--color-primary-light)', padding: '3px 10px', borderRadius: 'var(--radius-full)' }}>
-                {tagStats.reduce((s, t) => s + t.count, 0)} tag-lead
+                {tagStats.reduce((s: number, t: any) => s + t.count, 0)} tag-lead
               </span>
             </div>
 

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { BarChart3, TrendingUp, Users, Briefcase, Download, ArrowUpRight, ArrowDownRight, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, AreaChart, Area, ComposedChart, Line } from 'recharts';
@@ -45,8 +44,8 @@ export const ReportsPage: React.FC = () => {
     if (DEV_MODE) {
       setLoading(true);
       const state = getFilteredMockState();
-      const wonValue = state.contacts.filter(c => state.pipeline_stages.find(s => s.id === c.stage_id)?.is_won)
-        .reduce((sum, c) => sum + (Number(c.expected_revenue) || 0), 0);
+      const wonValue = state.contacts.filter((c: any) => state.pipeline_stages.find((s: any) => s.id === c.stage_id)?.is_won)
+        .reduce((sum: number, c: any) => sum + (Number(c.expected_revenue) || 0), 0);
       
       setSalesData({
         summary: {
@@ -66,7 +65,7 @@ export const ReportsPage: React.FC = () => {
           { month: 'T11', revenue: wonValue * 1.1, target: wonValue * 1.0 },
           { month: 'T12', revenue: wonValue, target: wonValue * 1.1 }
         ],
-        by_owner: state.users.slice(0, 4).map((u, i) => ({
+        by_owner: state.users.slice(0, 4).map((u: any, i: number) => ({
           id: u.id,
           name: u.full_name,
           deals: 12 - i,
@@ -92,10 +91,10 @@ export const ReportsPage: React.FC = () => {
     if (DEV_MODE) {
       setLoading(true);
       const state = getFilteredMockState();
-      setPipelineData(state.pipeline_stages.map(s => ({
+      setPipelineData(state.pipeline_stages.map((s: any) => ({
         stage: s.name,
-        count: state.contacts.filter(c => c.stage_id === s.id).length,
-        total_value: state.contacts.filter(c => c.stage_id === s.id).reduce((sum, c) => sum + (Number(c.expected_revenue) || 0), 0),
+        count: state.contacts.filter((c: any) => c.stage_id === s.id).length,
+        total_value: state.contacts.filter((c: any) => c.stage_id === s.id).reduce((sum: number, c: any) => sum + (Number(c.expected_revenue) || 0), 0),
         color: s.color
       })));
       setLoading(false);
@@ -119,9 +118,9 @@ export const ReportsPage: React.FC = () => {
       setActivityData({
         by_type: types.map(t => ({
           type: t,
-          total: state.activities.filter(a => a.type === t).length
+          total: state.activities.filter((a: any) => a.type === t).length
         })),
-        by_user_type: state.users.slice(0, 3).flatMap(u => 
+        by_user_type: state.users.slice(0, 3).flatMap((u: any) => 
           types.map(t => ({
             user_name: u.full_name,
             type: t,
@@ -220,7 +219,7 @@ export const ReportsPage: React.FC = () => {
     if (DEV_MODE) {
       setLoading(true);
       const state = getFilteredMockState();
-      const totalExp = state.expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+      const totalExp = state.expenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0);
       setExpenseData({
         by_category: [
           { category: 'Marketing', total: totalExp * 0.4 },

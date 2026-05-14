@@ -98,7 +98,7 @@ export const CalendarPage: React.FC = () => {
         <div className="flex gap-3">
           <div className="flex items-center bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
              <button className="btn-icon sm" onClick={prevMonth}><ChevronLeft size={18} /></button>
-             <span className="px-4 font-black text-slate-800 capitalize" style={{ minWidth: '140px', textAlign: 'center' }}>
+             <span className="px-4 font-black capitalize" style={{ minWidth: '140px', textAlign: 'center', color: 'var(--color-text)' }}>
                {monthName} {year}
              </span>
              <button className="btn-icon sm" onClick={nextMonth}><ChevronRight size={18} /></button>
@@ -110,7 +110,7 @@ export const CalendarPage: React.FC = () => {
       <div className="flex-1 overflow-hidden flex flex-col card-panel p-0 bg-white border border-slate-200">
         <div className="grid grid-cols-7 border-b bg-slate-50">
           {weekDays.map(wd => (
-            <div key={wd} className="py-3 text-center text-xs font-black text-slate-400 uppercase tracking-widest">
+            <div key={wd} className="py-3 text-center text-xs font-black uppercase tracking-widest" style={{ color: 'var(--color-text-light)' }}>
               {wd}
             </div>
           ))}

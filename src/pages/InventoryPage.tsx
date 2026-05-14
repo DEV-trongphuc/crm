@@ -402,8 +402,8 @@ export default function InventoryPage() {
         <div className="card overflow-hidden anim-fade-up">
           <div className="p-5 border-b border-slate-100 flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-slate-800 m-0">Lịch sử biến động toàn kho</h3>
-              <p className="text-xs text-slate-500 mt-1">Ghi nhận mọi giao dịch nhập, xuất và bán hàng</p>
+              <h3 className="font-bold m-0" style={{ color: 'var(--color-text)' }}>Lịch sử biến động toàn kho</h3>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-muted)' }}>Ghi nhận mọi giao dịch nhập, xuất và bán hàng</p>
             </div>
             <span className="badge info">{globalLogs.length} giao dịch</span>
           </div>
@@ -437,7 +437,7 @@ export default function InventoryPage() {
                         <div className="text-xs text-light mt-0.5">{new Date(log.created_at).toLocaleDateString('vi-VN')}</div>
                       </td>
                       <td>
-                        <div className="font-bold text-sm text-slate-800">{log.product_name}</div>
+                        <div className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>{log.product_name}</div>
                         <div className="text-[10px] text-light font-mono mt-0.5">#{log.batch_code}</div>
                       </td>
                       <td>
@@ -450,13 +450,13 @@ export default function InventoryPage() {
                           {isIn ? '+' : ''}{log.qty_change}
                         </div>
                       </td>
-                      <td><div className="text-sm text-slate-600 max-w-[200px] truncate" title={log.reason}>{log.reason}</div></td>
+                      <td><div className="text-sm max-w-[200px] truncate" style={{ color: 'var(--color-text-muted)' }} title={log.reason}>{log.reason}</div></td>
                       <td>
                         <div className="flex items-center gap-2">
                           <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black shrink-0">
                             {log.creator_name?.charAt(0)}
                           </div>
-                          <span className="font-bold text-sm text-slate-700">{log.creator_name}</span>
+                          <span className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>{log.creator_name}</span>
                         </div>
                       </td>
                     </tr>
@@ -518,7 +518,7 @@ export default function InventoryPage() {
                           {!isCollapsed && (
                             <tr className="table-row-hover group">
                               <td>
-                                <div className="font-bold text-sm text-slate-800">{b.product_name}</div>
+                                <div className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>{b.product_name}</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                                   {b.category && <span className="badge info text-xs" style={{ padding: '2px 6px', fontSize: '10px' }}>{b.category}</span>}
                                   <span style={{ background: 'var(--color-border-light)', color: 'var(--color-text-light)', padding: '2px 10px', borderRadius: '100px', fontSize: '10px', fontWeight: 800, fontFamily: 'monospace', textTransform: 'uppercase', border: '1px solid var(--color-border)' }}>{b.sku || 'No SKU'}</span>
@@ -528,7 +528,7 @@ export default function InventoryPage() {
                               <td>
                                 <div className="font-bold text-sm">{new Date(b.import_date).toLocaleDateString('vi-VN')}</div>
                                 {b.expiry_date && (
-                                  <div className={`text-xs flex items-center gap-1 mt-0.5 ${new Date(b.expiry_date) < new Date() ? 'text-danger font-bold' : 'text-slate-500'}`}>
+                                  <div className={`text-xs flex items-center gap-1 mt-0.5 ${new Date(b.expiry_date) < new Date() ? 'text-danger font-bold' : ''}`} style={{ color: new Date(b.expiry_date) < new Date() ? 'var(--color-danger)' : 'var(--color-text-muted)' }}>
                                     <Clock size={12} /> HSD: {new Date(b.expiry_date).toLocaleDateString('vi-VN')}
                                   </div>
                                 )}
@@ -539,10 +539,10 @@ export default function InventoryPage() {
                               </td>
                               <td>
                                 <div className="flex flex-col items-center gap-1">
-                                  <div className={`text-sm font-black ${b.current_qty <= 5 ? 'text-danger' : 'text-slate-800'}`}>
-                                    {b.current_qty} <span className="text-xs text-slate-400 font-medium">/ {b.initial_qty}</span>
+                                  <div className={`text-sm font-black`} style={{ color: b.current_qty <= 5 ? 'var(--color-danger)' : 'var(--color-text)' }}>
+                                    {b.current_qty} <span className="text-xs font-medium" style={{ color: 'var(--color-text-light)' }}>/ {b.initial_qty}</span>
                                   </div>
-                                  <div className="w-[80px] h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                  <div className="w-[80px] h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-border)' }}>
                                     <div className={`h-full rounded-full transition-all duration-500 ${pct <= 10 ? 'bg-danger' : pct <= 30 ? 'bg-warning' : 'bg-primary'}`} style={{ width: `${pct}%` }} />
                                   </div>
                                 </div>
@@ -874,7 +874,7 @@ export default function InventoryPage() {
                         <div style={{ background: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                             <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{log.reason}</span>
-                            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{new Date(log.created_at).toLocaleString('vi-VN')}</span>
+                            <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{log.created_at ? new Date(log.created_at).toLocaleString('vi-VN') : ''}</span>
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.75rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

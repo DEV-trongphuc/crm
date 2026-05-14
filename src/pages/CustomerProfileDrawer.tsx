@@ -184,7 +184,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
               <div style={{ flex: 1, background: 'white', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                   <strong style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{c.user_name}</strong>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{new Date(c.created_at).toLocaleString('vi-VN')}</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('vi-VN') : ''}</span>
                 </div>
                 {c.content && <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.content}</p>}
                 {c.attachments && c.attachments.map((att: string, i: number) => (
@@ -890,7 +890,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                       {formData.updated_at && formData.updated_at !== formData.created_at && (
                         <p style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--color-text-light)', fontSize: '0.8125rem' }}>
                           <span style={{ color: 'var(--color-text-muted)' }}>|</span>
-                          <span>Cập nhật: <strong style={{ color: 'var(--color-text)' }}>{new Date(formData.updated_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong></span>
+                          <span>Cập nhật: <strong style={{ color: 'var(--color-text)' }}>{formData.updated_at ? new Date(formData.updated_at).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</strong></span>
                         </p>
                       )}
                     </div>
@@ -1646,7 +1646,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                               <div style={{ flex: 1 }}>
                                 <p style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--color-text)', whiteSpace: 'pre-wrap' }}>{formatNote(n.text)}</p>
                                 <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '1rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
-                                  Tạo bởi <strong>{n.user}</strong> lúc {new Date(n.time).toLocaleString('vi-VN')}
+                                  Tạo bởi <strong>{n.user}</strong> lúc {n.time ? new Date(n.time).toLocaleString('vi-VN') : ''}
                                 </p>
                               </div>
                               <button

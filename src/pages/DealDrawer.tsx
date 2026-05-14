@@ -351,7 +351,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
                               <div className="timeline-content" style={{ padding: '0.75rem 1rem', background: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)', textAlign: 'left' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                                   <strong style={{ fontSize: '0.875rem' }}>{n.author_name || n.user_name || 'Hệ thống'}</strong>
-                                  <span className="text-xs text-muted">{new Date(n.created_at).toLocaleString('vi-VN')}</span>
+                                  <span className="text-xs text-muted">{n.created_at ? new Date(n.created_at).toLocaleString('vi-VN') : ''}</span>
                                 </div>
                                 <p style={{ fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap' }}>{n.body}</p>
                               </div>
