@@ -171,9 +171,13 @@ export const QuotesPage: React.FC = () => {
         </div>
         <div className="flex gap-3">
           <PeriodFilter value={period} onChange={(p, r) => { setPeriod(p); setDateRange(r); setPage(1); }} />
-          <button className="btn outline" onClick={fetchQuotes}><RefreshCw size={18} /> Làm mới</button>
-          <button className="btn primary" onClick={() => handleOpenEditor()}>
-            <Plus size={18} /> Tạo báo giá mới
+          <button className="btn outline" onClick={fetchQuotes} title="Làm mới">
+            <RefreshCw size={18} />
+            <span className="hide-on-mobile"> Làm mới</span>
+          </button>
+          <button className="btn primary" onClick={() => handleOpenEditor()} title="Tạo báo giá mới">
+            <Plus size={18} />
+            <span className="hide-on-mobile"> Tạo báo giá mới</span>
           </button>
         </div>
       </div>
@@ -202,8 +206,8 @@ export const QuotesPage: React.FC = () => {
 
       {/* Filters */}
       <div className="card-panel mb-4">
-        <div className="flex items-center gap-4">
-          <div className="filter-search flex-1">
+        <div className="flex items-center gap-4 flex-wrap" style={{ display: 'flex', width: '100%' }}>
+          <div className="filter-search flex-1" style={{ minWidth: '200px' }}>
             <Search size={18} className="text-muted" />
             <input 
               placeholder="Tìm theo mã báo giá, tiêu đề hoặc khách hàng..." 
@@ -211,7 +215,26 @@ export const QuotesPage: React.FC = () => {
               onChange={e => { setSearch(e.target.value); setPage(1); }}
             />
           </div>
-          <div className="flex gap-2">
+
+          {/* Mobile Status Select */}
+          <div className="mobile-only" style={{ width: '100%' }}>
+            <select
+              value={statusFilter}
+              onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+              className="form-select"
+              style={{ width: '100%', height: 40 }}
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="draft">Nháp</option>
+              <option value="sent">Đã gửi</option>
+              <option value="accepted">Đã duyệt</option>
+              <option value="rejected">Từ chối</option>
+              <option value="expired">Hết hạn</option>
+            </select>
+          </div>
+
+          {/* Desktop Status Tabs */}
+          <div className="hide-on-mobile flex gap-2">
             {['', 'draft', 'sent', 'accepted', 'rejected', 'expired'].map(s => (
               <button 
                 key={s}

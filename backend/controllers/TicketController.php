@@ -216,8 +216,8 @@ class TicketController {
 
         // Log if resolved
         if (isset($data['status']) && $data['status'] === 'resolved') {
-            $tick = $this->db->prepare("SELECT subject, related_contacts FROM tickets WHERE id=?");
-            $tick->execute([$id]);
+            $tick = $this->db->prepare("SELECT subject, related_contacts FROM tickets WHERE id=? AND tenant_id=?");
+            $tick->execute([$id, $auth['tenant_id']]);
             $tData = $tick->fetch();
             if ($tData && !empty($tData['related_contacts'])) {
                 $cIds = json_decode($tData['related_contacts'], true);

@@ -130,10 +130,14 @@ export const CompaniesPage: React.FC = () => {
           <button className="btn-icon" onClick={fetchCompanies} title="Làm mới">
             <RefreshCw size={16} />
           </button>
-          <button className="btn outline" onClick={() => setShowImportExport(true)}>
-            <Download size={16} /> Nhập/Xuất
+          <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
+            <Download size={16} />
+            <span className="hide-on-mobile"> Nhập/Xuất</span>
           </button>
-          <button className="btn primary" onClick={openCreate}><Plus size={16} /> Thêm công ty</button>
+          <button className="btn primary" onClick={openCreate} title="Thêm công ty">
+            <Plus size={16} />
+            <span className="hide-on-mobile"> Thêm công ty</span>
+          </button>
         </div>
       </div>
 
@@ -145,7 +149,23 @@ export const CompaniesPage: React.FC = () => {
           {search && <button onClick={() => setSearch('')}><X size={14} /></button>}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        {/* Mobile Status Select */}
+        <div className="mobile-only" style={{ width: '100%' }}>
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="form-select"
+            style={{ width: '100%', height: 40 }}
+          >
+            <option value="">Tất cả trạng thái</option>
+            <option value="active">Hoạt động</option>
+            <option value="inactive">Ngừng hoạt động</option>
+            <option value="prospect">Tiềm năng</option>
+          </select>
+        </div>
+
+        {/* Desktop Status Buttons */}
+        <div className="hide-on-mobile" style={{ display: 'flex', gap: '0.5rem' }}>
           {['', ...STATUSES].map(s => (
             <button
               key={s || 'all'}

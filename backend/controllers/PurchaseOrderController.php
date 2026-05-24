@@ -52,6 +52,15 @@ class PurchaseOrderController {
                 if ($qty <= 0 || $unit_cost < 0) {
                     throw new Exception('Số lượng sản phẩm phải lớn hơn 0 và đơn giá không được âm');
                 }
+
+                if (!empty($item['product_id'])) {
+                    $prodCheck = $this->db->prepare("SELECT id FROM products WHERE id=? AND tenant_id=?");
+                    $prodCheck->execute([(int)$item['product_id'], $auth['tenant_id']]);
+                    if (!$prodCheck->fetch()) {
+                        throw new Exception("Sản phẩm ID {$item['product_id']} không hợp lệ hoặc không thuộc cửa hàng của bạn");
+                    }
+                }
+
                 $itemStmt->execute([
                     $poId, $item['product_id'] ?? null, $item['name'],
                     $qty, $unit_cost, $item['subtotal']
@@ -98,7 +107,7 @@ class PurchaseOrderController {
             if ($po['status'] === 'received') respond(422, null, 'Đơn hàng này đã được nhập kho rồi', false);
 
             // 2. Update status
-            $this->db->prepare("UPDATE purchase_orders SET status = 'received' WHERE id = ?")->execute([$id]);
+            $this->db->prepare("UPDATE purchase_orders SET status = 'received' WHERE id = ? AND tenant_id = ?")->execute([$id, $auth['tenant_id']]);
 
             // 3. Process items: Update stock, create batches and logs
             $itemStmt = $this->db->prepare("SELECT product_id, name, quantity, unit_cost FROM purchase_order_items WHERE po_id = ?");
@@ -116,8 +125,8 @@ class PurchaseOrderController {
             ");
 
             // Get PO details for batch info
-            $poInfoStmt = $this->db->prepare("SELECT po_number, supplier_id, total, order_date FROM purchase_orders WHERE id = ?");
-            $poInfoStmt->execute([$id]);
+            $poInfoStmt = $this->db->prepare("SELECT po_number, supplier_id, total, order_date FROM purchase_orders WHERE id = ? AND tenant_id = ?");
+            $poInfoStmt->execute([$id, $auth['tenant_id']]);
             $poInfo = $poInfoStmt->fetch();
 
             foreach ($items as $item) {

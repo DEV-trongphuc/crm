@@ -139,8 +139,14 @@ export const ProductsPage: React.FC = () => {
           <p className="page-subtitle">{total} sản phẩm</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn secondary" onClick={() => setShowCatModal(true)}>Quản lý danh mục</button>
-          <button className="btn primary" onClick={() => { setEditItem(null); setForm(EMPTY); setShowModal(true); }}><Plus size={16} /> Thêm sản phẩm</button>
+          <button className="btn secondary" onClick={() => setShowCatModal(true)} title="Quản lý danh mục">
+            <Layers size={16} />
+            <span className="hide-on-mobile"> Quản lý danh mục</span>
+          </button>
+          <button className="btn primary" onClick={() => { setEditItem(null); setForm(EMPTY); setShowModal(true); }} title="Thêm sản phẩm">
+            <Plus size={16} />
+            <span className="hide-on-mobile"> Thêm sản phẩm</span>
+          </button>
         </div>
       </div>
 

@@ -45,6 +45,17 @@ class POSController {
             }
         }
 
+        // Validate product ownership for all items in the cart
+        foreach ($data['cart'] as $item) {
+            if (!empty($item['id'])) {
+                $pCheck = $this->db->prepare("SELECT id FROM products WHERE id=? AND tenant_id=?");
+                $pCheck->execute([(int)$item['id'], $tid]);
+                if (!$pCheck->fetch()) {
+                    respond(403, null, "Sản phẩm ID {$item['id']} không hợp lệ hoặc không thuộc cửa hàng này", false);
+                }
+            }
+        }
+
         $this->db->beginTransaction();
         try {
             $title = "Đơn hàng POS - " . date('d/m/Y H:i');
@@ -83,8 +94,8 @@ class POSController {
                 
                 // Deduct stock if product_id is present
                 if (!empty($item['id'])) {
-                    $pCheck = $this->db->prepare("SELECT track_inventory FROM products WHERE id=?");
-                    $pCheck->execute([(int) $item['id']]);
+                    $pCheck = $this->db->prepare("SELECT track_inventory FROM products WHERE id=? AND tenant_id=?");
+                    $pCheck->execute([(int) $item['id'], $tid]);
                     if ($pCheck->fetchColumn()) {
                         deductStockFIFO($this->db, $tid, $uid, (int)$item['id'], (int)$item['quantity'], $invNum);
                     }

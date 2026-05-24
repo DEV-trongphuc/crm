@@ -235,7 +235,7 @@ export const FilesPage: React.FC = () => {
 
   return (
     <div className="page-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <div className="page-header" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {activeTab === 'shared' ? <Globe style={{ color: 'var(--color-primary)' }} /> : <User style={{ color: 'var(--color-indigo)' }} />}
@@ -245,8 +245,22 @@ export const FilesPage: React.FC = () => {
             {activeTab === 'shared' ? 'Lưu trữ các biểu mẫu, quy trình và tài liệu dùng chung cho toàn đội ngũ' : 'Không gian lưu trữ riêng tư chỉ mình bạn có thể truy cập'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-           <div style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+           {/* Mobile Visibility Selector */}
+           <div className="mobile-only" style={{ width: '120px' }}>
+             <select
+               value={activeTab}
+               onChange={e => setActiveTab(e.target.value as any)}
+               className="form-select"
+               style={{ width: '100%', height: 40 }}
+             >
+               <option value="shared">Dùng chung</option>
+               <option value="personal">Cá nhân</option>
+             </select>
+           </div>
+
+           {/* Desktop Visibility Tab Switcher */}
+           <div className="hide-on-mobile" style={{ display: 'flex', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
              <button 
                 style={{ padding: '6px 16px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'shared' ? 'var(--color-primary-light)' : 'transparent', color: activeTab === 'shared' ? 'var(--color-primary)' : 'var(--color-text-muted)', transition: 'all 0.2s', border: 'none', cursor: 'pointer' }}
                 onClick={() => setActiveTab('shared')}
@@ -260,8 +274,10 @@ export const FilesPage: React.FC = () => {
                Cá nhân
              </button>
            </div>
-           <button className="btn primary" onClick={() => fileInputRef.current?.click()}>
-             <Plus size={16} /> Tải tệp mới
+           
+           <button className="btn primary" onClick={() => fileInputRef.current?.click()} title="Tải tệp mới">
+             <Plus size={16} />
+             <span className="hide-on-mobile"> Tải tệp mới</span>
            </button>
            <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileSelect} />
         </div>
@@ -269,7 +285,7 @@ export const FilesPage: React.FC = () => {
 
       <div style={{ display: 'flex', gap: '2rem', flex: 1, overflow: 'hidden' }}>
         {/* Sidebar Nav */}
-        <div style={{ width: '250px', display: 'flex', flexDirection: 'column', gap: '2rem', flexShrink: 0 }}>
+        <div className="hide-on-mobile" style={{ width: '250px', display: 'flex', flexDirection: 'column', gap: '2rem', flexShrink: 0 }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', padding: '0 8px' }}>
                 <p style={{ fontSize: '10px', fontWeight: 900, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>DANH MỤC</p>
@@ -312,7 +328,21 @@ export const FilesPage: React.FC = () => {
 
         {/* Main Content Area */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+          {/* Mobile Folder/Category Dropdown */}
+          <div className="mobile-only" style={{ width: '100%' }}>
+            <select 
+              value={category} 
+              onChange={e => { setPage(1); setCategory(e.target.value); }}
+              className="form-select"
+              style={{ width: '100%', height: 44, marginBottom: '0.5rem' }}
+            >
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
              <div className="filter-search" style={{ flex: 1, maxWidth: '400px', position: 'relative' }}>
                 <Search size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                 <input 

@@ -196,8 +196,14 @@ export const InvoicesPage: React.FC = () => {
         </div>
         <div className="flex gap-2">
           <PeriodFilter value={period} onChange={(p, r) => { setPeriod(p); setDateRange(r); setPage(1); }} />
-          <button className="btn secondary" onClick={exportCSV}><Download size={16} /> Xuất CSV</button>
-          <button className="btn primary" onClick={() => useUIStore.getState().setShowPOS(true)}><Plus size={16} /> Tạo hóa đơn</button>
+          <button className="btn secondary" onClick={exportCSV} title="Xuất CSV">
+            <Download size={16} />
+            <span className="hide-on-mobile"> Xuất CSV</span>
+          </button>
+          <button className="btn primary" onClick={() => useUIStore.getState().setShowPOS(true)} title="Tạo hóa đơn">
+            <Plus size={16} />
+            <span className="hide-on-mobile"> Tạo hóa đơn</span>
+          </button>
         </div>
       </div>
 

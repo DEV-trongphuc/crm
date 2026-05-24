@@ -404,7 +404,22 @@ export const DealsPage: React.FC = () => {
           ><List size={18}/></button>
         </div>
 
-        <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', height: 44, marginRight: '1rem' }}>
+        {/* Mobile Pipeline Selector Dropdown */}
+        <div className="mobile-only" style={{ marginRight: '0.5rem' }}>
+          <select 
+            value={pipelineView} 
+            onChange={e => setPipelineView(e.target.value as any)}
+            className="form-select"
+            style={{ height: 44, borderRadius: 'var(--radius-lg)', padding: '0 10px', background: 'var(--color-bg)', border: '1px solid var(--color-border)', fontWeight: 600 }}
+          >
+            <option value="contacts">KH</option>
+            <option value="deals">Cơ hội</option>
+            <option value="companies">DN</option>
+          </select>
+        </div>
+
+        {/* Desktop Pipeline Tabs Switcher */}
+        <div className="hide-on-mobile" style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', borderRadius: 'var(--radius-lg)', height: 44, marginRight: '1rem' }}>
           <button 
             className={`btn ${pipelineView === 'contacts' ? 'primary' : 'ghost'}`} 
             style={{ borderRadius: 'var(--radius-md)', height: 36, padding: '0 12px' }}
@@ -428,16 +443,18 @@ export const DealsPage: React.FC = () => {
           </button>
         </div>
 
-        <button className="btn outline" style={{ height: 44, padding: '0 1.25rem', borderRadius: 'var(--radius-lg)', marginRight: '0.5rem' }} onClick={() => setShowImportExport(true)}>
-          <Download size={16} /> Nhập/Xuất
+        <button className="btn outline" style={{ height: 44, borderRadius: 'var(--radius-lg)', marginRight: '0.5rem' }} onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
+          <Download size={16} />
+          <span className="hide-on-mobile" style={{ marginLeft: '0.5rem' }}> Nhập/Xuất</span>
         </button>
 
-        <button className="btn primary" style={{ height: 44, padding: '0 1.25rem', borderRadius: 'var(--radius-lg)' }} onClick={() => {
+        <button className="btn primary" style={{ height: 44, borderRadius: 'var(--radius-lg)' }} onClick={() => {
             if (pipelineView === 'deals') { setSelectedDeal(null); setShowDealDrawer(true); }
             else if (pipelineView === 'contacts') { setSelectedContact(null); setShowContactDrawer(true); }
             else { setSelectedCompany(null); setShowCompanyDrawer(true); }
-        }}>
-          <Plus size={16} /> Thêm {pipelineView === 'deals' ? 'Cơ Hội' : (pipelineView === 'contacts' ? 'Khách Hàng' : 'Doanh Nghiệp')}
+        }} title="Thêm mới">
+          <Plus size={16} />
+          <span className="hide-on-mobile" style={{ marginLeft: '0.5rem' }}> Thêm {pipelineView === 'deals' ? 'Cơ Hội' : (pipelineView === 'contacts' ? 'Khách Hàng' : 'Doanh Nghiệp')}</span>
         </button>
       </div>
 

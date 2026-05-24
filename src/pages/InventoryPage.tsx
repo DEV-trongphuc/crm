@@ -268,15 +268,40 @@ export default function InventoryPage() {
           <h1 className="page-title">Kho &amp; Lô hàng</h1>
           <p className="page-subtitle">Quản lý nhập kho, theo dõi lô hàng và lịch sử biến động.</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          
+          {/* Mobile Tab Selector */}
+          <div className="mobile-only" style={{ flex: 1, minWidth: '160px' }}>
+            <select
+              value={activeTab}
+              onChange={e => setActiveTab(e.target.value as any)}
+              className="form-select"
+              style={{ width: '100%', height: 40 }}
+            >
+              <option value="batches">Danh sách lô</option>
+              <option value="history">Lịch sử biến động</option>
+              <option value="purchase_orders">Đơn nhập hàng</option>
+            </select>
+          </div>
+
+          {/* Desktop Tab Buttons */}
+          <div className="hide-on-mobile" style={{ display: 'flex', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-lg)', padding: '4px' }}>
             <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'batches' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'batches' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('batches')}>Danh sách lô</button>
             <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'history' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'history' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('history')}>Lịch sử biến động</button>
             <button style={{ padding: '0 14px', height: '34px', borderRadius: 'var(--radius-md)', fontSize: '0.875rem', fontWeight: 700, background: activeTab === 'purchase_orders' ? 'var(--color-primary)' : 'transparent', color: activeTab === 'purchase_orders' ? 'white' : 'var(--color-text-muted)', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.2s' }} onClick={() => setActiveTab('purchase_orders')}>Đơn nhập hàng</button>
           </div>
-          <div style={{ width: '1px', height: '28px', background: 'var(--color-border)' }} />
-          <button className="btn outline" onClick={() => setShowImportExport(true)}><Download size={16} /> Nhập/Xuất</button>
-          <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }}><Plus size={16} /> Tạo đơn nhập hàng</button>
+
+          <div className="hide-on-mobile" style={{ width: '1px', height: '28px', background: 'var(--color-border)' }} />
+
+          <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất">
+            <Download size={16} />
+            <span className="hide-on-mobile"> Nhập/Xuất</span>
+          </button>
+
+          <button className="btn primary" onClick={() => { setActiveTab('purchase_orders'); setShowPOModal(true); }} title="Tạo đơn nhập hàng">
+            <Plus size={16} />
+            <span className="hide-on-mobile"> Tạo đơn nhập hàng</span>
+          </button>
         </div>
       </div>
 

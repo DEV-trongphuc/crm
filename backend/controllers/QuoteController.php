@@ -107,6 +107,15 @@ class QuoteController {
                 if ($qty <= 0 || $price < 0) {
                     throw new Exception('Số lượng sản phẩm phải lớn hơn 0 và đơn giá không được âm');
                 }
+
+                if (!empty($item['product_id'])) {
+                    $prodCheck = $this->db->prepare("SELECT id FROM products WHERE id=? AND tenant_id=?");
+                    $prodCheck->execute([(int)$item['product_id'], $tid]);
+                    if (!$prodCheck->fetch()) {
+                        throw new Exception("Sản phẩm ID {$item['product_id']} không hợp lệ hoặc không thuộc cửa hàng của bạn");
+                    }
+                }
+
                 $ins->execute([$qid,$item['product_id']??null,$item['name'],$item['description']??null,$qty,$price,$item['discount']??0,$item['subtotal']??0,$i]);
             }
         }

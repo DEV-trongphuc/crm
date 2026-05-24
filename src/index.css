@@ -1815,3 +1815,27 @@ th.col-check {
   color: var(--color-text-muted);
   margin-bottom: 0.5rem;
 }
+
+/* ================================================
+   RESPONSIVE UTILITIES (PHASE 8 REFINEMENTS)
+   ================================================ */
+@media (max-width: 767px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+  .mobile-only {
+    display: block !important;
+  }
+  .mobile-inline {
+    display: inline !important;
+  }
+  .mobile-flex {
+    display: flex !important;
+  }
+}
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+

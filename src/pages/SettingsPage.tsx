@@ -269,8 +269,22 @@ export const SettingsPage: React.FC = () => {
         <h1 className="page-title">Cài đặt hệ thống</h1>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', background: 'var(--color-bg)', padding: '0.375rem', borderRadius: 'var(--radius-lg)', width: 'fit-content' }}>
+      {/* Mobile Tab Selector */}
+      <div className="mobile-only" style={{ width: '100%', marginBottom: '1.5rem' }}>
+        <select 
+          value={tab} 
+          onChange={e => setTab(e.target.value)}
+          className="form-select"
+          style={{ width: '100%', height: 44 }}
+        >
+          {TABS.map(({ id, label }) => (
+            <option key={id} value={id}>{label}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Desktop/Tablet Tab Buttons */}
+      <div className="hide-on-mobile" style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.5rem', background: 'var(--color-bg)', padding: '0.375rem', borderRadius: 'var(--radius-lg)', width: 'fit-content' }}>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button key={id} onClick={() => setTab(id)}
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1.125rem', borderRadius: '8px', fontWeight: 600, fontSize: '0.875rem', background: tab === id ? 'var(--color-surface)' : 'transparent', color: tab === id ? 'var(--color-text)' : 'var(--color-text-light)', boxShadow: tab === id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}>

@@ -255,10 +255,14 @@ export const ExpensesPage: React.FC = () => {
             value={period}
             onChange={(p, r) => { setPeriod(p); setDateRange(r); setPage(1); }}
           />
-          <button className="btn secondary" onClick={() => addToast('Đang xuất bảng kê...', 'info')}>
-            <Download size={16} /> Xuất
+          <button className="btn secondary" onClick={() => addToast('Đang xuất bảng kê...', 'info')} title="Xuất dữ liệu">
+            <Download size={16} />
+            <span className="hide-on-mobile"> Xuất</span>
           </button>
-          <button className="btn primary" onClick={openCreate}><Plus size={16} /> Nhập chi phí</button>
+          <button className="btn primary" onClick={openCreate} title="Nhập chi phí">
+            <Plus size={16} />
+            <span className="hide-on-mobile"> Nhập chi phí</span>
+          </button>
         </div>
       </div>
 

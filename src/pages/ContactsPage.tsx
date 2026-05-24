@@ -272,9 +272,13 @@ export const ContactsPage: React.FC = () => {
           <p className="page-subtitle">{loading ? '...' : `${total} liên hệ`}</p>
         </div>
         <div className="flex gap-2">
-          <button className="btn outline" onClick={() => setShowImportExport(true)}><Download size={14}/> Nhập/Xuất Dữ liệu</button>
-          <button className="btn primary" onClick={() => setShowCreateModal(true)}>
-            <Plus size={15}/> Thêm liên hệ
+          <button className="btn outline" onClick={() => setShowImportExport(true)} title="Nhập/Xuất Dữ liệu">
+            <Download size={14}/>
+            <span className="hide-on-mobile"> Nhập/Xuất Dữ liệu</span>
+          </button>
+          <button className="btn primary" onClick={() => setShowCreateModal(true)} title="Thêm liên hệ">
+            <Plus size={15}/>
+            <span className="hide-on-mobile"> Thêm liên hệ</span>
           </button>
         </div>
       </div>

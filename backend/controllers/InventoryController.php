@@ -98,14 +98,14 @@ class InventoryController {
             ]);
 
             // 4. Update overall product stock
-            $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?")
-                 ->execute([$b['qty'], $batch['product_id']]);
+            $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND tenant_id = ?")
+                 ->execute([$b['qty'], $batch['product_id'], $auth['tenant_id']]);
 
             // 5. If gift/loss with receiver, create Expense record automatically
             if ($receiverId && $b['reason'] === 'Hàng tặng/Quà tặng') {
                 $expenseAmount = $b['qty'] * $batch['import_price'];
-                $productNameStmt = $this->db->prepare("SELECT name FROM products WHERE id = ?");
-                $productNameStmt->execute([$batch['product_id']]);
+                $productNameStmt = $this->db->prepare("SELECT name FROM products WHERE id = ? AND tenant_id = ?");
+                $productNameStmt->execute([$batch['product_id'], $auth['tenant_id']]);
                 $pName = $productNameStmt->fetchColumn();
 
                 $expStmt = $this->db->prepare("

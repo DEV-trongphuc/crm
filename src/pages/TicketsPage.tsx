@@ -182,8 +182,9 @@ export const TicketsPage: React.FC = () => {
           <p className="page-subtitle">Quản lý các yêu cầu hỗ trợ và khiếu nại từ khách hàng</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn primary" onClick={() => setShowCreateModal(true)}>
-            <Plus size={16} /> Tạo Ticket
+          <button className="btn primary" onClick={() => setShowCreateModal(true)} title="Tạo Ticket mới">
+            <Plus size={16} />
+            <span className="hide-on-mobile"> Tạo Ticket</span>
           </button>
         </div>
       </div>
