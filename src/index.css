@@ -431,7 +431,28 @@ ul {
 /* Tables */
 .table-wrap {
   overflow-x: auto;
+  position: relative;
+  background: 
+    linear-gradient(to right, var(--color-surface) 30%, transparent),
+    linear-gradient(to left, var(--color-surface) 30%, transparent) 100% 0,
+    linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent),
+    linear-gradient(to left, rgba(0, 0, 0, 0.08), transparent) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 32px 100%, 32px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
 }
+
+.scroll-shadows-x {
+  background: 
+    linear-gradient(to right, var(--color-surface) 30%, transparent),
+    linear-gradient(to left, var(--color-surface) 30%, transparent) 100% 0,
+    linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent),
+    linear-gradient(to left, rgba(0, 0, 0, 0.08), transparent) 100% 0;
+  background-repeat: no-repeat;
+  background-size: 32px 100%, 32px 100%, 12px 100%, 12px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
 
 table {
   width: 100%;
@@ -766,6 +787,24 @@ select:focus {
 
 .grid-4 {
   grid-template-columns: repeat(4, 1fr);
+}
+
+.grid-cards-responsive {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .grid-cards-responsive {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .grid-cards-responsive {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Stat card */

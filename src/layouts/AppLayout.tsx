@@ -20,6 +20,7 @@ import { DemoIndicator } from '../components/ui/DemoIndicator';
 import { QRCodeCallModal } from '../components/ui/QRCodeCallModal';
 import { AdminProfileModal } from '../components/ui/AdminProfileModal';
 import { AppLauncherModal } from '../components/ui/AppLauncherModal';
+import { Avatar } from '../components/ui/Avatar';
 import styles from './AppLayout.module.css';
 
 const NAV_ITEMS = [
@@ -98,16 +99,6 @@ export const AppLayout: React.FC = () => {
             onClick={() => setMobileOpen(false)} style={{ zIndex: 150 }} />
         )}
       </AnimatePresence>
-
-      {/* Mobile Not Supported Overlay */}
-      <div className={styles.mobileNotSupportedOverlay}>
-        <div style={{ textAlign: 'center', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <AlertCircle size={48} style={{ color: 'var(--color-primary)', marginBottom: '1rem' }} />
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--color-text)' }}>Hiện chưa hỗ trợ Mobile</h2>
-          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', lineHeight: 1.5 }}>Vui lòng sử dụng màn hình lớn hơn (PC, Laptop, hoặc Tablet xoay ngang) để có trải nghiệm sử dụng hệ thống quản trị CRM tốt nhất.</p>
-        </div>
-      </div>
-
       <DemoIndicator />
       {/* SIDEBAR */}
       <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileVisible : ''}`}>
@@ -188,7 +179,7 @@ export const AppLayout: React.FC = () => {
             </button>
             <NotificationsDropdown />
             <div className={styles.userAvatar} onClick={() => setProfileModalOpen(true)} style={{ cursor: 'pointer' }}>
-              <div className="avatar-placeholder sm" style={{ background: '#7c3aed', fontSize: '0.7rem' }}>{initials}</div>
+              <Avatar name={user?.full_name} src={user?.avatar_url || undefined} size={32} />
               <div className={styles.userMeta}>
                 <span className={styles.topUserName}>{user?.full_name}</span>
                 <span className={styles.topUserTenant}>{user?.role === 'admin' ? 'Quản trị viên' : 'Nhân viên'}</span>
@@ -217,7 +208,7 @@ export const AppLayout: React.FC = () => {
           <Users size={20} />
           <span>Khách hàng</span>
         </NavLink>
-        <button className={styles.bottomNavItem} onClick={() => setMobileOpen(true)}>
+        <button className={styles.bottomNavItem} onClick={() => setLauncherOpen(true)}>
           <Menu size={20} />
           <span>Menu</span>
         </button>

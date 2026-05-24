@@ -66,7 +66,21 @@ export const ContactsPage: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);
 
   // New Enterprise Features State
-  const [viewMode, setViewMode] = useState<'list' | 'card'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'card'>(() => window.innerWidth <= 768 ? 'card' : 'list');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 600);
+      if (window.innerWidth <= 768) {
+        setViewMode('card');
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+
   const [sortBy, setSortBy] = useState<'newest' | 'score_desc' | 'deal_desc'>('newest');
   
   // Date filter
@@ -578,7 +592,7 @@ export const ContactsPage: React.FC = () => {
             </div>
           ) : (
             <div style={{ padding: '1rem', background: 'var(--color-surface)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
+              <div className="grid-cards-responsive">
                 {paged.map(c => {
                   const days = AGO_DAYS(c.last_contact);
                   const fullName = `${c.first_name} ${c.last_name}`;
@@ -682,36 +696,41 @@ export const ContactsPage: React.FC = () => {
             />
             <motion.div
               className="modal-sheet"
-              initial={{ opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
-              animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-              exit={{ opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
-              style={{ 
+              initial={isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
+              animate={isMobile ? { opacity: 1, y: 0 } : { opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
+              exit={isMobile ? { opacity: 0, y: '100%' } : { opacity: 0, scale: 0.95, x: '-50%', y: '-45%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              style={isMobile ? { 
+                position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
+                maxWidth: '100vw', zIndex: 410, overflow: 'hidden', borderRadius: 0,
+                display: 'flex', flexDirection: 'column'
+              } : { 
                 position: 'fixed', top: '50%', left: '50%', width: 640, 
                 maxWidth: 'calc(100vw - 2rem)', zIndex: 410, overflow: 'visible'
               }}
             >
               {/* Header */}
-              <div className="modal-header" style={{ padding: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                  <div style={{ width: 52, height: 52, borderRadius: '16px', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <User size={26} style={{ color: 'var(--color-primary)' }} />
+              <div className="modal-header" style={{ padding: isMobile ? '1.25rem' : '2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '0.75rem' : '1.25rem' }}>
+                  <div style={{ width: isMobile ? 40 : 52, height: isMobile ? 40 : 52, borderRadius: '16px', background: 'var(--color-primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <User size={isMobile ? 20 : 26} style={{ color: 'var(--color-primary)' }} />
                   </div>
                   <div>
-                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em' }}>Thêm Liên hệ mới</h3>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--color-text-light)', marginTop: 2 }}>Nhập thông tin cơ bản để bắt đầu quản lý khách hàng</p>
+                    <h3 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>Thêm Liên hệ mới</h3>
+                    <p style={{ fontSize: isMobile ? '0.75rem' : '0.875rem', color: 'var(--color-text-light)', marginTop: 2 }}>{isMobile ? 'Nhập thông tin để quản lý khách hàng' : 'Nhập thông tin cơ bản để bắt đầu quản lý khách hàng'}</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => setShowCreateModal(false)} 
                   className="btn-icon-bare" 
                   disabled={creating}
-                ><X size={24} /></button>
+                ><X size={isMobile ? 20 : 24} /></button>
               </div>
 
               {/* Body */}
-              <div className="modal-body" style={{ padding: '2.5rem' }}>
+              <div className="modal-body" style={{ padding: isMobile ? '1.25rem' : '2.5rem', overflowY: 'auto' }}>
                 {/* Name row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 700 }}>Họ <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                     <input className="form-input lg" placeholder="VD: Nguyễn" value={createForm.first_name} onChange={e => setCreateForm(f => ({ ...f, first_name: e.target.value }))} autoFocus />
@@ -723,7 +742,7 @@ export const ContactsPage: React.FC = () => {
                 </div>
 
                 {/* Contact row */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 700 }}>Số điện thoại</label>
                     <div style={{ position: 'relative' }}>
@@ -741,7 +760,7 @@ export const ContactsPage: React.FC = () => {
                 </div>
 
                 {/* Company + Job */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 700 }}>Công ty / Tổ chức</label>
                     <div style={{ position: 'relative' }}>
@@ -759,7 +778,7 @@ export const ContactsPage: React.FC = () => {
                 </div>
 
                 {/* Status + Source */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? '1rem' : '1.5rem' }}>
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 700 }}>Trạng thái Lead</label>
                     <CustomSelect 
@@ -804,7 +823,8 @@ export const ContactsPage: React.FC = () => {
                     value={createForm.source} 
                     onChange={val => setCreateForm(f => ({ ...f, source: val.toString() }))} 
                   />
-                <div className="form-group">
+                </div>
+                <div className="form-group" style={{ marginTop: isMobile ? '1rem' : '1.5rem' }}>
                   <AddressSelect 
                     label="Địa chỉ khách hàng"
                     value={createForm.address || ''}
@@ -812,20 +832,19 @@ export const ContactsPage: React.FC = () => {
                     placeholder="Chọn địa chỉ..."
                   />
                 </div>
-                </div>
               </div>
 
               {/* Footer */}
-              <div className="modal-footer" style={{ padding: '1.5rem 2.5rem' }}>
-                <button className="btn outline lg" onClick={() => setShowCreateModal(false)} disabled={creating}>Hủy bỏ</button>
+              <div className="modal-footer" style={{ padding: isMobile ? '1rem 1.25rem' : '1.5rem 2.5rem' }}>
+                <button className={`btn outline ${isMobile ? 'sm' : 'lg'}`} onClick={() => setShowCreateModal(false)} disabled={creating}>Hủy bỏ</button>
                 <button 
-                  className="btn primary lg" 
+                  className={`btn primary ${isMobile ? 'sm' : 'lg'}`} 
                   onClick={handleCreateContact} 
                   disabled={creating} 
-                  style={{ minWidth: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                  style={{ minWidth: isMobile ? 140 : 200, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                 >
                   {creating ? <Loader2 size={20} className="spin" /> : <Plus size={20} />}
-                  {creating ? 'Đang khởi tạo...' : 'Tạo Liên hệ ngay'}
+                  {creating ? 'Đang khởi tạo...' : 'Tạo Liên hệ'}
                 </button>
               </div>
             </motion.div>

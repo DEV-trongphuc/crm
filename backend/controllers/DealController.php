@@ -240,7 +240,7 @@ class DealController {
             } 
         }
         if (isset($b['tags'])) { $sets[]='tags=?'; $params[]=json_encode($b['tags']); }
-        if (!$sets) respond(422, null, 'Không có dữ liệu', false);
+        if (!$sets && !isset($b['custom_fields'])) respond(422, null, 'Không có dữ liệu để cập nhật', false);
 
         $tid = $auth['tenant_id'];
         if (!empty($b['contact_id'])) {
@@ -279,9 +279,11 @@ class DealController {
             }
         }
 
-        $params[]=$id; $params[]=$auth['tenant_id'];
-        $stmt = $this->db->prepare("UPDATE deals SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
-        $stmt->execute($params);
+        if ($sets) {
+            $params[]=$id; $params[]=$auth['tenant_id'];
+            $stmt = $this->db->prepare("UPDATE deals SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
+            $stmt->execute($params);
+        }
         
         if (array_key_exists('stage_id', $b) && $b['stage_id'] != $oldDeal['stage_id']) {
             $this->db->prepare("INSERT INTO deal_stage_history (deal_id,from_stage,to_stage,moved_by) VALUES (?,?,?,?)")

@@ -971,7 +971,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                             setPipelineModal({ isOpen: true, targetId: String(st.id), targetLabel: st.name, note: '' });
                           }}
                           style={{
-                            flex: '0 0 auto', width: 'calc(25% - 9px)', position: 'relative', height: '40px', cursor: isCurrent ? 'default' : 'pointer',
+                            flex: '1 0 auto', minWidth: '135px', position: 'relative', height: '40px', cursor: isCurrent ? 'default' : 'pointer',
                             display: 'flex', alignItems: 'center', transition: 'all 0.3s'
                           }}
                         >

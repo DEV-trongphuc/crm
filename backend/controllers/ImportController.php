@@ -223,14 +223,34 @@ class ImportController {
         
         if (!$productId) return null;
 
-        $stmt = $this->db->prepare("INSERT INTO inventory_batches (tenant_id, product_id, batch_code, import_date, expiry_date, import_price, initial_qty, current_qty, created_by) VALUES (?,?,?,?,?,?,?,?,?)");
+        $initialQty = (int)($data['initial_qty'] ?? 0);
+        $importPrice = (float)($data['import_price'] ?? 0);
+
+        // 1. Insert into batches
+        $stmt = $this->db->prepare("INSERT INTO batches (tenant_id, product_id, batch_code, import_date, expiry_date, import_price, initial_qty, current_qty) VALUES (?,?,?,?,?,?,?,?)");
         $stmt->execute([
             $auth['tenant_id'], $productId, $data['batch_code'] ?? 'IMPORT-'.date('Ymd'),
             $data['import_date'] ?? date('Y-m-d'), $data['expiry_date'] ?? null,
-            $data['import_price'] ?? 0, $data['initial_qty'] ?? 0,
-            $data['initial_qty'] ?? 0, $auth['user_id']
+            $importPrice, $initialQty, $initialQty
         ]);
-        return (int)$this->db->lastInsertId();
+        $batchId = (int)$this->db->lastInsertId();
+
+        if ($batchId && $initialQty > 0) {
+            // 2. Update overall product stock
+            $updateStock = $this->db->prepare("UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ? AND tenant_id = ?");
+            $updateStock->execute([$initialQty, $productId, $auth['tenant_id']]);
+
+            // 3. Create inventory log
+            $insertLog = $this->db->prepare("
+                INSERT INTO inventory_logs (tenant_id, batch_id, action_type, qty_change, reason, created_by)
+                VALUES (?, ?, 'IMPORT', ?, ?, ?)
+            ");
+            $insertLog->execute([
+                $auth['tenant_id'], $batchId, $initialQty, 'Import từ CSV', $auth['user_id']
+            ]);
+        }
+
+        return $batchId;
     }
 
     private function saveCustomFieldValue(int $entityId, array $cf, string $value): void {

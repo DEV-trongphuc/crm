@@ -22,12 +22,12 @@ $allowed = array_map('trim', explode(',', ALLOWED_ORIGINS));
 $isLocalhost = (bool) preg_match('#^https?://localhost(:\d+)?$#', $origin);
 if ($isLocalhost || in_array($origin, $allowed, true)) {
     header("Access-Control-Allow-Origin: $origin");
+    header('Access-Control-Allow-Credentials: true');
 } else {
-    header("Access-Control-Allow-Origin: " . ($allowed[0] ?? '*'));
+    header("Access-Control-Allow-Origin: " . ($allowed[0] ?? ''));
 }
 header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
-header('Access-Control-Allow-Credentials: true');
 header('Vary: Origin');
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -474,16 +474,15 @@ switch ($resource) {
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
-    // USERS (admin only)
+    // USERS
     case 'users':
         $auth = requireAuth();
-        requireRole($auth, ['admin', 'super_admin']);
         $ctrl = new UserController($db);
-        if     (!$resourceId && $method === 'GET')    $ctrl->index($auth);
-        elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        if     (!$resourceId && $method === 'GET')    { requireRole($auth, ['admin', 'super_admin']); $ctrl->index($auth); }
+        elseif (!$resourceId && $method === 'POST')   { requireRole($auth, ['admin', 'super_admin']); $ctrl->store($auth); }
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
-        elseif ($resourceId  && $method === 'DELETE') $ctrl->destroy($auth, (int)$resourceId);
+        elseif ($resourceId  && $method === 'DELETE') { requireRole($auth, ['admin', 'super_admin']); $ctrl->destroy($auth, (int)$resourceId); }
         else respond(404, null, 'Route không tồn tại', false);
         break;
 
@@ -652,7 +651,7 @@ switch ($resource) {
         $auth = requireAuth();
         requireRole($auth, ['admin', 'super_admin']);
         if ($resourceId === 'patch' && $method === 'POST') {
-            $sqlFiles = ['migrate_2026_05_06_v3_files.sql'];
+            $sqlFiles = ['migrate_2026_05_06_v3_files.sql', 'migrate_activity_comments.sql'];
             $results = [];
             foreach ($sqlFiles as $file) {
                 $path = __DIR__ . '/' . $file;

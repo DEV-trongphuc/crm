@@ -72,7 +72,7 @@ class ExportController {
         } elseif ($type === 'inventory') {
             $baseColumns = ['id' => 'ID', 'product_name' => 'Sản phẩm', 'sku' => 'SKU', 'batch_code' => 'Mã lô', 'import_date' => 'Ngày nhập', 'expiry_date' => 'Hạn sử dụng', 'import_price' => 'Giá nhập', 'initial_qty' => 'Số lượng ban đầu', 'current_qty' => 'Tồn kho hiện tại', 'status' => 'Trạng thái'];
             $sql = "SELECT b.*, p.name as product_name, p.sku 
-                    FROM inventory_batches b 
+                    FROM batches b 
                     JOIN products p ON b.product_id = p.id 
                     WHERE b.tenant_id = ? AND b.status = 'active' ORDER BY b.import_date DESC";
         }
@@ -85,89 +85,101 @@ class ExportController {
         }
         fputcsv($output, $headerRow);
 
-        // Fetch Main Data
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
-        $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Fetch Main Data in batches to prevent memory exhaustion
+        $batchSize = 1000;
+        $offset = 0;
+        $totalExported = 0;
 
-        if (empty($records)) {
-            fclose($output);
-            exit;
-        }
+        while (true) {
+            $batchSql = $sql . " LIMIT $batchSize OFFSET $offset";
+            $stmt = $this->db->prepare($batchSql);
+            $stmt->execute($params);
+            $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Fetch Custom Field Values for all these records efficiently
-        $entityIds = array_column($records, 'id');
-        $groupedCfValues = [];
-        
-        if (!empty($entityIds)) {
-            $placeholders = implode(',', array_fill(0, count($entityIds), '?'));
-            
-            $cfvSql = "SELECT cf.field_key, cfv.entity_id, cfv.value_text, cfv.value_number, cfv.value_date, cfv.value_json, cf.field_type
-                       FROM custom_field_values cfv
-                       JOIN custom_fields cf ON cfv.custom_field_id = cf.id
-                       WHERE cf.tenant_id = ? AND cf.entity_type = ? AND cfv.entity_id IN ($placeholders)";
-            
-            $cfvParams = array_merge([$auth['tenant_id'], $type], $entityIds);
-            $stmtCfv = $this->db->prepare($cfvSql);
-            $stmtCfv->execute($cfvParams);
-            $cfValues = $stmtCfv->fetchAll(PDO::FETCH_ASSOC);
-            
-            // Group CF values by entity_id
-            foreach ($cfValues as $val) {
-            $eId = $val['entity_id'];
-            $key = $val['field_key'];
-            if (!isset($groupedCfValues[$eId])) {
-                $groupedCfValues[$eId] = [];
+            if (empty($records)) {
+                break;
             }
+
+            // Fetch Custom Field Values for this batch of records efficiently
+            $entityIds = array_column($records, 'id');
+            $groupedCfValues = [];
             
-            // Format value based on type
-            $displayValue = '';
-            if ($val['field_type'] === 'number' && $val['value_number'] !== null) {
-                $displayValue = $val['value_number'] + 0; // removes trailing zeros
-            } elseif ($val['field_type'] === 'date' && $val['value_date'] !== null) {
-                $displayValue = $val['value_date'];
-            } elseif ($val['field_type'] === 'multiselect' || $val['field_type'] === 'checkbox') {
-                $arr = json_decode($val['value_json'] ?? '[]', true);
-                if (is_array($arr)) {
-                    // Check if it's boolean true for single checkbox
-                    if ($val['field_type'] === 'checkbox' && (is_bool($arr) || is_bool(json_decode($val['value_text']??'false')))) {
-                        $displayValue = (json_decode($val['value_text']??'false') || $arr === true) ? 'Có' : 'Không';
-                    } else {
-                        $displayValue = implode(', ', $arr);
+            if (!empty($entityIds)) {
+                $placeholders = implode(',', array_fill(0, count($entityIds), '?'));
+                
+                $cfvSql = "SELECT cf.field_key, cfv.entity_id, cfv.value_text, cfv.value_number, cfv.value_date, cfv.value_json, cf.field_type
+                           FROM custom_field_values cfv
+                           JOIN custom_fields cf ON cfv.custom_field_id = cf.id
+                           WHERE cf.tenant_id = ? AND cf.entity_type = ? AND cfv.entity_id IN ($placeholders)";
+                
+                $cfvParams = array_merge([$auth['tenant_id'], $type], $entityIds);
+                $stmtCfv = $this->db->prepare($cfvSql);
+                $stmtCfv->execute($cfvParams);
+                $cfValues = $stmtCfv->fetchAll(PDO::FETCH_ASSOC);
+                
+                // Group CF values by entity_id
+                foreach ($cfValues as $val) {
+                    $eId = $val['entity_id'];
+                    $key = $val['field_key'];
+                    if (!isset($groupedCfValues[$eId])) {
+                        $groupedCfValues[$eId] = [];
                     }
-                } else {
-                    $displayValue = $val['value_text'] ?? '';
+                    
+                    // Format value based on type
+                    $displayValue = '';
+                    if ($val['field_type'] === 'number' && $val['value_number'] !== null) {
+                        $displayValue = $val['value_number'] + 0; // removes trailing zeros
+                    } elseif ($val['field_type'] === 'date' && $val['value_date'] !== null) {
+                        $displayValue = $val['value_date'];
+                    } elseif ($val['field_type'] === 'multiselect' || $val['field_type'] === 'checkbox') {
+                        $arr = json_decode($val['value_json'] ?? '[]', true);
+                        if (is_array($arr)) {
+                            // Check if it's boolean true for single checkbox
+                            if ($val['field_type'] === 'checkbox' && (is_bool($arr) || is_bool(json_decode($val['value_text']??'false')))) {
+                                $displayValue = (json_decode($val['value_text']??'false') || $arr === true) ? 'Có' : 'Không';
+                            } else {
+                                $displayValue = implode(', ', $arr);
+                            }
+                        } else {
+                            $displayValue = $val['value_text'] ?? '';
+                        }
+                    } else {
+                        $displayValue = $val['value_text'] ?? '';
+                    }
+                    
+                    $groupedCfValues[$eId][$key] = $displayValue;
                 }
-            } else {
-                $displayValue = $val['value_text'] ?? '';
             }
-            
-            $groupedCfValues[$eId][$key] = $displayValue;
-            }
-        }
 
-        // Write Rows
-        foreach ($records as $record) {
-            $row = [];
-            // Map base columns
-            foreach (array_keys($baseColumns) as $colKey) {
-                $row[] = $record[$colKey] ?? '';
+            // Write Rows to Output Stream
+            foreach ($records as $record) {
+                $row = [];
+                // Map base columns
+                foreach (array_keys($baseColumns) as $colKey) {
+                    $row[] = $record[$colKey] ?? '';
+                }
+                
+                // Map custom fields
+                $eId = $record['id'];
+                foreach ($customFields as $cf) {
+                    $key = $cf['field_key'];
+                    $row[] = $groupedCfValues[$eId][$key] ?? '';
+                }
+                
+                fputcsv($output, $row);
             }
-            
-            // Map custom fields
-            $eId = $record['id'];
-            foreach ($customFields as $cf) {
-                $key = $cf['field_key'];
-                $row[] = $groupedCfValues[$eId][$key] ?? '';
-            }
-            
-            fputcsv($output, $row);
+
+            $totalExported += count($records);
+            $offset += $batchSize;
+
+            // Clear batch memory
+            unset($records, $entityIds, $groupedCfValues, $cfValues);
         }
 
         fclose($output);
         
         // Log action
-        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], "Export Data ($type)", $type, null, "Exported " . count($records) . " records");
+        logActivity($this->db, $auth['tenant_id'], $auth['user_id'], "Export Data ($type)", $type, null, "Exported " . $totalExported . " records");
         
         exit;
     }

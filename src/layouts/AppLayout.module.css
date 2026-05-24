@@ -569,30 +569,6 @@
     display: none;
   }
 }
-
-/* ── Mobile Not Supported Overlay ── */
-.mobileNotSupportedOverlay {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .mobileNotSupportedOverlay {
-    display: flex;
-    position: fixed;
-    inset: 0;
-    z-index: 999999;
-    background: var(--color-surface);
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  /* Hide the rest of the app to avoid background scrolling/interaction */
-  .sidebar, .mainContent, .bottomNav {
-    display: none !important;
-  }
-}
-
 @media (max-width: 767px) {
   .bottomNav {
     display: flex;

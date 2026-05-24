@@ -27,8 +27,8 @@ class FinanceController
 
     private function syncInvoiceContact(int $tid, int $invId): void
     {
-        $stmt = $this->db->prepare("SELECT contact_id FROM invoices WHERE id = ?");
-        $stmt->execute([$invId]);
+        $stmt = $this->db->prepare("SELECT contact_id FROM invoices WHERE id = ? AND tenant_id = ?");
+        $stmt->execute([$invId, $tid]);
         $cid = $stmt->fetchColumn();
         if ($cid)
             $this->syncContactStats($tid, (int) $cid);
@@ -181,14 +181,22 @@ class FinanceController
                     if ($qty <= 0 || $price < 0) {
                         throw new Exception('Số lượng sản phẩm phải lớn hơn 0 và đơn giá không được âm');
                     }
+
+                    $trackInventory = 0;
+                    if (!empty($item['product_id'])) {
+                        $pCheck = $this->db->prepare("SELECT track_inventory FROM products WHERE id=? AND tenant_id=?");
+                        $pCheck->execute([(int) $item['product_id'], $tid]);
+                        $prod = $pCheck->fetch();
+                        if (!$prod) {
+                            throw new Exception("Sản phẩm ID {$item['product_id']} không hợp lệ hoặc không thuộc cửa hàng của bạn");
+                        }
+                        $trackInventory = (int)$prod['track_inventory'];
+                    }
+
                     $sItem->execute([$invId, $item['product_id'] ?? null, $item['name'], $qty, $price, $item['subtotal'] ?? 0]);
 
-                    if ($isPaid && !empty($item['product_id'])) {
-                        $pCheck = $this->db->prepare("SELECT track_inventory FROM products WHERE id=?");
-                        $pCheck->execute([(int) $item['product_id']]);
-                        if ($pCheck->fetchColumn()) {
-                            deductStockFIFO($this->db, $tid, $uid, (int) $item['product_id'], (int) $item['quantity'], $data['invoice_number']);
-                        }
+                    if ($isPaid && !empty($item['product_id']) && $trackInventory) {
+                        deductStockFIFO($this->db, $tid, $uid, (int) $item['product_id'], (int) $item['quantity'], $data['invoice_number']);
                     }
                 }
             }

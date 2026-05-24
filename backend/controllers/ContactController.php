@@ -260,7 +260,7 @@ class ContactController {
             }
         }
 
-        if (!$sets) respond(422, null, 'Không có dữ liệu để cập nhật', false);
+        if (!$sets && !isset($b['custom_fields'])) respond(422, null, 'Không có dữ liệu để cập nhật', false);
 
         if (array_key_exists('stage_id', $b)) {
             $sStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
@@ -275,10 +275,12 @@ class ContactController {
         $check->execute($cp);
         if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 
-        $params[] = $id; $params[] = $auth['tenant_id'];
-        $sql = "UPDATE contacts SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
+        if ($sets) {
+            $params[] = $id; $params[] = $auth['tenant_id'];
+            $sql = "UPDATE contacts SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+        }
         
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'contact', $b['custom_fields']);

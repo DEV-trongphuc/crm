@@ -47,7 +47,15 @@ export const DashboardPage: React.FC = () => {
   const [dateRange, setDateRange] = useState<DateRange>(getDateRange('this_month'));
   const [loadingStats, setLoadingStats] = useState(true);
   const [activityIndex, setActivityIndex] = useState(0);
-  const ITEMS_PER_PAGE = 4;
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const ITEMS_PER_PAGE = isMobile ? 1 : 4;
 
   const fetchAll = useCallback(async () => {
     if (DEV_MODE) {
@@ -318,7 +326,7 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             {tasksToday.length > 0 && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem' }}>
+              <div className={styles.focusRow}>
                 {tasksToday.slice(activityIndex, activityIndex + ITEMS_PER_PAGE).map((task: any) => (
                   <motion.div
                     key={task.id}
@@ -362,7 +370,7 @@ export const DashboardPage: React.FC = () => {
       })()}
 
       {/* KPI Cards — Simple & Standard */}
-      <div className="grid grid-4" style={{ marginBottom: '1.5rem' }}>
+      <div className={`grid ${styles.kpiGrid}`} style={{ marginBottom: '1.5rem' }}>
         {kpiCards.map((card, i) => {
           const Icon = card.icon;
           return (
@@ -406,7 +414,7 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Revenue chart + Pipeline */}
-      <div style={{ display: 'grid', gridTemplateColumns: '7fr 3fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+      <div className={styles.chartsRow}>
         {/* Revenue */}
         <div className="card" style={{ padding: '1.25rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
@@ -420,11 +428,11 @@ export const DashboardPage: React.FC = () => {
             </div>
           </div>
           {loadingStats ? (
-            <div style={{ height: 260, display: 'flex', alignItems: 'flex-end', gap: '1rem' }}>
+            <div style={{ height: isMobile ? 180 : 260, display: 'flex', alignItems: 'flex-end', gap: '1rem' }}>
               {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} height={`${((i * 17) % 60) + 20}%`} width="100%" />)}
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height={240}>
+            <ResponsiveContainer width="100%" height={isMobile ? 180 : 240}>
               <ComposedChart data={revenueChart} margin={{ left: -10, right: 5 }}>
                 <defs>
                   <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
@@ -468,7 +476,7 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* 3-column row: Leaderboard + Lead Sources + Activities */}
-      <div style={{ display: 'grid', gridTemplateColumns: user?.role === 'sale' ? '1fr' : 'repeat(3, 1fr)', gap: '1.25rem' }}>
+      <div className={styles.bottomRow}>
 
         {/* Sales Leaderboard */}
         {user?.role !== 'sale' && (
@@ -505,7 +513,7 @@ export const DashboardPage: React.FC = () => {
             <Users size={16} color="var(--color-primary)" /> Nguồn khách hàng
           </h3>
           <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', marginBottom: '0.5rem' }}>Kỳ được chọn</p>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={isMobile ? 180 : 200}>
             <PieChart>
               <Pie data={leadSources} nameKey="source" dataKey="count" cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={4}>
                 {leadSources.map((_: any, i: number) => <Cell key={i} fill={leadSources[i]?.color || '#6366f1'} />)}
@@ -549,7 +557,7 @@ export const DashboardPage: React.FC = () => {
                 <span>Chưa có tag nào trong kỳ này</span>
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={Math.max(180, tagStats.length * 34)}>
+              <ResponsiveContainer width="100%" height={isMobile ? 180 : Math.max(180, tagStats.length * 34)}>
                 <BarChart data={tagStats} layout="vertical" margin={{ left: 4, right: 30, top: 2, bottom: 2 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 10, fill: 'var(--color-text-muted)' }} axisLine={false} tickLine={false} allowDecimals={false} />

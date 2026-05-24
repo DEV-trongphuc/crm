@@ -45,6 +45,22 @@ export const DealsPage: React.FC = () => {
   
   const [dragging, setDragging] = useState<{ id: number, fromStage: number } | null>(null);
   const [transitionModal, setTransitionModal] = useState<{ isOpen: boolean; itemId: number; toStage: number; fromStage: number; note: string } | null>(null);
+  const [stagePickerItem, setStagePickerItem] = useState<{ id: number, fromStageId: number } | null>(null);
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [activeStageMobile, setActiveStageMobile] = useState<string | number>('');
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (stages.length > 0 && !activeStageMobile) {
+      setActiveStageMobile(stages[0].id);
+    }
+  }, [stages]);
   
   // Filter States
   const [searchTerm, setSearchTerm] = useState('');
@@ -611,14 +627,61 @@ export const DealsPage: React.FC = () => {
         </div>
       )}
 
+      {isMobile && viewMode === 'kanban' && (
+        <div className="no-scrollbar" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '0.75rem 1rem', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', marginBottom: '0.75rem', flexShrink: 0 }}>
+          {stages.map(stage => {
+            const isActive = activeStageMobile === stage.id;
+            const count = (filteredItems[stage.id] || []).length;
+            return (
+              <button
+                key={stage.id}
+                onClick={() => setActiveStageMobile(stage.id)}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '99px',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s',
+                  border: `1px solid ${isActive ? stage.color || 'var(--color-primary)' : 'var(--color-border)'}`,
+                  background: isActive ? `${stage.color || 'var(--color-primary)'}15` : 'var(--color-surface)',
+                  color: isActive ? stage.color || 'var(--color-primary)' : 'var(--color-text-light)',
+                }}
+              >
+                {stage.name} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Main Content Area */}
       {viewMode === 'kanban' ? (
-        <div className="card no-scrollbar" style={{ display: 'flex', gap: '1.25rem', overflowX: 'auto', padding: '1.5rem', paddingBottom: '2rem', flex: 1, alignItems: 'flex-start', background: 'var(--color-surface)', scrollSnapType: 'x mandatory' }}>
+        <div className="card no-scrollbar" style={{ 
+          display: 'flex', 
+          gap: isMobile ? '0.75rem' : '1.25rem', 
+          overflowX: 'auto', 
+          padding: isMobile ? '0.75rem' : '1.5rem', 
+          paddingBottom: '2rem', 
+          flex: 1, 
+          alignItems: 'flex-start', 
+          scrollSnapType: 'x mandatory',
+          background: `
+            linear-gradient(to right, var(--color-surface) 30%, transparent),
+            linear-gradient(to left, var(--color-surface) 30%, transparent) 100% 0,
+            linear-gradient(to right, rgba(0, 0, 0, 0.08), transparent),
+            linear-gradient(to left, rgba(0, 0, 0, 0.08), transparent) 100% 0
+          `,
+          backgroundRepeat: 'no-repeat',
+          backgroundSize: '32px 100%, 32px 100%, 12px 100%, 12px 100%',
+          backgroundAttachment: 'local, local, scroll, scroll'
+        }}>
           {loading ? (
             // Skeleton columns while loading
             <>
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} style={{ minWidth: 320, width: 320, flexShrink: 0, background: 'white', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
+              {(isMobile ? [1] : [1, 2, 3, 4]).map(i => (
+                <div key={i} style={{ minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, background: 'white', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
                   <div style={{ padding: '1rem 1.25rem', borderBottom: '3px solid var(--color-border)' }}>
                     <div style={{ height: 18, width: 120, background: '#e9ecef', borderRadius: 6, marginBottom: 8 }} />
                     <div style={{ height: 14, width: 60, background: '#f1f3f5', borderRadius: 6 }} />
@@ -642,13 +705,14 @@ export const DealsPage: React.FC = () => {
               ))}
             </>
           ) : stages.map(stage => {
+            if (isMobile && activeStageMobile !== stage.id) return null;
             const stageItems = filteredItems[stage.id] || [];
             const total = stageItems.reduce((s, d) => s + (Number(d.expected_revenue) || 0), 0);
 
             return (
               <div key={stage.id}
                 style={{ 
-                  minWidth: 320, width: 320, flexShrink: 0, 
+                  minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, 
                   background: 'transparent',
                   border: '1px solid var(--color-border-light)',
                   borderRadius: 'var(--radius-xl)',
@@ -757,10 +821,24 @@ export const DealsPage: React.FC = () => {
                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: 'var(--color-text-muted)' }} title={item.owner_name || 'Sale phụ trách'}>
                              <Avatar name={item.owner_name} size={16} />
                              <span>{item.owner_name?.split(' ').pop() || 'Sale'}</span>
+                            </div>
+                         </div>
+                         {isMobile && (
+                           <div style={{ marginTop: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.5rem' }}>
+                             <button
+                               className="btn outline sm"
+                               style={{ width: '100%', height: '32px', fontSize: '0.75rem', padding: '0 8px', borderRadius: '8px', fontWeight: 700 }}
+                               onClick={(e) => {
+                                 e.stopPropagation();
+                                 setStagePickerItem({ id: item.id, fromStageId: stage.id });
+                               }}
+                             >
+                               Chuyển giai đoạn...
+                             </button>
                            </div>
-                        </div>
-                      </motion.div>
-                    )})}
+                         )}
+                       </motion.div>
+                     )})}
                   </AnimatePresence>
                 </div>
               </div>
@@ -910,7 +988,7 @@ export const DealsPage: React.FC = () => {
           <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }} onClick={() => setShowBulkMove(false)}>
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}
-              style={{ background: 'var(--color-surface)', width: '400px', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-2xl)' }}
+              style={{ background: 'var(--color-surface)', width: '100%', maxWidth: '400px', borderRadius: '24px', padding: '2rem', boxShadow: 'var(--shadow-2xl)' }}
               onClick={e => e.stopPropagation()}
             >
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem' }}>Chuyển {selected.size} thẻ sang...</h3>
@@ -926,6 +1004,43 @@ export const DealsPage: React.FC = () => {
                 <button className="btn outline" style={{ flex: 1 }} onClick={() => setShowBulkMove(false)}>Hủy</button>
                 <button className="btn primary" style={{ flex: 1 }} onClick={bulkMove} disabled={!targetStageId}>Xác nhận chuyển</button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Stage Picker for Mobile Quick Move */}
+      <AnimatePresence>
+        {stagePickerItem && (
+          <div className="overlay-backdrop" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 1000 }} onClick={() => setStagePickerItem(null)}>
+            <motion.div 
+              initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+              onClick={e => e.stopPropagation()}
+              style={{ background: 'var(--color-surface)', width: '100%', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '1.5rem', maxHeight: '80vh', overflowY: 'auto' }}
+            >
+              <h3 style={{ fontSize: '1.125rem', fontWeight: 800, marginBottom: '1rem', textAlign: 'center' }}>Chọn giai đoạn mới</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {stages.filter(s => s.id !== stagePickerItem.fromStageId).map(s => (
+                  <button
+                    key={s.id}
+                    className="btn outline"
+                    style={{ width: '100%', justifyContent: 'flex-start', borderLeftWidth: '6px', borderLeftColor: s.color || 'var(--color-primary)' }}
+                    onClick={() => {
+                      setTransitionModal({
+                        isOpen: true,
+                        itemId: stagePickerItem.id,
+                        fromStage: stagePickerItem.fromStageId,
+                        toStage: s.id,
+                        note: ''
+                      });
+                      setStagePickerItem(null);
+                    }}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+              <button className="btn ghost" style={{ width: '100%', marginTop: '1rem', fontWeight: 700 }} onClick={() => setStagePickerItem(null)}>Đóng</button>
             </motion.div>
           </div>
         )}

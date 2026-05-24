@@ -101,22 +101,9 @@ class ProductController {
     }
     public function update(array $auth,int $id): void {
         if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền cập nhật sản phẩm', false);
-        $b=getBody(); $fields=['name','sku','category','category_id','description','price','cost','unit','track_inventory','track_cost','is_active','min_stock_level'];
-        $sets=[];$params=[];
-        foreach($fields as $f){
-            if(array_key_exists($f,$b)){
-                $sets[]="$f=?";
-                $val = $b[$f];
-                if($f === 'category_id' && is_string($val) && str_starts_with($val, 'c')) {
-                    $val = (int)substr($val, 1);
-                }
-                if(($f === 'category_id' || $f === 'stock_quantity' || $f === 'is_active') && $val === '') $val = null;
-                if($f === 'track_inventory' || $f === 'track_cost' || $f === 'is_active') $val = $val ? 1 : 0;
-                $params[]=$val;
-            }
-        }
+        $b=getBody();
         if (($b['price'] ?? 0) < 0 || ($b['cost'] ?? 0) < 0) respond(422, null, 'Giá bán và Giá vốn không được âm', false);
-        
+
         $catId = null;
         if (array_key_exists('category_id', $b)) {
             $catId = !empty($b['category_id']) ? (int)(is_string($b['category_id']) && str_starts_with($b['category_id'], 'c') ? substr($b['category_id'], 1) : $b['category_id']) : null;
@@ -126,7 +113,23 @@ class ProductController {
                 if (!$checkCat->fetch()) respond(404, null, 'Danh mục không hợp lệ', false);
             }
         }
-        
+
+        $fields = ['name','sku','category','category_id','description','price','cost','unit','track_inventory','track_cost','is_active','min_stock_level'];
+        $sets=[];$params=[];
+        foreach($fields as $f){
+            if(array_key_exists($f,$b)){
+                $sets[]="$f=?";
+                if ($f === 'category_id') {
+                    $val = $catId;
+                } else {
+                    $val = $b[$f];
+                    if(($f === 'stock_quantity' || $f === 'is_active') && $val === '') $val = null;
+                    if($f === 'track_inventory' || $f === 'track_cost' || $f === 'is_active') $val = $val ? 1 : 0;
+                }
+                $params[]=$val;
+            }
+        }
+
         if(!$sets) respond(422,null,'Không có dữ liệu',false);
         
         // Check duplicate SKU
@@ -139,21 +142,7 @@ class ProductController {
         }
 
         $params[]=$id;$params[]=$auth['tenant_id'];
-        
-        // Find index of category_id in fields and replace value in params if exists
-        $catIdx = array_search('category_id', $fields);
-        if ($catIdx !== false && array_key_exists('category_id', $b)) {
-            // Rebuild params to use $catId
-            $newSets = []; $newParams = [];
-            foreach ($fields as $f) {
-                if (array_key_exists($f, $b)) {
-                    $newSets[] = "$f=?";
-                    $newParams[] = ($f === 'category_id') ? $catId : $b[$f];
-                }
-            }
-            $sets = $newSets;
-            $params = array_merge($newParams, [$id, $auth['tenant_id']]);
-        }
+
         try {
             $this->db->prepare("UPDATE products SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?")->execute($params);
             $this->show($auth,$id);

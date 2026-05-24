@@ -175,7 +175,7 @@ export const CompaniesPage: React.FC = () => {
 
       {/* Loading skeleton */}
       {loading && (
-        <div style={{ display: 'grid', gridTemplateColumns: viewMode === 'card' ? 'repeat(3, 1fr)' : '1fr', gap: '1rem' }}>
+        <div className={viewMode === 'card' ? 'grid-cards-responsive' : ''} style={{ display: viewMode === 'card' ? undefined : 'grid', gridTemplateColumns: viewMode === 'card' ? undefined : '1fr', gap: '1rem' }}>
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="skeleton" style={{ height: viewMode === 'card' ? 180 : 56, borderRadius: 'var(--radius-lg)' }} />
           ))}
@@ -184,7 +184,7 @@ export const CompaniesPage: React.FC = () => {
 
       {/* Card View */}
       {!loading && viewMode === 'card' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+        <div className="grid-cards-responsive">
           <AnimatePresence>
             {companies.map(co => (
               <motion.div

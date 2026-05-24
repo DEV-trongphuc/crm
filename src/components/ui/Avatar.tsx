@@ -19,23 +19,25 @@ const getInitials = (name: string) => {
   return name[0].toUpperCase();
 };
 
-const getColorFromName = (name: string) => {
-  const colors = [
-    '#3b82f6', // blue
-    '#10b981', // green
-    '#f59e0b', // amber
-    '#ef4444', // red
-    '#8b5cf6', // violet
-    '#ec4899', // pink
-    '#06b6d4', // cyan
-    '#f97316', // orange
+const getGradientFromName = (name: string) => {
+  const gradients = [
+    'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', // Blue
+    'linear-gradient(135deg, #10b981 0%, #047857 100%)', // Emerald
+    'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)', // Amber
+    'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', // Red
+    'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)', // Purple
+    'linear-gradient(135deg, #ec4899 0%, #be185d 100%)', // Pink
+    'linear-gradient(135deg, #06b6d4 0%, #0e7490 100%)', // Cyan
+    'linear-gradient(135deg, #f97316 0%, #c2410c 100%)', // Orange
+    'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)', // Indigo
+    'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)', // Teal
   ];
-  if (!name) return colors[0];
+  if (!name) return gradients[0];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return colors[Math.abs(hash) % colors.length];
+  return gradients[Math.abs(hash) % gradients.length];
 };
 
 export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', className = '', style, title }) => {
@@ -46,7 +48,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
   };
   const finalSize = typeof size === 'number' ? size : sizeMap[size];
   const initials = name ? getInitials(name) : '?';
-  const bgColor = name ? getColorFromName(name) : 'var(--color-primary)';
+  const gradient = name ? getGradientFromName(name) : 'var(--color-primary)';
 
   return (
     <div 
@@ -56,7 +58,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
         width: finalSize, 
         height: finalSize, 
         fontSize: finalSize * 0.4,
-        backgroundColor: src ? 'transparent' : bgColor,
+        background: src ? 'transparent' : gradient,
         ...style 
       }}
     >

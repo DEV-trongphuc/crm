@@ -18,7 +18,11 @@ class UploadController {
         $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
         $allowedExts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 
-        if (!in_array($file['type'], $allowedTypes) || !in_array($ext, $allowedExts)) {
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+
+        if (!in_array($mime, $allowedTypes) || !in_array($ext, $allowedExts)) {
             respond(400, null, 'Định dạng file không hỗ trợ hoặc không an toàn');
         }
 
@@ -33,7 +37,6 @@ class UploadController {
             mkdir($storageDir, 0755, true);
         }
 
-        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
         $filename = uniqid('img_', true) . '.' . $ext;
         $targetPath = $storageDir . $filename;
 

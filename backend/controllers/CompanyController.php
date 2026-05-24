@@ -137,7 +137,7 @@ class CompanyController {
         $sets=[]; $params=[];
         foreach ($fields as $f) { if (array_key_exists($f,$b)) { $sets[]="$f=?"; $params[]=$b[$f]; } }
         if (isset($b['tags'])) { $sets[]='tags=?'; $params[]=json_encode($b['tags']); }
-        if (!$sets) respond(422, null, 'Không có dữ liệu', false);
+        if (!$sets && !isset($b['custom_fields'])) respond(422, null, 'Không có dữ liệu để cập nhật', false);
 
         if (array_key_exists('stage_id', $b)) {
             $sStage = $this->db->prepare("SELECT id FROM pipeline_stages WHERE id=? AND tenant_id=?");
@@ -170,9 +170,11 @@ class CompanyController {
             }
         }
 
-        $params[]=$id; $params[]=$auth['tenant_id'];
-        $stmt = $this->db->prepare("UPDATE companies SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
-        $stmt->execute($params);
+        if ($sets) {
+            $params[]=$id; $params[]=$auth['tenant_id'];
+            $stmt = $this->db->prepare("UPDATE companies SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
+            $stmt->execute($params);
+        }
         
         if (isset($b['custom_fields']) && is_array($b['custom_fields'])) {
             saveCustomFields($this->db, $auth['tenant_id'], $id, 'company', $b['custom_fields']);
