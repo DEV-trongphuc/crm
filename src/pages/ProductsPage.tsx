@@ -213,7 +213,7 @@ export const ProductsPage: React.FC = () => {
                     onChange={e => setSelectedIds(e.target.checked ? filtered.map(p => p.id) : [])} 
                   />
                 </th>
-                <th>Sản phẩm</th><th>SKU</th><th>Danh mục</th><th>Đơn giá</th><th>Kho</th><th>Đơn vị</th><th>Trạng thái</th><th></th>
+                <th>Sản phẩm</th><th>Đơn giá</th><th>Kho</th><th>Trạng thái</th><th></th>
               </tr>
             </thead>
             <tbody>
@@ -227,29 +227,35 @@ export const ProductsPage: React.FC = () => {
                   </td>
                   <td>
                     <div className="flex items-center gap-3">
-                      <div style={{ width:36, height:36, borderRadius:'10px', background:'rgba(124,58,237,0.1)', color:'var(--color-primary)', display:'flex', alignItems:'center', justifyContent:'center' }}><Package size={16} /></div>
+                      <div style={{ width:36, height:36, borderRadius:'10px', background:'rgba(124,58,237,0.1)', color:'var(--color-primary)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink: 0 }}><Package size={16} /></div>
                       <div>
-                        <p className="text-sm font-semi">{p.name}</p>
-                        <p className="text-xs text-light">{p.description}</p>
+                        <p className="text-sm font-semi" style={{ color: 'var(--color-text)' }}>{p.name}</p>
+                        {p.description && <p className="text-xs text-light" style={{ color: 'var(--color-text-muted)', marginBottom: '4px' }}>{p.description}</p>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <code style={{ background:'var(--color-bg)', padding:'2px 6px', borderRadius:4, fontSize:'0.75rem', color: 'var(--color-text-muted)', fontFamily: 'monospace' }}>SKU: {p.sku}</code>
+                          <span className="badge text-xs" style={{ background:'var(--color-bg)', color:'var(--color-text-muted)', padding: '2px 6px' }}>{p.category}</span>
+                        </div>
                       </div>
                     </div>
                   </td>
-                  <td><code style={{ background:'var(--color-bg)', padding:'2px 6px', borderRadius:4, fontSize:'0.8rem' }}>{p.sku}</code></td>
-                  <td><span className="badge" style={{ background:'var(--color-bg)', color:'var(--color-text-light)' }}>{p.category}</span></td>
-                  <td><span className="font-semi" style={{ color:'var(--color-primary)' }}>{FMT(p.price)}</span></td>
+                  <td>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span className="font-semi" style={{ color:'var(--color-primary)', fontWeight: 700, fontSize: '0.875rem' }}>{FMT(p.price)}</span>
+                      <span className="text-xs text-light" style={{ color: 'var(--color-text-muted)' }}>/ {p.unit}</span>
+                    </div>
+                  </td>
                   <td>
                     {p.track_inventory ? (
-                      <span className={`badge ${(p.stock_quantity || 0) <= 5 ? 'danger' : 'info'}`} style={{ display: 'flex', alignItems: 'center', gap: '4px', width: 'fit-content' }}>
+                      <span className={`badge ${(p.stock_quantity || 0) <= 5 ? 'danger' : 'info'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', width: 'fit-content' }}>
                         {p.stock_quantity || 0}
                       </span>
                     ) : (
                       <span className="text-light">—</span>
                     )}
                   </td>
-                  <td><span className="text-sm text-light">{p.unit}</span></td>
                   <td><span className={`badge ${p.is_active ? 'success' : 'danger'}`}>{p.is_active ? 'Đang bán' : 'Ngừng bán'}</span></td>
                   <td>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2" style={{ justifyContent: 'flex-end' }}>
                       <button className="btn ghost sm" onClick={() => { 
                         const cat = categories.find(c => c.id === (p.category_id || p.category)) || categories.find(c => c.name === p.category) || categories[0];
                         setEditItem(p); 
@@ -410,7 +416,7 @@ export const ProductsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ padding: '1.25rem 1.75rem', background: '#fcfcfd' }}>
+              <div className="modal-footer" style={{ padding: '1.25rem 1.75rem', background: 'var(--color-bg)' }}>
                 <button className="btn secondary" onClick={() => setShowModal(false)} disabled={saving}>Hủy bỏ</button>
                 <button className="btn primary" onClick={handleSave} disabled={saving} style={{ minWidth: '160px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {saving && <Loader2 size={16} className="spin" />}
@@ -497,7 +503,7 @@ export const ProductsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="modal-footer" style={{ padding: '1.25rem 1.75rem', background: '#fcfcfd', justifyContent: 'flex-end' }}>
+              <div className="modal-footer" style={{ padding: '1.25rem 1.75rem', background: 'var(--color-bg)', justifyContent: 'flex-end' }}>
                 <button className="btn primary" onClick={() => setShowCatModal(false)}>Hoàn tất</button>
               </div>
             </motion.div>

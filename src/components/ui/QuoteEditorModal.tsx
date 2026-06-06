@@ -248,7 +248,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
             <button className="btn-icon sm" onClick={onClose}><X size={20} /></button>
           </div>
 
-          <div className="modal-body" style={{ background: '#f8fafc', padding: '1.5rem 2rem 4rem', maxHeight: 'calc(95vh - 140px)', overflowY: 'auto' }}>
+          <div className="modal-body" style={{ background: 'var(--color-bg)', padding: '1.5rem 2rem 4rem', maxHeight: 'calc(95vh - 140px)', overflowY: 'auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem', alignItems: 'start' }}>
               
               {/* Left Column */}
@@ -346,7 +346,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
 
                   {/* Section 2: Items */}
                 <div className="card overflow-hidden" style={{ border: '1px solid var(--color-border-light)' }}>
-                  <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', background: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                  <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border-light)', background: 'var(--color-surface)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
                     <h3 style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}>
                       <Package size={14} /> Danh mục hàng hóa
                     </h3>
@@ -447,9 +447,9 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                           <div 
                             key={idx} 
                             style={{ 
-                              background: 'white', border: '1px solid var(--color-border-light)', borderRadius: '16px', padding: '16px', 
+                              background: 'var(--color-surface)', border: '1px solid var(--color-border-light)', borderRadius: '16px', padding: '16px', 
                               display: 'flex', flexDirection: 'column', gap: '12px', transition: 'all 0.2s', 
-                              boxShadow: '0 2px 10px rgba(0,0,0,0.02)' 
+                              boxShadow: 'var(--shadow-sm)' 
                             }} 
                             onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-primary-light)'} 
                             onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border-light)'}
@@ -498,7 +498,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                                   <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>SL</span>
                                   <input 
                                     type="number" 
-                                    style={{ width: '48px', height: '28px', border: '1px solid var(--color-border)', background: 'white', borderRadius: '8px', outline: 'none', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', transition: 'border 0.2s' }}
+                                    style={{ width: '48px', height: '28px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '8px', outline: 'none', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', transition: 'border 0.2s' }}
                                     value={item.quantity}
                                     min={1}
                                     step={1}
@@ -515,7 +515,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                                   <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Đơn giá</span>
                                   <input 
                                     type="number" 
-                                    style={{ width: '110px', height: '28px', border: '1px solid var(--color-border)', background: 'white', borderRadius: '8px', outline: 'none', textAlign: 'right', fontSize: '0.875rem', fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-text)', padding: '0 8px', transition: 'border 0.2s' }}
+                                    style={{ width: '110px', height: '28px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '8px', outline: 'none', textAlign: 'right', fontSize: '0.875rem', fontWeight: 700, fontFamily: 'monospace', color: 'var(--color-text)', padding: '0 8px', transition: 'border 0.2s' }}
                                     value={item.unit_price}
                                     onChange={e => updateItem(idx, { unit_price: Number(e.target.value) })}
                                     onFocus={e => e.target.style.borderColor = 'var(--color-primary)'}
@@ -536,7 +536,7 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
                                   <div style={{ position: 'relative', width: '60px' }}>
                                     <input 
                                       type="number" 
-                                      style={{ width: '100%', height: '28px', border: '1px solid var(--color-border)', background: 'white', borderRadius: '8px', outline: 'none', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-danger)', paddingRight: '14px', transition: 'border 0.2s' }}
+                                      style={{ width: '100%', height: '28px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '8px', outline: 'none', textAlign: 'center', fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-danger)', paddingRight: '14px', transition: 'border 0.2s' }}
                                       value={item.discount}
                                       max={100}
                                       onChange={e => updateItem(idx, { discount: Math.min(100, Number(e.target.value)) })}
@@ -582,12 +582,12 @@ export const QuoteEditorModal: React.FC<QuoteEditorProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: 0 }}>
                 <div className="card overflow-hidden" style={{ border: '1px solid var(--color-border-light)', borderRadius: '20px' }}>
                   {/* Panel header */}
-                  <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', gap: '8px', background: 'white' }}>
+                  <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--color-surface)' }}>
                     <Calculator size={16} style={{ color: 'var(--color-primary)' }} />
                     <span style={{ fontSize: '0.8125rem', fontWeight: 800, color: 'var(--color-text)' }}>Tóm tắt tài chính</span>
                   </div>
 
-                  <div style={{ background: 'white', padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ background: 'var(--color-surface)', padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {/* Subtotal row */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>Thành tiền hàng</span>

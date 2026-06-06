@@ -33,16 +33,29 @@
   background: #f8fafc;
 }
 
+:global([data-theme="dark"]) .trigger:hover {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
 .trigger.open {
   border-color: var(--color-primary);
   background: white;
   box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
 }
 
+:global([data-theme="dark"]) .trigger.open {
+  background: var(--color-surface);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
 .triggerContent {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .placeholder {
@@ -52,6 +65,9 @@
 .selectedValue {
   color: var(--color-text);
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .icon {
@@ -80,6 +96,12 @@
   flex-direction: column;
 }
 
+:global([data-theme="dark"]) .dropdown {
+  background: var(--color-surface);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(99, 102, 241, 0.08);
+}
+
 .searchBox {
   display: flex;
   align-items: center;
@@ -87,6 +109,11 @@
   border-bottom: 1px solid var(--color-border-light);
   gap: 0.75rem;
   background: #f8fafc;
+}
+
+:global([data-theme="dark"]) .searchBox {
+  background: var(--color-bg);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .searchIcon {
@@ -127,10 +154,24 @@
   background: #f1f5f9;
 }
 
+:global([data-theme="dark"]) .option:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
 .optionSelected {
   background: var(--color-primary-light) !important;
   color: var(--color-primary);
   font-weight: 700;
+}
+
+.optionDisabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+
+.optionDisabled:hover {
+  background: transparent !important;
 }
 
 .optionLabel {
@@ -182,6 +223,26 @@
   background: #e2e8f0;
   border-radius: 10px;
 }
+:global([data-theme="dark"]) .list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+}
 .list::-webkit-scrollbar-thumb:hover {
   background: #cbd5e1;
+}
+:global([data-theme="dark"]) .list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+@media (max-width: 768px) {
+  .wrapper {
+    width: 100% !important;
+  }
+  .dropdown {
+    min-width: unset !important;
+    max-width: 92vw !important;
+  }
+  .optionMainLabel {
+    white-space: normal !important;
+    word-break: break-word;
+  }
 }

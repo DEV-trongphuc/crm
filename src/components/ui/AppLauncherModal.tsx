@@ -75,11 +75,12 @@ export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onCl
               left: isMobile ? 0 : '50%',
               width: isMobile ? '100%' : '900px',
               maxWidth: isMobile ? '100vw' : 'calc(100vw - 2rem)',
-              background: 'rgba(255, 255, 255, 0.8)',
+              background: 'var(--color-surface)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               borderRadius: isMobile ? '24px 24px 0 0' : '32px',
-              boxShadow: '0 30px 60px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05)',
+              boxShadow: 'var(--shadow-2xl)',
+              border: '1px solid var(--color-border)',
               zIndex: 1001,
               overflow: 'hidden',
               display: 'flex',
@@ -88,16 +89,16 @@ export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onCl
             }}
           >
             {/* Header / Search */}
-            <div style={{ padding: isMobile ? '1.25rem 1.25rem 1rem' : '2rem 2rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+            <div style={{ padding: isMobile ? '1.25rem 1.25rem 1rem' : '2rem 2rem 1.5rem', borderBottom: '1px solid var(--color-border-light)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: isMobile ? '1rem' : '1.5rem' }}>
-                <div style={{ width: isMobile ? 36 : 48, height: isMobile ? 36 : 48, borderRadius: isMobile ? '12px' : '16px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)', flexShrink: 0 }}>
+                <div style={{ width: isMobile ? 36 : 48, height: isMobile ? 36 : 48, borderRadius: isMobile ? '12px' : '16px', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', boxShadow: '0 8px 16px rgba(0, 0, 0, 0.05)', flexShrink: 0 }}>
                   <img src="/LOGO.jpg" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 </div>
                 <div>
                   <h3 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: 800, color: 'var(--color-text)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>Trình khởi chạy</h3>
                   <p style={{ fontSize: isMobile ? '0.75rem' : '0.875rem', color: 'var(--color-text-muted)', marginTop: 2 }}>{isMobile ? 'Truy cập nhanh chức năng' : 'Truy cập nhanh các chức năng hệ thống'}</p>
                 </div>
-                <button onClick={onClose} style={{ marginLeft: 'auto', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.05)', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
+                <button onClick={onClose} style={{ marginLeft: 'auto', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
                   <X size={18} />
                 </button>
               </div>
@@ -113,8 +114,9 @@ export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onCl
                     width: '100%',
                     padding: isMobile ? '0.75rem 1rem 0.75rem 2.75rem' : '0.875rem 1rem 0.875rem 3rem',
                     borderRadius: '16px',
-                    border: '1px solid rgba(0,0,0,0.1)',
-                    background: 'white',
+                    border: '1px solid var(--color-border)',
+                    background: 'var(--color-bg)',
+                    color: 'var(--color-text)',
                     fontSize: '1rem',
                     outline: 'none',
                     transition: 'all 0.2s'
@@ -142,11 +144,11 @@ export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onCl
                         gap: isMobile ? '0.5rem' : '0.75rem',
                         padding: isMobile ? '1rem 0.5rem' : '1.25rem 0.75rem',
                         borderRadius: isMobile ? '16px' : '20px',
-                        background: 'white',
-                        border: '1px solid rgba(0,0,0,0.05)',
+                        background: 'var(--color-surface)',
+                        border: '1px solid var(--color-border)',
                         cursor: 'pointer',
                         transition: 'all 0.2s',
-                        boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)'
+                        boxShadow: 'var(--shadow-sm)'
                       }}
                     >
                       <div style={{ 
@@ -177,7 +179,7 @@ export const AppLauncherModal: React.FC<AppLauncherModalProps> = ({ isOpen, onCl
               )}
             </div>
             
-            <div style={{ padding: isMobile ? '0.75rem 1rem' : '1rem 2rem', background: 'rgba(0,0,0,0.02)', borderTop: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ padding: isMobile ? '0.75rem 1rem' : '1rem 2rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)', display: 'flex', justifyContent: 'center' }}>
               <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{isMobile ? 'Vuốt xuống hoặc chạm ngoài để đóng' : 'Nhấn ESC để đóng nhanh'}</span>
             </div>
           </motion.div>

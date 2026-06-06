@@ -23,22 +23,49 @@ import { AppLauncherModal } from '../components/ui/AppLauncherModal';
 import { Avatar } from '../components/ui/Avatar';
 import styles from './AppLayout.module.css';
 
-const NAV_ITEMS = [
-  { to: '/', icon: LayoutDashboard, label: 'Tổng quan', end: true },
-  { to: '/contacts', icon: Users, label: 'Khách hàng' },
-  { to: '/companies', icon: Building2, label: 'Công ty' },
-  { to: '/deals', icon: Briefcase, label: 'Pipeline' },
-  { to: '/quotes', icon: FileText, label: 'Báo giá' },
-  { to: '/activities', icon: CalendarCheck, label: 'Hoạt động' },
-  { to: '/products', icon: Layers, label: 'Sản phẩm' },
-  { to: '/suppliers', icon: Truck, label: 'Nhà cung cấp' },
-  { to: '/inventory', icon: Package, label: 'Kho & Lô hàng' },
-  { to: '/invoices', icon: FileSpreadsheet, label: 'Hóa đơn' },
-  { to: '/expenses', icon: Wallet, label: 'Chi phí' },
-  { to: '/files', icon: Folder, label: 'Tài liệu' },
-  { to: '/tickets', icon: LifeBuoy, label: 'Hỗ trợ' },
-  { to: '/reports', icon: BarChart3, label: 'Báo cáo' },
+const NAV_GROUPS = [
+  {
+    groupLabel: 'TỔNG QUAN',
+    items: [
+      { to: '/', icon: LayoutDashboard, label: 'Tổng quan', end: true },
+      { to: '/reports', icon: BarChart3, label: 'Báo cáo' },
+    ]
+  },
+  {
+    groupLabel: 'QUẢN LÝ CRM',
+    items: [
+      { to: '/contacts', icon: Users, label: 'Khách hàng' },
+      { to: '/companies', icon: Building2, label: 'Công ty' },
+      { to: '/deals', icon: Briefcase, label: 'Pipeline' },
+      { to: '/activities', icon: CalendarCheck, label: 'Hoạt động' },
+    ]
+  },
+  {
+    groupLabel: 'TÀI CHÍNH',
+    items: [
+      { to: '/invoices', icon: FileSpreadsheet, label: 'Hóa đơn' },
+      { to: '/expenses', icon: Wallet, label: 'Chi phí' },
+    ]
+  },
+  {
+    groupLabel: 'KHO & BÁN HÀNG',
+    items: [
+      { to: '/quotes', icon: FileText, label: 'Báo giá' },
+      { to: '/products', icon: Layers, label: 'Sản phẩm' },
+      { to: '/suppliers', icon: Truck, label: 'Nhà cung cấp' },
+      { to: '/inventory', icon: Package, label: 'Kho & Lô hàng' },
+    ]
+  },
+  {
+    groupLabel: 'HỆ THỐNG',
+    items: [
+      { to: '/files', icon: Folder, label: 'Tài liệu' },
+      { to: '/tickets', icon: LifeBuoy, label: 'Hỗ trợ' },
+    ]
+  }
 ];
+
+const NAV_ITEMS = NAV_GROUPS.flatMap(group => group.items);
 
 const MOCK_ADMIN = {
   id: 1,
@@ -61,6 +88,7 @@ export const AppLayout: React.FC = () => {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [launcherOpen, setLauncherOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Keyboard shortcut Ctrl+K
   useEffect(() => {
@@ -80,6 +108,7 @@ export const AppLayout: React.FC = () => {
     const next = !dark;
     setDark(next);
     document.documentElement.setAttribute('data-theme', next ? 'dark' : 'light');
+    localStorage.setItem('domation_theme', next ? 'dark' : 'light');
   };
 
   const handleLogout = () => {
@@ -115,26 +144,32 @@ export const AppLayout: React.FC = () => {
         </button>
         {/* Nav Groups Scrollable */}
         <div className={styles.navScrollArea}>
-          <div className={styles.navSection}>
-            {!collapsed && <span className={styles.navGroupLabel}>CHỨC NĂNG CHÍNH</span>}
-            {NAV_ITEMS.map(({ to, icon: Icon, label, end }) => {
-              // Role-based visibility for nav items
-              if (user?.role === 'sale' && ['/reports', '/suppliers'].includes(to)) return null;
-              if (user?.role === 'accountant' && !['/', '/invoices', '/expenses', '/reports', '/files'].includes(to)) return null;
+          {NAV_GROUPS.map((group) => {
+            const visibleItems = group.items.filter(({ to }) => {
+              if (user?.role === 'sale' && ['/reports', '/suppliers'].includes(to)) return false;
+              if (user?.role === 'accountant' && !['/', '/invoices', '/expenses', '/reports', '/files'].includes(to)) return false;
+              return true;
+            });
 
-              return (
-                <NavLink key={to} to={to} end={end}
-                  className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
-                  title={collapsed ? label : undefined}
-                  onClick={() => setMobileOpen(false)}>
-                  <div className={styles.navIconBox}>
-                    <Icon size={18} className={styles.navIcon} />
-                  </div>
-                  {!collapsed && <span className={styles.navLabel}>{label}</span>}
-                </NavLink>
-              );
-            })}
-          </div>
+            if (visibleItems.length === 0) return null;
+
+            return (
+              <div key={group.groupLabel} className={styles.navSection} style={{ padding: '0.25rem 0' }}>
+                {!collapsed && <span className={styles.navGroupLabel}>{group.groupLabel}</span>}
+                {visibleItems.map(({ to, icon: Icon, label, end }) => (
+                  <NavLink key={to} to={to} end={end}
+                    className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
+                    title={collapsed ? label : undefined}
+                    onClick={() => setMobileOpen(false)}>
+                    <div className={styles.navIconBox}>
+                      <Icon size={18} className={styles.navIcon} />
+                    </div>
+                    {!collapsed && <span className={styles.navLabel}>{label}</span>}
+                  </NavLink>
+                ))}
+              </div>
+            );
+          })}
         </div>
 
         {/* FIXED FOOTER */}
@@ -189,8 +224,10 @@ export const AppLayout: React.FC = () => {
         </header>
 
         {/* PAGE CONTENT */}
-        <main className={styles.pageContent}>
-          <Outlet />
+        <main className={styles.pageContent} ref={scrollContainerRef}>
+          <div className="lenis-content" style={{ display: 'flex', flexDirection: 'column', minHeight: '100%', width: '100%' }}>
+            <Outlet />
+          </div>
         </main>
       </div>
 

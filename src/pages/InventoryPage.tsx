@@ -15,6 +15,7 @@ import { CustomSelect } from '../components/ui/CustomSelect';
 import { ImportExportModal } from '../components/ui/ImportExportModal';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import { DEV_MODE } from '../config/env';
+import { Tooltip } from '../components/ui/Tooltip';
 
 const PAGE_SIZE = 20;
 
@@ -359,14 +360,14 @@ export default function InventoryPage() {
                 <AlertTriangle size={24} />
               </div>
               <div style={{ flex: 1 }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: '#92400e', margin: 0, marginBottom: 2 }}>Cảnh báo vận hành kho</h4>
-                <p style={{ fontSize: '0.8125rem', color: '#b45309', margin: 0, lineHeight: 1.5 }}>
+                <h4 style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-warning)', margin: 0, marginBottom: 2 }}>Cảnh báo vận hành kho</h4>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--color-warning)', margin: 0, lineHeight: 1.5 }}>
                   Có <strong>{stats.lowStock}</strong> lô hàng sắp hết và <strong>{stats.expiringSoon}</strong> lô hàng sắp hết hạn trong 30 ngày tới. Vui lòng kiểm tra và lên kế hoạch nhập hàng hoặc xả kho.
                 </p>
               </div>
               <button 
                 onClick={() => setStatusFilter('low_stock')}
-                style={{ padding: '6px 16px', background: 'white', border: '1px solid rgba(245,158,11,0.35)', color: '#b45309', fontSize: '0.8125rem', fontWeight: 700, borderRadius: 'var(--radius-lg)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                style={{ padding: '6px 16px', background: 'var(--color-surface)', border: '1px solid var(--color-warning)', color: 'var(--color-warning)', fontSize: '0.8125rem', fontWeight: 700, borderRadius: 'var(--radius-lg)', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
               >
                 Xem ngay →
               </button>
@@ -513,7 +514,7 @@ export default function InventoryPage() {
                 <table>
                   <thead>
                     <tr>
-                      <th>LÔ HÀNG & SKU</th>
+                      <th>LÔ HÀNG & SKU <Tooltip content="Hệ thống áp dụng phương pháp nhập trước xuất trước (FIFO) để tính giá vốn và trừ kho tự động khi bán hàng." /></th>
                       <th>NGÀY NHẬP / HSD</th>
                       <th style={{ textAlign: 'right' }}>GIÁ VỐN</th>
                       <th style={{ textAlign: 'center' }}>TỒN KHO</th>

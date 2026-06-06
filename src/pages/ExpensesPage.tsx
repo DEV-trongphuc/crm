@@ -17,6 +17,7 @@ import { CustomCheckbox } from '../components/ui/CustomCheckbox';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
+import { Tooltip } from '../components/ui/Tooltip';
 
 const PAGE_SIZE = 50;
 
@@ -63,7 +64,7 @@ const EMPTY_FORM = {
 export const ExpensesPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { addToast } = useUIStore();
+  const { addToast, showConfirm } = useUIStore();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>(location.state?.period || 'this_month');
@@ -77,7 +78,7 @@ export const ExpensesPage: React.FC = () => {
   const [editItem, setEditItem] = useState<any>(null);
   const [form, setForm] = useState<any>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [deleteItem, setDeleteItem] = useState<any>(null);
+  // Unified delete confirmation under showConfirm store state
   const [viewItem, setViewItem] = useState<any>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [catOpen, setCatOpen] = useState(false);
@@ -219,19 +220,7 @@ export const ExpensesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteItem) return;
-    try {
-      await api.delete(`/expenses/${deleteItem.id}`);
-      setItems(prev => prev.filter(e => e.id !== deleteItem.id));
-      addToast('Đã xóa chi phí', 'success');
-    } catch (e: any) {
-      addToast(e.response?.data?.message || 'Lỗi khi xóa chi phí', 'error');
-      setDeleteItem(null);
-      return;
-    }
-    setDeleteItem(null);
-  };
+
 
   const toggleSelect = (id: number) => setSelected(prev => {
     const ns = new Set(prev);
@@ -361,20 +350,17 @@ export const ExpensesPage: React.FC = () => {
                     onChange={() => setSelected(items.length > 0 && items.every((e: any) => selected.has(e.id)) ? new Set() : new Set(items.map((e: any) => e.id)))} 
                   />
                 </th>
-                <th>Nội dung chi</th>
-                <th>Danh mục</th>
-                <th>Số tiền</th>
-                <th>Ngày chi</th>
-                <th>Người tạo</th>
-                <th>Người duyệt</th>
-                <th>Trạng thái</th>
+                <th>Khoản chi</th>
+                <th>Số tiền & Ngày</th>
+                <th>Phê duyệt <Tooltip content="Thành viên phê duyệt (Avatar) và người tạo khoản chi phí này." /></th>
+                <th>Trạng thái <Tooltip content="Quy trình duyệt: Chờ duyệt (đang kiểm tra chứng từ), Đã duyệt (chấp thuận thanh toán và ghi nhận chi phí)." /></th>
                 <th style={{ textAlign: 'right' }}>THAO TÁC</th>
               </tr>
             </thead>
             <tbody>
               {loading && Array.from({ length: 6 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 8 }).map((__, j) => (
+                  {Array.from({ length: 6 }).map((__, j) => (
                     <td key={j}><div className="skeleton" style={{ height: 20, borderRadius: 4, width: j === 1 ? '80%' : j === 2 ? '60%' : '70%' }} /></td>
                   ))}
                 </tr>
@@ -396,26 +382,36 @@ export const ExpensesPage: React.FC = () => {
                         <CustomCheckbox checked={selected.has(exp.id)} onChange={() => toggleSelect(exp.id)} />
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{exp.title}</div>
-                        {exp.notes && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px' }}>{exp.notes}</div>}
-                      </td>
-                      <td>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '3px 10px', borderRadius: 'var(--radius-full)', background: `${catInfo.color}12`, fontSize: '0.8125rem', fontWeight: 600, color: catInfo.color }}>
-                          <CatIcon size={12} color={catInfo.color} /> {exp.category}
-                        </span>
-                      </td>
-                      <td><span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-danger)' }}>{FMT(exp.amount)}</span></td>
-                      <td><span style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{new Date(exp.date).toLocaleDateString('vi-VN')}</span></td>
-                      <td><span style={{ fontSize: '0.8125rem' }}>{exp.creator_name}</span></td>
-                      <td>
-                        {approver ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Avatar name={approver.full_name} size={22} />
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 500 }}>{approver.full_name}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{exp.title}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: 'var(--radius-full)', background: `${catInfo.color}12`, fontSize: '0.75rem', fontWeight: 600, color: catInfo.color }}>
+                              <CatIcon size={10} color={catInfo.color} /> {exp.category}
+                            </span>
+                            {exp.notes && <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>• {exp.notes}</span>}
                           </div>
-                        ) : (
-                          <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa chọn</span>
-                        )}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-danger)' }}>{FMT(exp.amount)}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                            {exp.date && !isNaN(Date.parse(exp.date)) ? new Date(exp.date).toLocaleDateString('vi-VN') : '—'}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {approver ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <Avatar name={approver.full_name} size={20} />
+                              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--color-text)' }}>{approver.full_name}</span>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa duyệt</span>
+                          )}
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Tạo bởi: {exp.creator_name}</span>
+                        </div>
                       </td>
                       <td>
                         <span className={`badge ${exp.status === 'approved' ? 'success' : 'warning'}`}>
@@ -425,7 +421,25 @@ export const ExpensesPage: React.FC = () => {
                       <td>
                         <div className="flex gap-1" style={{ justifyContent: 'flex-end' }}>
                           <button className="btn-icon sm" title="Sửa" onClick={(e) => { e.stopPropagation(); openEdit(exp); }}><Pencil size={13} /></button>
-                          <button className="btn-icon sm text-danger" title="Xóa" onClick={(e) => { e.stopPropagation(); setDeleteItem(exp); }}><Trash2 size={13} /></button>
+                          <button className="btn-icon sm text-danger" title="Xóa" onClick={(e) => {
+                            e.stopPropagation();
+                            showConfirm({
+                              title: 'Xóa khoản chi phí?',
+                              message: `Khoản chi "${exp.title}" sẽ bị xóa vĩnh viễn khỏi hệ thống. Thao tác này không thể hoàn tác.`,
+                              confirmText: 'Xóa ngay',
+                              cancelText: 'Hủy',
+                              isDanger: true,
+                              onConfirm: async () => {
+                                try {
+                                  await api.delete(`/expenses/${exp.id}`);
+                                  setItems(prev => prev.filter(item => item.id !== exp.id));
+                                  addToast('Đã xóa chi phí', 'success');
+                                } catch (error: any) {
+                                  addToast(error.response?.data?.message || 'Lỗi khi xóa chi phí', 'error');
+                                }
+                              }
+                            });
+                          }}><Trash2 size={13} /></button>
                         </div>
                       </td>
                     </motion.tr>
@@ -712,30 +726,7 @@ export const ExpensesPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Delete confirm */}
-      <AnimatePresence>
-        {deleteItem && (
-          <div className="overlay-backdrop" onClick={() => setDeleteItem(null)} style={{ zIndex: 310 }}>
-            <motion.div className="modal-sheet modal-sm shadow-2xl"
-              initial={{ opacity: 0, scale: 0.96, y: 20 }} 
-              animate={{ opacity: 1, scale: 1, y: 0 }} 
-              exit={{ opacity: 0, scale: 0.96, y: 20 }}
-              onClick={e => e.stopPropagation()}
-              style={{ textAlign: 'center', padding: '2.5rem 2rem' }}
-            >
-              <div style={{ width: 64, height: 64, background: 'var(--color-danger-light)', color: 'var(--color-danger)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-                <Trash2 size={28} />
-              </div>
-              <h3 style={{ fontWeight: 800, fontSize: '1.25rem' }}>Xóa khoản chi phí?</h3>
-              <p style={{ color: 'var(--color-text-light)', fontSize: '0.9375rem', margin: '0.75rem 0 2rem' }}>Khoản chi <strong>"{deleteItem.title}"</strong> sẽ bị xóa vĩnh viễn khỏi hệ thống.</p>
-              <div className="flex gap-3" style={{ justifyContent: 'center' }}>
-                <button className="btn outline" style={{ flex: 1 }} onClick={() => setDeleteItem(null)}>Hủy</button>
-                <button className="btn danger" style={{ flex: 1 }} onClick={handleDelete}><Trash2 size={14} /> Xóa ngay</button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
 
       {/* Quick View Modal */}
       <AnimatePresence>
@@ -754,7 +745,7 @@ export const ExpensesPage: React.FC = () => {
                     <span className={`badge ${viewItem.status === 'approved' ? 'success' : 'warning'}`}>
                       {viewItem.status === 'approved' ? 'Đã duyệt' : 'Chờ duyệt'}
                     </span>
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{new Date(viewItem.date).toLocaleDateString('vi-VN')}</span>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>{viewItem.date && !isNaN(Date.parse(viewItem.date)) ? new Date(viewItem.date).toLocaleDateString('vi-VN') : '—'}</span>
                   </div>
                   <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-text)' }}>{viewItem.title}</h3>
                 </div>
@@ -763,8 +754,8 @@ export const ExpensesPage: React.FC = () => {
 
               <div className="card-panel p-4 mb-6" style={{ background: 'var(--color-bg)' }}>
                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-border-light">
-                  <span className="text-light font-bold text-sm">Số tiền</span>
-                  <span className="text-danger font-black text-xl">{FMT(viewItem.amount)}</span>
+                   <span className="text-light font-bold text-sm">Số tiền</span>
+                   <span className="text-danger font-bold text-xl">{FMT(viewItem.amount)}</span>
                 </div>
                 <div className="flex justify-between items-center mb-4 pb-4 border-b border-border-light">
                   <span className="text-light font-bold text-sm">Danh mục</span>
@@ -778,8 +769,8 @@ export const ExpensesPage: React.FC = () => {
 
               {viewItem.notes && (
                 <div className="mb-6">
-                  <span className="text-xs font-black uppercase text-light tracking-widest mb-2 block">Ghi chú</span>
-                  <p className="text-sm text-text-light bg-surface border border-border p-3 rounded-xl">{viewItem.notes}</p>
+                   <span className="text-xs font-semibold uppercase text-light tracking-widest mb-2 block">Ghi chú</span>
+                   <p className="text-sm text-text-light bg-surface border border-border p-3 rounded-xl">{viewItem.notes}</p>
                 </div>
               )}
 

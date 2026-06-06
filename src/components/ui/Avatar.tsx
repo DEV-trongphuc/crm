@@ -8,6 +8,8 @@ interface AvatarProps {
   className?: string;
   style?: React.CSSProperties;
   title?: string;
+  color?: string;
+  aiScreened?: boolean;
 }
 
 const getInitials = (name: string) => {
@@ -19,28 +21,27 @@ const getInitials = (name: string) => {
   return name[0].toUpperCase();
 };
 
-const getGradientFromName = (name: string) => {
-  const gradients = [
-    'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', // Blue
-    'linear-gradient(135deg, #10b981 0%, #047857 100%)', // Emerald
-    'linear-gradient(135deg, #f59e0b 0%, #b45309 100%)', // Amber
-    'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)', // Red
-    'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)', // Purple
-    'linear-gradient(135deg, #ec4899 0%, #be185d 100%)', // Pink
-    'linear-gradient(135deg, #06b6d4 0%, #0e7490 100%)', // Cyan
-    'linear-gradient(135deg, #f97316 0%, #c2410c 100%)', // Orange
-    'linear-gradient(135deg, #6366f1 0%, #4338ca 100%)', // Indigo
-    'linear-gradient(135deg, #14b8a6 0%, #0f766e 100%)', // Teal
+const getColorFromName = (name: string) => {
+  const colors = [
+    '#3b82f6', // blue
+    '#10b981', // green
+    '#f59e0b', // amber
+    '#ef4444', // red
+    '#8b5cf6', // violet
+    '#ec4899', // pink
+    '#06b6d4', // cyan
+    '#f97316', // orange
   ];
-  if (!name) return gradients[0];
+  if (!name) return colors[0];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  return gradients[Math.abs(hash) % gradients.length];
+  return colors[Math.abs(hash) % colors.length];
 };
 
-export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', className = '', style, title }) => {
+export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', className = '', style, title, color, aiScreened }) => {
+  const [hasError, setHasError] = React.useState(false);
   const sizeMap = {
     sm: 24,
     md: 32,
@@ -48,9 +49,28 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
   };
   const finalSize = typeof size === 'number' ? size : sizeMap[size];
   const initials = name ? getInitials(name) : '?';
-  const gradient = name ? getGradientFromName(name) : 'var(--color-primary)';
+  const bgColor = color ? color : (name ? getColorFromName(name) : 'var(--color-primary)');
 
-  return (
+  let resolvedSrc = src;
+  if (src && src.startsWith('uploads/')) {
+    const apiBase = import.meta.env.VITE_API_URL || 'https://open.domation.net/sale_data';
+    resolvedSrc = `${apiBase}/${src}`;
+  }
+
+  // Nếu name là "Hệ thống" / "System" / "HT" và không có ảnh avatar cụ thể, gán ảnh LOGO mặc định
+  if (!resolvedSrc && name) {
+    const trimmedName = name.trim().toLowerCase();
+    if (trimmedName === 'hệ thống' || trimmedName === 'system' || trimmedName === 'ht') {
+      resolvedSrc = 'https://crm-domation.vercel.app/LOGO.jpg';
+    }
+  }
+
+  // Reset error state if resolvedSrc changes
+  React.useEffect(() => {
+    setHasError(false);
+  }, [resolvedSrc]);
+
+  const avatarEl = (
     <div 
       className={`${styles.avatar} ${className}`}
       title={title}
@@ -58,15 +78,48 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = 'md', classNam
         width: finalSize, 
         height: finalSize, 
         fontSize: finalSize * 0.4,
-        background: src ? 'transparent' : gradient,
+        backgroundColor: resolvedSrc && !hasError ? 'transparent' : bgColor,
         ...style 
       }}
     >
-      {src ? (
-        <img src={src} alt={name} className={styles.image} />
+      {resolvedSrc && !hasError ? (
+        <img 
+          src={resolvedSrc} 
+          alt={name} 
+          className={styles.image} 
+          onError={() => setHasError(true)} 
+        />
       ) : (
         <span className={styles.initials}>{initials}</span>
       )}
     </div>
   );
+
+  if (aiScreened) {
+    const badgeSize = Math.max(14, Math.floor(finalSize * 0.48));
+    return (
+      <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+        {avatarEl}
+        <img
+          src="https://crm-domation.vercel.app/LOGO.jpg"
+          alt="AI Evaluation"
+          style={{
+            position: 'absolute',
+            bottom: -2,
+            right: -2,
+            width: badgeSize,
+            height: badgeSize,
+            borderRadius: '50%',
+            border: '1.5px solid var(--color-surface, #ffffff)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+            zIndex: 1,
+            backgroundColor: '#ffffff',
+            objectFit: 'cover'
+          }}
+        />
+      </div>
+    );
+  }
+
+  return avatarEl;
 };

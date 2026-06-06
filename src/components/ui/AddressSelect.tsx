@@ -132,7 +132,7 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
             transition={{ duration: 0.18 }}
             style={{
               position: 'relative', width: '100%', maxWidth: '460px',
-              backgroundColor: '#fff', borderRadius: '24px',
+              backgroundColor: 'var(--color-surface)', borderRadius: '24px',
               boxShadow: '0 25px 60px -12px rgba(0,0,0,0.25)',
               display: 'flex', flexDirection: 'column',
               maxHeight: '80vh', overflow: 'hidden',
@@ -339,7 +339,7 @@ export const AddressSelect: React.FC<AddressSelectProps> = ({
               padding: '1rem 1.75rem',
               borderTop: '1px solid var(--color-border-light)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              background: '#fcfcfd',
+              background: 'var(--color-bg)',
             }}>
               {/* Back button */}
               {!isForeign && step > 1 ? (

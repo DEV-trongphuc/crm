@@ -14,11 +14,17 @@ import { Pagination } from '../components/ui/Pagination';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
+import { Tooltip } from '../components/ui/Tooltip';
 
 const PAGE_SIZE = 50;
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n);
-const fmtDate = (d: string) => new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const fmtDate = (d: any) => {
+  if (!d) return '—';
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
 
 export const InvoicesPage: React.FC = () => {
   const { addToast, showConfirm, closeConfirm } = useUIStore();
@@ -30,7 +36,6 @@ export const InvoicesPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [deleteItem, setDeleteItem] = useState<any>(null);
   const [previewItem, setPreviewItem] = useState<any>(null);
   const [total, setTotal] = useState(0);
   const [summary, setSummary] = useState({ total_rev: 0, paid_amt: 0, pending_amt: 0, overdue_amt: 0 });
@@ -97,11 +102,10 @@ export const InvoicesPage: React.FC = () => {
     const handler = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (previewItem) setPreviewItem(null);
-      else if (deleteItem) setDeleteItem(null);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [previewItem, deleteItem]);
+  }, [previewItem]);
 
   // Client-side items match server-paginated data
 
@@ -126,18 +130,7 @@ export const InvoicesPage: React.FC = () => {
   const allSelected = items.length > 0 && items.every(i => selected.has(i.id));
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(items.map(i => i.id)));
 
-  const handleDelete = async () => {
-    if (!deleteItem) return;
-    try {
-      await api.delete(`/invoices/${deleteItem.id}`);
-      setItems(prev => prev.filter(i => i.id !== deleteItem.id));
-      addToast('Đã xóa hóa đơn', 'success');
-    } catch (e: any) {
-      addToast(e.response?.data?.message || 'Không thể xóa hóa đơn do lỗi mạng', 'error');
-    } finally {
-      setDeleteItem(null);
-    }
-  };
+
 
   const handleMarkPaid = (inv: any) => {
     showConfirm({
@@ -172,7 +165,7 @@ export const InvoicesPage: React.FC = () => {
   const exportCSV = () => {
     const headers = ['Mã HĐ', 'Khách hàng', 'Công ty', 'Nội dung', 'Tổng tiền', 'Ngày lập', 'Đến hạn', 'Trạng thái'];
     const rows = items.map(i => [
-      i.invoice_number, i.contact_name, i.company_name, i.title, i.total, i.issue_date, i.due_date, i.status
+      i.invoice_number, i.contact_name, i.company_name, i.title, i.total, i.issue_date || i.created_at, i.due_date, i.status
     ]);
     const csvContent = "data:text/csv;charset=utf-8,"
       + headers.join(",") + "\n"
@@ -236,7 +229,7 @@ export const InvoicesPage: React.FC = () => {
           { key: 'overdue', label: 'Quá hạn', count: items.filter(i => i.status === 'overdue').length },
         ].map(tab => (
           <button key={tab.key} onClick={() => { setStatusFilter(tab.key); setPage(1); }}
-            style={{ padding: '0.4rem 1rem', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.18s', border: '1.5px solid', borderColor: statusFilter === tab.key ? 'var(--color-primary)' : 'var(--color-border)', background: statusFilter === tab.key ? 'var(--color-primary-light)' : 'var(--color-surface)', color: statusFilter === tab.key ? 'var(--color-primary)' : 'var(--color-text-light)' }}>
+            style={{ padding: '0.4rem 1rem', borderRadius: 'var(--radius-full)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer', transition: 'all 0.18s', border: '1px solid', borderColor: statusFilter === tab.key ? 'var(--color-primary)' : 'var(--color-border-light)', background: statusFilter === tab.key ? 'var(--color-primary-light)' : 'var(--color-surface)', color: statusFilter === tab.key ? 'var(--color-primary)' : 'var(--color-text-light)' }}>
             {tab.label} <span style={{ marginLeft: '4px', opacity: 0.75 }}>({tab.count})</span>
           </button>
         ))}
@@ -266,19 +259,17 @@ export const InvoicesPage: React.FC = () => {
             <thead>
               <tr>
                 <th className="col-check"><CustomCheckbox checked={allSelected} onChange={toggleAll} /></th>
-                <th>MÃ HÓA ĐƠN</th>
-                <th>KHÁCH HÀNG</th>
-                <th>NỘI DUNG</th>
-                <th>SỐ TIỀN</th>
-                <th>NGÀY LẬP</th>
-                <th>ĐẾN HẠN</th>
-                <th>TRẠNG THÁI</th>
+                <th>Hóa đơn <Tooltip content="Mã định danh duy nhất của hóa đơn tài chính & nội dung diễn giải." /></th>
+                <th>Khách hàng</th>
+                <th>Số tiền</th>
+                <th>Thời hạn <Tooltip content="Ngày lập hóa đơn và hạn thanh toán cuối cùng." /></th>
+                <th>Trạng thái <Tooltip content="Trạng thái giao dịch: Đã thanh toán, Chờ thanh toán, hoặc Quá hạn." /></th>
                 <th style={{ textAlign: 'right' }}>THAO TÁC</th>
               </tr>
             </thead>
             <tbody>
               {loading && Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i}>{Array.from({ length: 9 }).map((__, j) => <td key={j}><div className="skeleton" style={{ height: 20, borderRadius: 4 }} /></td>)}</tr>
+                <tr key={i}>{Array.from({ length: 7 }).map((__, j) => <td key={j}><div className="skeleton" style={{ height: 20, borderRadius: 4 }} /></td>)}</tr>
               ))}
               <AnimatePresence>
                 {!loading && items.map(inv => {
@@ -290,24 +281,36 @@ export const InvoicesPage: React.FC = () => {
                         <CustomCheckbox checked={selected.has(inv.id)} onChange={() => toggleSelect(inv.id)} />
                       </td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontWeight: 700, color: 'var(--color-primary)', fontSize: '0.8125rem', fontFamily: 'monospace' }}>{inv.invoice_number}</span>
-                          {inv.is_inventory_deducted === 1 && (
-                          <Package size={12} style={{ color: 'var(--color-success)' }} />
-                          )}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontWeight: 600, color: 'var(--color-primary)', fontSize: '0.8125rem', fontFamily: 'monospace' }}>{inv.invoice_number}</span>
+                            {inv.is_inventory_deducted === 1 && (
+                              <Tooltip content="Hóa đơn này đã được tự động khấu trừ số lượng sản phẩm tương ứng trong kho hàng.">
+                                <Package size={12} style={{ color: 'var(--color-success)', cursor: 'help' }} />
+                              </Tooltip>
+                            )}
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '240px' }} title={inv.title}>
+                            {inv.title}
+                          </div>
                         </div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{inv.contact_name || 'Khách lẻ'}</div>
-                        {inv.company_name && <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{inv.company_name}</div>}
+                        <div style={{ fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }} title={inv.contact_name || 'Khách lẻ'}>{inv.contact_name || 'Khách lẻ'}</div>
+                        {inv.company_name && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }} title={inv.company_name}>
+                            {inv.company_name}
+                          </div>
+                        )}
                       </td>
-                      <td><span style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)' }}>{inv.title}</span></td>
-                      <td><span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{FMT(inv.total)}</span></td>
-                      <td><span style={{ fontSize: '0.8125rem' }}>{fmtDate(inv.issue_date)}</span></td>
+                      <td><span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{FMT(inv.total)}</span></td>
                       <td>
-                        <span style={{ fontSize: '0.8125rem', color: isOverdue ? 'var(--color-danger)' : 'var(--color-text-light)', fontWeight: isOverdue ? 700 : 400 }}>
-                          {fmtDate(inv.due_date)}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>Lập: {fmtDate(inv.issue_date || inv.created_at)}</span>
+                          <span style={{ fontSize: '0.75rem', color: isOverdue ? 'var(--color-danger)' : 'var(--color-text-muted)', fontWeight: isOverdue ? 700 : 500 }}>
+                            Hạn: {fmtDate(inv.due_date)}
+                          </span>
+                        </div>
                       </td>
                       <td><span className={`badge ${sc.class}`}>{sc.icon} {sc.label}</span></td>
                       <td>
@@ -317,7 +320,24 @@ export const InvoicesPage: React.FC = () => {
                             <button className="btn-icon sm" title="Đánh dấu đã thanh toán" onClick={() => handleMarkPaid(inv)} style={{ color: 'var(--color-success)' }}><CheckCircle2 size={14} /></button>
                           )}
                           <button className="btn-icon sm" title="Gửi nhắc nhở" onClick={() => handleSendReminder(inv)} style={{ color: 'var(--color-primary)' }}><Send size={14} /></button>
-                          <button className="btn-icon sm text-danger" title="Xóa" onClick={() => setDeleteItem(inv)}><Trash2 size={14} /></button>
+                          <button className="btn-icon sm text-danger" title="Xóa" onClick={() => {
+                            showConfirm({
+                              title: `Xóa hóa đơn ${inv.invoice_number}?`,
+                              message: `Hóa đơn này sẽ bị xóa vĩnh viễn khỏi hệ thống. Thao tác này không thể hoàn tác.`,
+                              confirmText: 'Xóa ngay',
+                              cancelText: 'Hủy',
+                              isDanger: true,
+                              onConfirm: async () => {
+                                try {
+                                  await api.delete(`/invoices/${inv.id}`);
+                                  setItems(prev => prev.filter(i => i.id !== inv.id));
+                                  addToast('Đã xóa hóa đơn', 'success');
+                                } catch (e: any) {
+                                  addToast(e.response?.data?.message || 'Không thể xóa hóa đơn', 'error');
+                                }
+                              }
+                            });
+                          }}><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </motion.tr>
@@ -333,24 +353,7 @@ export const InvoicesPage: React.FC = () => {
         <Pagination total={total} page={page} pageSize={PAGE_SIZE} onChange={setPage} showSizeChanger onPageSizeChange={() => setPage(1)} />
       </div>
 
-      {/* Delete confirm */}
-      <AnimatePresence>
-        {deleteItem && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDeleteItem(null)} style={{ zIndex: 300 }} />
-            <motion.div className="modal-sheet" style={{ position: 'fixed', top: '50%', left: '50%', width: 380, zIndex: 310, textAlign: 'center', padding: '2rem' }}
-              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
-              <div style={{ width: 56, height: 56, background: 'var(--color-danger-light)', color: 'var(--color-danger)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}><Trash2 size={24} /></div>
-              <h3 style={{ fontWeight: 700 }}>Xóa hóa đơn {deleteItem.invoice_number}?</h3>
-              <p style={{ color: 'var(--color-text-light)', margin: '0.5rem 0 1.5rem', fontSize: '0.875rem' }}>Thao tác này không thể hoàn tác.</p>
-              <div className="flex gap-3" style={{ justifyContent: 'center' }}>
-                <button className="btn secondary" onClick={() => setDeleteItem(null)}>Hủy</button>
-                <button className="btn danger" onClick={handleDelete}><Trash2 size={14} /> Xóa</button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+
 
       {/* Preview Modal */}
       <AnimatePresence>
@@ -362,7 +365,7 @@ export const InvoicesPage: React.FC = () => {
               style={{ position: 'fixed', top: '50%', left: '50%', width: '90%', maxWidth: 700, maxHeight: '90vh', overflow: 'auto', zIndex: 310, padding: 0, borderRadius: 'var(--radius-2xl)' }}
               initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}
             >
-              <div style={{ padding: '2rem', background: '#fff' }}>
+              <div style={{ padding: '2rem', background: 'var(--color-surface)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
                   <div>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-primary)' }}>INVOICE</h2>
@@ -382,7 +385,7 @@ export const InvoicesPage: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-xs text-light mb-1 uppercase tracking-wider font-bold">Chi tiết</p>
-                    <p className="text-sm">Ngày lập: <strong>{fmtDate(previewItem.issue_date)}</strong></p>
+                    <p className="text-sm">Ngày lập: <strong>{fmtDate(previewItem.issue_date || previewItem.created_at)}</strong></p>
                     <p className="text-sm">Hạn thanh toán: <strong>{fmtDate(previewItem.due_date)}</strong></p>
                   </div>
                 </div>

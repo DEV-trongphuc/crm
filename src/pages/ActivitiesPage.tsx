@@ -30,6 +30,7 @@ const EMPTY = { type: 'call', subject: '', status: 'planned', priority: 'medium'
 const fmtDate = (d: string | null) => {
   if (!d) return null;
   const dt = new Date(d);
+  if (isNaN(dt.getTime())) return '—';
   const now = new Date();
   const diffMs = dt.getTime() - now.getTime();
   const diffH = Math.round(diffMs / 3600000);
@@ -295,7 +296,7 @@ export const ActivitiesPage: React.FC = () => {
                     whileHover={{ y: -3, boxShadow: 'var(--shadow-md)' }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => openEdit(rem)}
-                    style={{ minWidth: 220, padding: '0.875rem', background: 'white', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', cursor: 'pointer', transition: 'all 0.2s' }}
+                    style={{ minWidth: 220, padding: '0.875rem', background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)', cursor: 'pointer', transition: 'all 0.2s' }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
                       <span style={{ color: T_COLOR[rem.type] }}>{T_ICON[rem.type]}</span>
@@ -372,40 +373,41 @@ export const ActivitiesPage: React.FC = () => {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
                         <AnimatePresence>
                           {groupItems.map(act => (
-                            <motion.div key={act.id} className="card hover-lift"
-                              initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} layout
-                              style={{ padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: `4px solid ${act.status === 'done' ? 'var(--color-success)' : T_COLOR[act.type]}` }}>
+                             <motion.div key={act.id} className="card hover-lift"
+                               initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} layout
+                               style={{ padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1rem', borderLeft: `4px solid ${act.status === 'done' ? 'var(--color-success)' : T_COLOR[act.type]}`, borderRadius: 'var(--radius-lg)' }}>
                               
-                              <div style={{ width: 32, height: 32, borderRadius: '8px', background: T_COLOR[act.type] + '12', color: T_COLOR[act.type], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              <div style={{ width: 36, height: 36, borderRadius: '10px', background: T_COLOR[act.type] + '12', color: T_COLOR[act.type], display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 {T_ICON[act.type]}
                               </div>
 
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                  <p style={{ fontWeight: 600, fontSize: '0.875rem', textDecoration: act.status === 'done' ? 'line-through' : 'none', color: act.status === 'done' ? 'var(--color-text-muted)' : 'var(--color-text)' }}>
+                              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                  <p style={{ fontWeight: 700, fontSize: '0.9rem', textDecoration: act.status === 'done' ? 'line-through' : 'none', color: act.status === 'done' ? 'var(--color-text-muted)' : 'var(--color-text)', margin: 0 }}>
                                     {act.subject}
                                   </p>
                                   {act.status !== 'done' && new Date(act.due_date) < now && (
-                                    <span style={{ fontSize: '0.65rem', background: 'var(--color-danger)', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>QUÁ HẠN</span>
+                                    <span className="badge danger sm" style={{ fontSize: '0.65rem', padding: '1px 6px', fontWeight: 700 }}>QUÁ HẠN</span>
                                   )}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '2px', flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                                   <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <Avatar name={act.user_name || 'Bạn'} size="sm" />
-                                    {act.user_name || 'Bạn'}
+                                    <span style={{ fontWeight: 500 }}>{act.user_name || 'Bạn'}</span>
                                   </span>
                                   {act.due_date && (
-                                    <span style={{ fontSize: '0.75rem', color: new Date(act.due_date) < now && act.status !== 'done' ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                      <Clock size={11} />{fmtDate(act.due_date)}
+                                    <span style={{ fontSize: '0.75rem', color: new Date(act.due_date) < now && act.status !== 'done' ? 'var(--color-danger)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                                      <Clock size={12} />
+                                      {fmtDate(act.due_date)}
                                     </span>
                                   )}
-                                  <span className={`badge ${act.priority === 'high' ? 'danger' : act.priority === 'medium' ? 'warning' : 'info'}`} style={{ fontSize: '0.65rem' }}>
+                                  <span className={`badge ${act.priority === 'high' ? 'danger' : act.priority === 'medium' ? 'warning' : 'info'}`} style={{ fontSize: '0.65rem', fontWeight: 600 }}>
                                     {act.priority === 'high' ? 'Quan trọng' : act.priority === 'medium' ? 'Bình thường' : 'Thấp'}
                                   </span>
                                   {act.related_type && (
                                     <button onClick={e => navigateToRelated(act, e)}
-                                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '3px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                                      <Link2 size={11} />
+                                      style={{ fontSize: '0.75rem', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: '3px', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
+                                      <Link2 size={12} />
                                       {act.related_type === 'contact' ? (act.contact_name || act.contact_id) : 
                                        act.related_type === 'company' ? (act.company_name || act.company_id) : 
                                        act.related_type === 'deal' ? (act.deal_name || act.deal_id) : act.related_id}
@@ -413,19 +415,20 @@ export const ActivitiesPage: React.FC = () => {
                                   )}
                                 </div>
                                 {act.body && (
-                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '500px' }}>
+                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '600px' }}>
                                     {act.body}
                                   </p>
                                 )}
                               </div>
 
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                                 <button onClick={() => toggleDone(act)}
-                                  style={{ width: 28, height: 28, borderRadius: '8px', border: `2px solid ${act.status === 'done' ? 'var(--color-success)' : 'var(--color-border)'}`, background: act.status === 'done' ? 'var(--color-success)' : 'transparent', color: act.status === 'done' ? 'white' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', marginRight: '0.25rem' }}>
-                                  <CheckCircle2 size={14} />
+                                  title={act.status === 'done' ? 'Đánh dấu chưa xong' : 'Đánh dấu hoàn thành'}
+                                  style={{ width: 28, height: 28, borderRadius: '8px', border: `1.5px solid ${act.status === 'done' ? 'var(--color-success)' : 'var(--color-border)'}`, background: act.status === 'done' ? 'var(--color-success-light)' : 'transparent', color: act.status === 'done' ? 'var(--color-success)' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}>
+                                  <CheckCircle2 size={15} />
                                 </button>
-                                <button className="btn-icon sm hover-bg" onClick={() => openEdit(act)}><Pencil size={13} /></button>
-                                <button className="btn-icon sm hover-bg" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(act)}><Trash2 size={13} /></button>
+                                <button className="btn ghost sm" onClick={() => openEdit(act)} style={{ padding: '6px' }}><Pencil size={13} /></button>
+                                <button className="btn ghost sm" style={{ color: 'var(--color-danger)', padding: '6px' }} onClick={() => handleDelete(act)}><Trash2 size={13} /></button>
                               </div>
                             </motion.div>
                           ))}
@@ -452,7 +455,7 @@ export const ActivitiesPage: React.FC = () => {
         {showModal && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !saving && setShowModal(false)} />
-            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', width: '520px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 300 }}
+            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', width: '520px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 300 }}
               initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} 
               animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} 
               exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>

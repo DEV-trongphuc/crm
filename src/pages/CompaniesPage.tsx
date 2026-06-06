@@ -210,37 +210,63 @@ export const CompaniesPage: React.FC = () => {
               <motion.div
                 key={co.id}
                 className="card card-hover"
-                style={{ padding: '1.25rem', cursor: 'pointer' }}
+                style={{ padding: '1.25rem', cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 onClick={() => openEdit(co)}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={co.name} src={co.logo_url} size={40} style={{ borderRadius: '10px' }} />
-                    <div>
-                      <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{co.name}</p>
-                      <p className="text-xs text-light">{co.industry}{co.city ? ` · ${co.city}` : ''}</p>
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3" style={{ minWidth: 0, flex: 1 }}>
+                      <Avatar name={co.name} src={co.logo_url} size={40} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <p style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={co.name}>{co.name}</p>
+                        <p className="text-xs text-light" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={co.industry}>{co.industry}{co.city ? ` · ${co.city}` : ''}</p>
+                      </div>
                     </div>
+                    <span className={`badge ${ST_CLASS[co.status] || 'info'}`} style={{ flexShrink: 0 }}>{ST_LABEL[co.status] || co.status}</span>
                   </div>
-                  <span className={`badge ${ST_CLASS[co.status] || 'info'}`}>{ST_LABEL[co.status] || co.status}</span>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem 1rem', marginBottom: '1.25rem', marginTop: '0.75rem', borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
+                    {co.phone ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                        <Phone size={12} className="text-light" style={{ flexShrink: 0 }} />
+                        <PhoneLink phone={co.phone} style={{ fontSize: '0.75rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} />
+                      </div>
+                    ) : <div />}
+                    {co.email ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }} title={co.email}>
+                        <Mail size={12} className="text-light" style={{ flexShrink: 0 }} />
+                        <span className="text-xs text-light" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.email}</span>
+                      </div>
+                    ) : <div />}
+                    {co.website ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }} title={co.website}>
+                        <Globe size={12} className="text-light" style={{ flexShrink: 0 }} />
+                        <span className="text-xs text-light" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{co.website}</span>
+                      </div>
+                    ) : <div />}
+                    {co.expected_revenue > 0 ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+                        <DollarSign size={12} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
+                        <span className="text-xs font-black" style={{ color: 'var(--color-success)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {new Intl.NumberFormat('vi-VN').format(co.expected_revenue)} đ
+                        </span>
+                      </div>
+                    ) : <div />}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', marginBottom: '1rem' }}>
-                  {co.phone && <PhoneLink phone={co.phone} showIcon style={{ fontSize: '0.75rem' }} />}
-                  {co.email && <span className="flex items-center gap-2 text-xs text-light"><Mail size={11} />{co.email}</span>}
-                  {co.website && <span className="flex items-center gap-2 text-xs text-light"><Globe size={11} />{co.website}</span>}
-                  {co.expected_revenue > 0 && <span className="flex items-center gap-2 text-xs font-bold" style={{ color: 'var(--color-primary)' }}><DollarSign size={11} />{new Intl.NumberFormat('vi-VN').format(co.expected_revenue)} đ</span>}
-                </div>
-                <div className="flex items-center justify-between">
+
+                <div className="flex items-center justify-between" style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '0.75rem' }}>
                   <div className="flex gap-2 items-center">
                     <span className="flex items-center gap-1 text-xs text-light" title="Người liên hệ"><Users size={12} />{co.contact_count || 0}</span>
                     <span className="flex items-center gap-1 text-xs text-light" title="Quy mô"><Briefcase size={12} />{co.size || '1-10'} nv</span>
                     {co.stage_name && <span className="badge sm" style={{ background: (co.stage_color || '#7c3aed') + '15', color: co.stage_color || '#7c3aed', fontSize: '0.65rem' }}>{co.stage_name}</span>}
                   </div>
                   <div className="flex gap-1" onClick={e => e.stopPropagation()}>
-                    <button className="btn ghost sm" onClick={() => openEdit(co)}><Pencil size={13} /></button>
-                    <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} onClick={() => confirmDelete(co)}><Trash2 size={13} /></button>
+                    <button className="btn ghost sm" onClick={() => openEdit(co)} style={{ padding: '4px' }}><Pencil size={13} /></button>
+                    <button className="btn ghost sm" style={{ color: 'var(--color-danger)', padding: '4px' }} onClick={() => confirmDelete(co)}><Trash2 size={13} /></button>
                   </div>
                 </div>
               </motion.div>
@@ -270,9 +296,9 @@ export const CompaniesPage: React.FC = () => {
               <thead>
                 <tr>
                   <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Công ty</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Liên hệ</th>
+                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Phân loại</th>
                   <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Trạng thái</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Ngành</th>
-                  <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Giai đoạn</th>
                   <th style={{ padding: '1rem', textAlign: 'left', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Dự kiến</th>
                   <th style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}></th>
                 </tr>
@@ -288,25 +314,41 @@ export const CompaniesPage: React.FC = () => {
                     >
                       <td style={{ padding: '1rem' }}>
                         <div className="flex items-center gap-3">
-                          <Avatar name={co.name} src={co.logo_url} size={32} style={{ borderRadius: '8px' }} />
+                          <Avatar name={co.name} src={co.logo_url} size={32} />
                           <div>
-                            <p style={{ fontWeight: 600, fontSize: '0.875rem' }}>{co.name}</p>
-                            <p className="text-xs text-light">{co.website || co.city}</p>
+                            <p style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--color-text)' }}>{co.name}</p>
+                            <p className="text-xs text-light" style={{ color: 'var(--color-text-muted)', marginTop: '2px' }}>{co.website || co.city}</p>
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: '1rem' }}><span className={`badge ${ST_CLASS[co.status] || 'info'}`}>{ST_LABEL[co.status] || co.status}</span></td>
-                      <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{co.industry || '—'}</td>
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          {co.phone && <PhoneLink phone={co.phone} style={{ fontSize: '0.875rem' }} />}
-                          <p className="text-xs text-light">{co.email}</p>
+                          {co.phone ? <PhoneLink phone={co.phone} style={{ fontSize: '0.875rem', fontWeight: 700 }} /> : <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>—</span>}
+                          {co.email && <p className="text-xs text-light" style={{ color: 'var(--color-text-muted)' }}>{co.email}</p>}
                         </div>
-                        {co.stage_name ? <span className="badge sm" style={{ background: (co.stage_color || '#7c3aed') + '15', color: co.stage_color || '#7c3aed' }}>{co.stage_name}</span> : '—'}
                       </td>
-                      <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{co.size || '—'}</td>
-                      <td style={{ padding: '1rem', fontWeight: 700, fontSize: '0.875rem' }}>
-                        {co.expected_revenue > 0 ? new Intl.NumberFormat('vi-VN').format(co.expected_revenue) + ' đ' : '—'}
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <p style={{ fontSize: '0.875rem', color: 'var(--color-text)', fontWeight: 500 }}>{co.industry || '—'}</p>
+                          {co.size && <p className="text-xs text-light" style={{ color: 'var(--color-text-muted)' }}>Quy mô: {co.size}</p>}
+                        </div>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <span className={`badge ${ST_CLASS[co.status] || 'info'}`}>{ST_LABEL[co.status] || co.status}</span>
+                      </td>
+                      <td style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-primary)' }}>
+                            {co.expected_revenue > 0 ? new Intl.NumberFormat('vi-VN').format(co.expected_revenue) + ' đ' : '—'}
+                          </span>
+                          {co.stage_name && (
+                            <div>
+                              <span className="badge sm" style={{ background: (co.stage_color || '#7c3aed') + '15', color: co.stage_color || '#7c3aed', padding: '2px 8px', fontSize: '0.7rem' }}>
+                                {co.stage_name}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td style={{ padding: '1rem', textAlign: 'right' }} onClick={e => e.stopPropagation()}>
                         <div className="flex gap-1" style={{ justifyContent: 'flex-end' }}>

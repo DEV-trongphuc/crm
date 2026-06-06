@@ -230,7 +230,7 @@ export const FilesPage: React.FC = () => {
     if (['xls', 'xlsx'].includes(ext!)) return { icon: <FileText size={20} />, color: '#10b981', bg: '#ecfdf5' };
     if (['jpg', 'jpeg', 'png', 'svg'].includes(ext!)) return { icon: <FileImage size={20} />, color: '#8b5cf6', bg: '#f5f3ff' };
     if (['zip', 'rar', '7z'].includes(ext!)) return { icon: <Folder size={20} />, color: '#f59e0b', bg: '#fffbeb' };
-    return { icon: <File size={20} />, color: '#64748b', bg: '#f8fafc' };
+    return { icon: <File size={20} />, color: '#64748b', bg: 'var(--color-bg)' };
   };
 
   return (

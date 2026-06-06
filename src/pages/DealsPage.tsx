@@ -698,7 +698,7 @@ export const DealsPage: React.FC = () => {
             // Skeleton columns while loading
             <>
               {(isMobile ? [1] : [1, 2, 3, 4]).map(i => (
-                <div key={i} style={{ minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, background: 'white', borderRadius: 'var(--radius-xl)', border: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
+                <div key={i} style={{ minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
                   <div style={{ padding: '1rem 1.25rem', borderBottom: '3px solid var(--color-border)' }}>
                     <div style={{ height: 18, width: 120, background: '#e9ecef', borderRadius: 6, marginBottom: 8 }} />
                     <div style={{ height: 14, width: 60, background: '#f1f3f5', borderRadius: 6 }} />
@@ -732,7 +732,7 @@ export const DealsPage: React.FC = () => {
                   minWidth: isMobile ? '100%' : 320, width: isMobile ? '100%' : 320, flexShrink: 0, 
                   background: 'transparent',
                   border: '1px solid var(--color-border-light)',
-                  borderRadius: 'var(--radius-xl)',
+                  borderRadius: 'var(--radius-lg)',
                   display: 'flex', flexDirection: 'column', maxHeight: '100%',
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   scrollSnapAlign: 'center'
@@ -785,8 +785,8 @@ export const DealsPage: React.FC = () => {
                         onDragEnd={() => setDragging(null)}
                         initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} layout
                         style={{ 
-                          background: '#ffffff', borderRadius: 'var(--radius-lg)', padding: '1.25rem', 
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.04)', border: '1px solid var(--color-border-light)', 
+                          background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', padding: '0.875rem 1rem', 
+                          boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border-light)', 
                           cursor: 'grab', userSelect: 'none', position: 'relative'
                         }}
                         onClick={() => {

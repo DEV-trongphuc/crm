@@ -260,10 +260,10 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
               </div>
 
               {/* Body: 2 Columns */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', flex: 1, minHeight: 0, backgroundColor: '#f8fafc' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', flex: 1, minHeight: 0, backgroundColor: 'var(--color-bg)' }}>
                 
                 {/* Left Column: Form & Selected Items */}
-                <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', borderRight: '1px solid var(--color-border)', backgroundColor: '#fff' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', borderRight: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
                   <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                     
                     {/* Settings Form */}
@@ -303,7 +303,7 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                       </div>
                       
                       {formData.items.length === 0 ? (
-                        <div style={{ padding: '3rem', border: '2px dashed var(--color-border)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' }}>
+                        <div style={{ padding: '3rem', border: '2px dashed var(--color-border)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--color-bg)' }}>
                           <Package size={48} style={{ color: 'var(--color-text-muted)', opacity: 0.3, marginBottom: '1rem' }} />
                           <p style={{ fontWeight: 700, color: 'var(--color-text-light)' }}>Chưa có sản phẩm nào</p>
                           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Chọn sản phẩm từ danh mục bên phải để thêm vào đơn hàng</p>
@@ -314,13 +314,13 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                             <motion.div 
                               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
                               key={idx} 
-                              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: '#f8fafc', borderRadius: '16px', border: '1px solid var(--color-border)' }}
+                              style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', backgroundColor: 'var(--color-bg)', borderRadius: '16px', border: '1px solid var(--color-border)' }}
                             >
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={{ fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</p>
                                 <p style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-primary)', marginTop: '4px' }}>{new Intl.NumberFormat('vi-VN').format(item.unit_cost)} đ</p>
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#fff', padding: '0.25rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--color-surface)', padding: '0.25rem', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
                                 <button type="button" className="btn-icon sm" style={{ border: 'none', background: 'transparent' }} onClick={() => handleQtyChange(idx, item.quantity - 1)}>
                                   <MinusCircle size={16} />
                                 </button>
@@ -357,15 +357,16 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                       <div style={{ textAlign: 'right' }}>
                          <p style={{ fontSize: '0.65rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Hình thức</p>
                          <p style={{ fontSize: '0.875rem', fontWeight: 700, color: '#38bdf8' }}>Công nợ / Tiền mặt</p>
+                         <p style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-primary)' }}>Công nợ / Tiền mặt</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Right Column: Search & Add Products */}
-                <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
-                  <div style={{ padding: '2rem 1.5rem', borderBottom: '1px solid var(--color-border)', backgroundColor: '#fff' }}>
-                    <div className="filter-search w-full" style={{ background: '#f1f5f9', borderRadius: '12px', padding: '0.75rem 1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-bg)' }}>
+                  <div style={{ padding: '2rem 1.5rem', borderBottom: '1px solid var(--color-border)', backgroundColor: 'var(--color-surface)' }}>
+                    <div className="filter-search w-full" style={{ background: 'var(--color-bg)', borderRadius: '12px', padding: '0.75rem 1rem' }}>
                       <Search size={18} className="text-muted" />
                       <input 
                         placeholder="Tìm theo tên hoặc SKU..."
@@ -386,7 +387,7 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                           onClick={() => handleAddItem(p)} 
                           style={{ 
                             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
-                            padding: '1rem', borderRadius: '16px', backgroundColor: '#fff', border: '1px solid var(--color-border)',
+                            padding: '1rem', borderRadius: '16px', backgroundColor: 'var(--color-surface)', border: '1px solid var(--color-border)',
                             cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left'
                           }}
                           onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--color-primary)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; }}
@@ -395,7 +396,7 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
                           <div style={{ flex: 1, minWidth: 0, paddingRight: '1rem' }}>
                             <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</p>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '4px' }}>
-                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', backgroundColor: '#f1f5f9', color: 'var(--color-text-light)', borderRadius: '4px' }}>{p.sku || 'N/A'}</span>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 6px', backgroundColor: 'var(--color-bg)', color: 'var(--color-text-light)', borderRadius: '4px' }}>{p.sku || 'N/A'}</span>
                               <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)' }}>Tồn: {p.stock_quantity}</span>
                             </div>
                           </div>
@@ -410,14 +411,14 @@ export const PurchaseOrdersTab: React.FC<Props> = ({ showModal, setShowModal }) 
               </div>
 
               {/* Footer */}
-              <div className="modal-footer" style={{ padding: '1.25rem 2rem', backgroundColor: '#fff', zIndex: 10 }}>
+              <div className="modal-footer" style={{ padding: '1.25rem 2rem', backgroundColor: 'var(--color-surface)', zIndex: 10 }}>
                 {suppliers.length === 0 || products.length === 0 ? (
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fffbeb', padding: '1rem 1.5rem', borderRadius: '16px', border: '1px solid #fde68a' }}>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'var(--color-warning-light)', padding: '1rem 1.5rem', borderRadius: '16px', border: '1px solid var(--color-warning)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <AlertCircle style={{ color: '#f59e0b' }} size={24} />
+                      <AlertCircle style={{ color: 'var(--color-warning)' }} size={24} />
                       <div>
-                        <p style={{ fontSize: '0.875rem', fontWeight: 800, color: '#92400e' }}>Dữ liệu chưa sẵn sàng</p>
-                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#b45309' }}>Bạn cần khởi tạo {suppliers.length === 0 ? 'nhà cung cấp' : 'sản phẩm'} trước.</p>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 800, color: 'var(--color-warning)' }}>Dữ liệu chưa sẵn sàng</p>
+                        <p style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-light)' }}>Bạn cần khởi tạo {suppliers.length === 0 ? 'nhà cung cấp' : 'sản phẩm'} trước.</p>
                       </div>
                     </div>
                     <button className="btn primary" onClick={() => navigate(suppliers.length === 0 ? '/suppliers' : '/products')}>Khởi tạo ngay</button>

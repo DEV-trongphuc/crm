@@ -96,12 +96,12 @@ export const ContactsPage: React.FC = () => {
     { id: 'score', label: 'Lead Score', visible: false },
     { id: 'company', label: 'Công ty', visible: false },
     { id: 'tags', label: 'Phân loại (Tags)', visible: true },
-    { id: 'contact', label: 'Liên lạc', visible: true },
+    { id: 'status', label: 'Trạng thái', visible: true },
+    { id: 'contact', label: 'Liên lạc cuối', visible: true },
     { id: 'deal', label: 'Deal hiện tại', visible: false },
     { id: 'owner', label: 'Sale phụ trách', visible: true },
     { id: 'updated_at', label: 'Ngày cập nhật', visible: true },
-    { id: 'status', label: 'Trạng thái', visible: true },
-    { id: 'created_at', label: 'Ngày tạo', visible: false },
+    { id: 'created_at', label: 'Ngày tạo', visible: true },
   ]);
   const [showColumns, setShowColumns] = useState(false);
 
@@ -438,16 +438,23 @@ export const ContactsPage: React.FC = () => {
                       />
                     </th>
                     {columns.find(c => c.id === 'name')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên hệ</th>}
-                    {columns.find(c => c.id === 'email')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Email</th>}
-                    {columns.find(c => c.id === 'phone')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>SĐT</th>}
+                    {(columns.find(c => c.id === 'email')?.visible || columns.find(c => c.id === 'phone')?.visible) && (
+                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên lạc</th>
+                    )}
                     {columns.find(c => c.id === 'score')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Score</th>}
-                    {columns.find(c => c.id === 'company')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Công ty</th>}
+                    {columns.find(c => c.id === 'company')?.visible && !columns.find(c => c.id === 'name')?.visible && (
+                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Công ty</th>
+                    )}
                     {columns.find(c => c.id === 'tags')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Tags</th>}
-                    {columns.find(c => c.id === 'contact')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên lạc cuối</th>}
+                    {columns.find(c => c.id === 'status')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>}
+                    {columns.find(c => c.id === 'contact')?.visible && !columns.find(c => c.id === 'owner')?.visible && (
+                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Liên lạc cuối</th>
+                    )}
                     {columns.find(c => c.id === 'deal')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Deal đang mở</th>}
                     {columns.find(c => c.id === 'owner')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Sale phụ trách</th>}
-                    {columns.find(c => c.id === 'updated_at')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Cập nhật</th>}
-                    {columns.find(c => c.id === 'status')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Trạng thái</th>}
+                    {columns.find(c => c.id === 'updated_at')?.visible && !columns.find(c => c.id === 'owner')?.visible && (
+                      <th style={{ borderBottom: '1px solid var(--color-border)' }}>Cập nhật</th>
+                    )}
                     {columns.find(c => c.id === 'created_at')?.visible && <th style={{ borderBottom: '1px solid var(--color-border)' }}>Ngày tạo</th>}
                     <th style={{ width: 120, borderBottom: '1px solid var(--color-border)' }}></th>
                   </tr>
@@ -458,9 +465,9 @@ export const ContactsPage: React.FC = () => {
                     const fullName = `${c.first_name} ${c.last_name}`;
                     return (
                       <motion.tr key={c.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                        style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer' }}
-                        className="table-row-hover"
-                        onClick={() => setProfileContact(c)}>
+                         style={{ borderBottom: '1px solid var(--color-border-light)', cursor: 'pointer' }}
+                         className="table-row-hover"
+                         onClick={() => setProfileContact(c)}>
                         <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--color-border-light)' }} onClick={e => e.stopPropagation()}>
                           <CustomCheckbox 
                             checked={selected.has(c.id)} 
@@ -468,40 +475,47 @@ export const ContactsPage: React.FC = () => {
                           />
                         </td>
                         {columns.find(col => col.id === 'name')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                              <Avatar name={fullName} size={36} style={{ borderRadius: '10px' }} />
+                              <Avatar name={fullName} size={36} />
                               <div>
-                                <p style={{ fontWeight: 700, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>{fullName}</p>
+                                <p style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{fullName}</p>
+                                {columns.find(col => col.id === 'company')?.visible && c.company_name && (
+                                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                                    {c.company_name} {c.job_title ? `• ${c.job_title}` : ''}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </td>
                         )}
-                        {columns.find(col => col.id === 'email')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                            <p style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{c.email || '—'}</p>
-                          </td>
-                        )}
-                        {columns.find(col => col.id === 'phone')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                            {c.phone ? <PhoneLink phone={c.phone} style={{ fontSize: '0.8125rem', fontWeight: 500 }} /> : <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>—</span>}
+                        {(columns.find(col => col.id === 'email')?.visible || columns.find(col => col.id === 'phone')?.visible) && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              {columns.find(col => col.id === 'phone')?.visible && c.phone ? (
+                                <PhoneLink phone={c.phone} style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)' }} />
+                              ) : null}
+                              {columns.find(col => col.id === 'email')?.visible && c.email ? (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', fontWeight: 500 }}>{c.email}</span>
+                              ) : null}
+                            </div>
                           </td>
                         )}
                         {columns.find(col => col.id === 'score')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             <span style={{ fontWeight: 700, fontSize: '0.875rem', color: c.score >= 80 ? 'var(--color-success)' : c.score >= 60 ? 'var(--color-warning)' : 'var(--color-text-muted)' }}>
                               {c.score}
                             </span>
                           </td>
                         )}
-                        {columns.find(col => col.id === 'company')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        {columns.find(col => col.id === 'company')?.visible && !columns.find(col => col.id === 'name')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             <p style={{ fontSize: '0.875rem', fontWeight: 600 }}>{c.company_name || '—'}</p>
                             <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{c.job_title || ''}</p>
                           </td>
                         )}
                         {columns.find(col => col.id === 'tags')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', maxWidth: 160, borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '0.625rem 0.75rem', maxWidth: 160, borderBottom: '1px solid var(--color-border-light)' }}>
                             <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                               {(c.tags || []).slice(0, 2).map((t: string) => (
                                 <span key={t} style={{ padding: '2px 8px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
@@ -514,50 +528,63 @@ export const ContactsPage: React.FC = () => {
                             </div>
                           </td>
                         )}
-                        {columns.find(col => col.id === 'contact')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        {columns.find(col => col.id === 'status')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                            <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
+                          </td>
+                        )}
+                        {columns.find(col => col.id === 'contact')?.visible && !columns.find(col => col.id === 'owner')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             <span style={{ fontSize: '0.8125rem', color: days > 30 ? 'var(--color-danger)' : days > 14 ? 'var(--color-warning)' : 'var(--color-text-muted)', fontWeight: days > 30 ? 700 : 400 }}>
                               {c.last_contact ? (days === 0 ? 'Hôm nay' : days === 1 ? 'Hôm qua' : `${days} ngày trước`) : '—'}
                             </span>
                           </td>
                         )}
                         {columns.find(col => col.id === 'deal')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             <span style={{ fontSize: '0.875rem', fontWeight: 700, color: (c.open_deal_value || 0) > 0 ? 'var(--color-primary)' : 'var(--color-text-muted)' }}>
                               {FMT_VND(c.open_deal_value || 0)}
                             </span>
                           </td>
                         )}
                         {columns.find(col => col.id === 'owner')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             {c.owner_name ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Avatar name={c.owner_name} size={24} />
-                                <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{c.owner_name}</span>
-                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <Avatar name={c.owner_name} size={32} />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text)', whiteSpace: 'nowrap' }}>{c.owner_name}</span>
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                    Cập nhật: {c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}
+                                  </span>
+                                </div>
                               </div>
                             ) : (
-                              <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa giao</span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--color-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)' }}>
+                                  <User size={16} />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>Chưa giao</span>
+                                  <span style={{ fontSize: '0.725rem', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                                    Cập nhật: {c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}
+                                  </span>
+                                </div>
+                              </div>
                             )}
                           </td>
                         )}
-                        {columns.find(col => col.id === 'updated_at')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                        {columns.find(col => col.id === 'updated_at')?.visible && !columns.find(col => col.id === 'owner')?.visible && (
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{c.updated_at ? new Date(c.updated_at).toLocaleDateString('vi-VN') : '—'}</p>
                           </td>
                         )}
-                        {columns.find(col => col.id === 'status')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
-                            <span className={`badge ${STATUS_CLASS[c.status] || 'info'}`}>{STATUS_LABEL[c.status] || c.status}</span>
-                          </td>
-                        )}
                         {columns.find(col => col.id === 'created_at')?.visible && (
-                          <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
+                          <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }}>
                             <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleDateString('vi-VN') : '—'}</p>
                           </td>
                         )}
-                        <td style={{ padding: '0.875rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }} onClick={e => e.stopPropagation()}>
+                        <td style={{ padding: '0.625rem 0.75rem', borderBottom: '1px solid var(--color-border-light)' }} onClick={e => e.stopPropagation()}>
                           <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-end', opacity: 0 }} className="row-actions">
                             <button className="btn ghost sm" title="Xem hồ sơ" onClick={() => setProfileContact(c)}><Eye size={13} /></button>
                             <button className="btn ghost sm" style={{ color: 'var(--color-danger)' }} title="Xóa"
@@ -608,7 +635,7 @@ export const ContactsPage: React.FC = () => {
                       onClick={() => setProfileContact(c)}
                       style={{ 
                         background: 'var(--color-surface)', border: '1px solid var(--color-border)', 
-                        borderRadius: 'var(--radius-xl)', padding: '1.25rem', cursor: 'pointer',
+                        borderRadius: 'var(--radius-lg)', padding: '1rem', cursor: 'pointer',
                         boxShadow: 'var(--shadow-sm)', transition: 'all 0.2s', position: 'relative'
                       }}
                       onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-md)'}
@@ -621,7 +648,7 @@ export const ContactsPage: React.FC = () => {
                         />
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                        <div style={{ width: 48, height: 48, borderRadius: '12px', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.25rem' }}>
+                        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--color-primary-light)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.25rem' }}>
                           {(c.first_name?.[0] || '?').toUpperCase()}
                         </div>
                         <div>

@@ -22,6 +22,7 @@ import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
 import styles from './EntityDrawer.module.css';
+import { Tooltip } from '../components/ui/Tooltip';
 
 /* ─── Types ─────────────────────────────────────────────────── */
 interface Props {
@@ -181,7 +182,7 @@ const ActivityComments: React.FC<{ activityId: number, initialCount?: number }> 
           {comments.map((c: any) => (
             <div key={c.id} style={{ display: 'flex', gap: '0.75rem' }}>
               <Avatar name={c.user_name} size="sm" />
-              <div style={{ flex: 1, background: 'white', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
+              <div style={{ flex: 1, background: 'var(--color-surface)', padding: '0.75rem', borderRadius: '12px', border: '1px solid var(--color-border-light)', boxShadow: 'var(--shadow-sm)', overflow: 'hidden' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                   <strong style={{ fontSize: '0.8125rem', color: 'var(--color-text)' }}>{c.user_name}</strong>
                   <span style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{c.created_at ? new Date(c.created_at).toLocaleString('vi-VN') : ''}</span>
@@ -813,7 +814,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                     >
                       <div style={{ height: 60, background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' }} />
                       <div style={{ padding: '0 1.25rem 1.25rem', textAlign: 'center', marginTop: -30 }}>
-                        <div style={{ width: 60, height: 60, borderRadius: '20px', background: 'white', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '4px solid white', fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6' }}>
+                        <div style={{ width: 60, height: 60, borderRadius: '20px', background: 'var(--color-surface)', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '4px solid var(--color-surface)', fontSize: '1.5rem', fontWeight: 800, color: '#8b5cf6' }}>
                           {quickUserCard.name.charAt(0).toUpperCase()}
                         </div>
                         <h4 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '4px' }}>{quickUserCard.name}</h4>
@@ -831,7 +832,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </AnimatePresence>
 
               {/* ── Header ── */}
-              <div style={{ padding: '2rem 2.5rem', background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)', borderBottom: '1px solid var(--color-border-light)', position: 'relative' }}>
+              <div style={{ padding: '2rem 2.5rem', background: 'linear-gradient(135deg, var(--color-bg) 0%, var(--color-surface) 100%)', borderBottom: '1px solid var(--color-border-light)', position: 'relative' }}>
                 <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                   {/* Avatar Section */}
                   <div style={{ position: 'relative' }}>
@@ -869,7 +870,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <Pencil size={20} color="white" />
                       </div>
                     </div>
-                    <div style={{ position: 'absolute', bottom: -4, right: -4, width: 28, height: 28, borderRadius: '10px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid white' }}>
+                    <div style={{ position: 'absolute', bottom: -4, right: -4, width: 28, height: 28, borderRadius: '10px', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', border: '2px solid var(--color-surface)' }}>
                       <UserCheck size={14} className="text-success" />
                     </div>
                   </div>
@@ -909,7 +910,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text)' }}>{formData.email || 'contact@email.com'}</span>
                       </div>
                       <div
-                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: 'white', border: '1px solid var(--color-border)', borderRadius: '12px', cursor: 'pointer' }}
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 12px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '12px', cursor: 'pointer' }}
                         onClick={(e) => showUserCard(e, formData.owner_name)}
                       >
                         <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#8b5cf6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 800 }}>
@@ -934,10 +935,13 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         <CheckSquare size={18} /> {hasChanges ? 'Lưu thay đổi' : 'Đã đồng bộ'}
                       </button>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'white', padding: '10px 16px', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--color-surface)', padding: '10px 16px', borderRadius: '16px', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <div style={{ textAlign: 'right' }}>
-                          <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase' }}>Lead Score</p>
+                          <p style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-text-light)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end' }}>
+                            Lead Score
+                            <Tooltip content="Điểm tiềm năng (Lead Score) tự động tính dựa trên lịch sử tương tác, email, cuộc gọi và độ lớn dự án." />
+                          </p>
                           <p style={{ fontSize: '1rem', fontWeight: 800, color: score > 70 ? 'var(--color-success)' : 'var(--color-warning)' }}>{score}/100</p>
                         </div>
                         <LeadScoreRing score={score} size={40} />
@@ -948,8 +952,8 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               </div>
 
               {/* ── Pipeline Stepper Bar ── */}
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'white', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
-                <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '1rem', zIndex: 10, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border-light)', overflow: 'hidden' }}>
+                <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', left: '1rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: -250, behavior: 'smooth' })}>
                   <ChevronLeft size={16} />
                 </button>
 
@@ -977,14 +981,14 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         >
                           {/* Connection Line */}
                           {i < pipelineStages.length - 1 && (
-                            <div style={{ position: 'absolute', top: '50%', left: '50%', right: '-50%', height: '3px', background: i < safeIndex ? stColor : '#e2e8f0', transform: 'translateY(-50%)', zIndex: 1, borderRadius: '4px' }} />
+                            <div style={{ position: 'absolute', top: '50%', left: '50%', right: '-50%', height: '3px', background: i < safeIndex ? stColor : 'var(--color-border)', transform: 'translateY(-50%)', zIndex: 1, borderRadius: '4px' }} />
                           )}
 
                           <div style={{
                             position: 'relative', zIndex: 2, flex: 1,
-                            background: isCurrent ? stColor : 'white',
-                            color: isCurrent ? '#fff' : (isActive ? stColor : '#94a3b8'),
-                            border: `2px solid ${isActive ? stColor : '#f1f5f9'}`,
+                            background: isCurrent ? stColor : 'var(--color-surface)',
+                            color: isCurrent ? '#fff' : (isActive ? stColor : 'var(--color-text-muted)'),
+                            border: `2px solid ${isActive ? stColor : 'var(--color-border-light)'}`,
                             padding: '6px 12px', borderRadius: '12px', fontSize: '0.8125rem', fontWeight: 800,
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                             whiteSpace: 'nowrap',
@@ -1001,7 +1005,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                   })()}
                 </div>
 
-                <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '1rem', zIndex: 10, background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
+                <button className="btn outline sm" style={{ padding: '4px', height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: '50%', position: 'absolute', right: '1rem', zIndex: 10, background: 'var(--color-surface)', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }} onClick={() => document.getElementById('pipeline-scroll-container')?.scrollBy({ left: 250, behavior: 'smooth' })}>
                   <ChevronRight size={16} />
                 </button>
               </div>
@@ -1318,7 +1322,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                         </div>
                       </div>
 
-                      <div className="card-panel" style={{ padding: '2.5rem', background: 'linear-gradient(to bottom right, #ffffff, #f8fafc)', border: '1px solid var(--color-border-light)' }}>
+                      <div className="card-panel" style={{ padding: '2.5rem', background: 'linear-gradient(to bottom right, var(--color-surface), var(--color-bg))', border: '1px solid var(--color-border-light)' }}>
                         <div style={{ maxWidth: '600px', margin: '0 auto' }}>
                           <label className="form-label" style={{ fontWeight: 700, marginBottom: '1rem', display: 'block', fontSize: '0.9375rem' }}>Gắn thẻ thông minh</label>
                           <TagInput
@@ -1415,7 +1419,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                   
                                   {/* Rich Metadata Rendering */}
                                   {ev.type === 'call' && (ev as any).metadata?.recording_url && (
-                                    <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'white', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{ marginTop: '0.75rem', padding: '0.5rem', background: 'var(--color-surface)', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                                       <button className="btn-icon sm" style={{ background: 'var(--color-primary)', color: 'white' }}><Activity size={14} /></button>
                                       <div style={{ flex: 1, height: '4px', background: '#e2e8f0', borderRadius: '2px', position: 'relative' }}>
                                         <div style={{ width: '60%', height: '100%', background: 'var(--color-primary)', borderRadius: '2px' }} />
@@ -1767,36 +1771,36 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(drawerInvoices.reduce((acc: number, inv: any) => acc + inv.total, 0))}
                               </h4>
                             </div>
-                            <div className="card-panel" style={{ padding: '1.25rem 1rem', background: 'linear-gradient(135deg, #f0fdf4, #dcfce7)', border: '1px solid #bbf7d0', position: 'relative', overflow: 'hidden' }}>
+                            <div className="card-panel" style={{ padding: '1.25rem 1rem', background: 'var(--color-success-light)', border: '1px solid var(--color-success)', position: 'relative', overflow: 'hidden' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                <div style={{ width: 24, height: 24, borderRadius: '6px', background: '#bbf7d0', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '6px', background: 'rgba(16, 185, 129, 0.15)', color: 'var(--color-success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <CheckCircle2 size={14} />
                                 </div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', textTransform: 'uppercase' }}>Đã thu</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-success)', textTransform: 'uppercase' }}>Đã thu</span>
                               </div>
-                              <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#166534' }}>
+                              <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-success)' }}>
                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(drawerInvoices.filter((i: any) => i.status === 'paid').reduce((acc: number, inv: any) => acc + inv.total, 0))}
                               </h4>
                             </div>
-                            <div className="card-panel" style={{ padding: '1.25rem 1rem', background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', border: '1px solid #fde68a', position: 'relative', overflow: 'hidden' }}>
+                            <div className="card-panel" style={{ padding: '1.25rem 1rem', background: 'var(--color-warning-light)', border: '1px solid var(--color-warning)', position: 'relative', overflow: 'hidden' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                <div style={{ width: 24, height: 24, borderRadius: '6px', background: '#fde68a', color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '6px', background: 'rgba(245, 158, 11, 0.15)', color: 'var(--color-warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <Clock size={14} />
                                 </div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b45309', textTransform: 'uppercase' }}>Chờ xử lý</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-warning)', textTransform: 'uppercase' }}>Chờ xử lý</span>
                               </div>
-                              <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#92400e' }}>
+                              <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-warning)' }}>
                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(drawerInvoices.filter((i: any) => i.status === 'pending').reduce((acc: number, inv: any) => acc + inv.total, 0))}
                               </h4>
                             </div>
-                            <div className="card-panel" style={{ padding: '1.25rem 1rem', background: 'linear-gradient(135deg, #fef2f2, #fee2e2)', border: '1px solid #fecaca', position: 'relative', overflow: 'hidden' }}>
+                            <div className="card-panel" style={{ padding: '1.25rem 1rem', background: 'var(--color-danger-light)', border: '1px solid var(--color-danger)', position: 'relative', overflow: 'hidden' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                <div style={{ width: 24, height: 24, borderRadius: '6px', background: '#fecaca', color: '#b91c1c', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <div style={{ width: 24, height: 24, borderRadius: '6px', background: 'rgba(239, 68, 68, 0.15)', color: 'var(--color-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                   <AlertCircle size={14} />
                                 </div>
-                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#b91c1c', textTransform: 'uppercase' }}>Quá hạn nợ</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--color-danger)', textTransform: 'uppercase' }}>Quá hạn nợ</span>
                               </div>
-                              <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#991b1b' }}>
+                              <h4 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--color-danger)' }}>
                                 {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(drawerInvoices.filter((i: any) => i.status === 'overdue').reduce((acc: number, inv: any) => acc + inv.total, 0))}
                               </h4>
                             </div>

@@ -204,8 +204,8 @@ export const TicketsPage: React.FC = () => {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--color-bg)', padding: '4px', borderRadius: '8px' }}>
-          <button className={`btn ghost sm ${viewMode === 'list' ? 'bg-white shadow-sm' : ''}`} onClick={() => setViewMode('list')}>List</button>
-          <button className={`btn ghost sm ${viewMode === 'kanban' ? 'bg-white shadow-sm' : ''}`} onClick={() => setViewMode('kanban')}>Kanban</button>
+          <button className={`btn ghost sm ${viewMode === 'list' ? 'bg-[var(--color-surface)] shadow-sm' : ''}`} onClick={() => setViewMode('list')}>List</button>
+          <button className={`btn ghost sm ${viewMode === 'kanban' ? 'bg-[var(--color-surface)] shadow-sm' : ''}`} onClick={() => setViewMode('kanban')}>Kanban</button>
         </div>
       </div>
 
@@ -279,7 +279,7 @@ export const TicketsPage: React.FC = () => {
               <div key={col.id} style={{ flex: '0 0 300px', background: 'var(--color-bg)', borderRadius: '16px', padding: '1rem', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h3 style={{ fontWeight: 800, fontSize: '0.9rem', color: col.color }}>{col.label}</h3>
-                  <span style={{ background: 'white', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--color-border)' }}>{colTickets.length}</span>
+                  <span style={{ background: 'var(--color-surface)', padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 700, border: '1px solid var(--color-border)' }}>{colTickets.length}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
                   {colTickets.map(t => (
@@ -288,7 +288,7 @@ export const TicketsPage: React.FC = () => {
                       layout
                       whileHover={{ y: -2 }}
                       onClick={() => setSelectedTicket(t)}
-                      style={{ background: 'white', padding: '1rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border-light)', cursor: 'pointer', borderLeft: `3px solid ${PRIORITIES.find(p => p.id === t.priority)?.color}` }}
+                      style={{ background: 'var(--color-surface)', padding: '1rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--color-border-light)', cursor: 'pointer', borderLeft: `3px solid ${PRIORITIES.find(p => p.id === t.priority)?.color}` }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                         <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--color-text-muted)' }}>#{t.id}</span>

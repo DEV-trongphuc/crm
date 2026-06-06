@@ -27,6 +27,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 function App() {
   const { isAuthenticated } = useAuthStore();
+
+  React.useEffect(() => {
+    const localTheme = localStorage.getItem('domation_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', localTheme);
+    localStorage.setItem('domation_theme', localTheme);
+  }, []);
+
   return (
     <Routes>
       <Route path="/login" element={isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />} />

@@ -16,11 +16,17 @@ import { CustomModal } from '../components/ui/CustomModal';
 import api from '../api/axios';
 import { DEV_MODE } from '../config/env';
 import { useMockStore, getFilteredMockState } from '../store/mockStore';
+import { Tooltip } from '../components/ui/Tooltip';
 
 const PAGE_SIZE = 20;
 
 const FMT = (n: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
-const fmtDate = (d: string) => d ? new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+const fmtDate = (d: any) => {
+  if (!d) return '—';
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return '—';
+  return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
 
 export const QuotesPage: React.FC = () => {
   const { addToast, showConfirm, closeConfirm } = useUIStore();
@@ -262,9 +268,9 @@ export const QuotesPage: React.FC = () => {
                 </th>
                 <th>MÃ BÁO GIÁ</th>
                 <th>TIÊU ĐỀ & KHÁCH HÀNG</th>
-                <th>TRẠNG THÁI</th>
+                <th>TRẠNG THÁI <Tooltip content="Báo giá có các trạng thái: Nháp, Đã gửi, Đã duyệt (có thể chuyển thành hóa đơn), Từ chối hoặc Hết hạn." /></th>
                 <th>GIÁ TRỊ</th>
-                <th>HẠN HIỆU LỰC</th>
+                <th>HẠN HIỆU LỰC <Tooltip content="Báo giá quá hạn hiệu lực sẽ tự động lưu trữ và không thể chuyển đổi thành hóa đơn trực tiếp." /></th>
                 <th>NGÀY TẠO</th>
                 <th style={{ textAlign: 'right' }}>THAO TÁC</th>
               </tr>
@@ -296,7 +302,7 @@ export const QuotesPage: React.FC = () => {
                       }} />
                     </td>
                     <td>
-                      <span className="font-black text-primary text-xs font-mono">{q.quote_number}</span>
+                      <span className="font-bold text-primary text-xs font-mono">{q.quote_number}</span>
                     </td>
                     <td>
                       <div className="font-bold text-sm">{q.title}</div>
@@ -310,7 +316,7 @@ export const QuotesPage: React.FC = () => {
                       </span>
                     </td>
                     <td>
-                      <div className="font-black text-sm">{FMT(q.total)}</div>
+                      <div className="font-bold text-sm">{FMT(q.total)}</div>
                       <div className="text-[10px] text-muted">{q.items_count || 0} hạng mục</div>
                     </td>
                     <td>
@@ -359,7 +365,7 @@ export const QuotesPage: React.FC = () => {
           <div className="p-2">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-xl font-black mb-1">{previewItem.title}</h2>
+                <h2 className="text-xl font-bold mb-1">{previewItem.title}</h2>
                 <div className="flex items-center gap-2 text-sm text-light">
                   <User size={14} /> {previewItem.contact_name || 'Khách lẻ'}
                   {previewItem.company_name && <span>• {previewItem.company_name}</span>}
@@ -389,7 +395,7 @@ export const QuotesPage: React.FC = () => {
               </div>
               <div className="bg-primary-light rounded-2xl p-6 flex flex-col justify-center">
                 <label className="text-[10px] uppercase tracking-widest text-primary block mb-1">Tổng cộng (Đã thuế)</label>
-                <p className="text-3xl font-black text-primary tracking-tighter">{FMT(previewItem.total)}</p>
+                <p className="text-3xl font-bold text-primary tracking-tighter">{FMT(previewItem.total)}</p>
               </div>
             </div>
 

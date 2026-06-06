@@ -95,13 +95,13 @@ export const AdminProfileModal: React.FC<Props> = ({ isOpen, onClose }) => {
             <div style={{ display: 'flex', background: 'var(--color-bg)', padding: '4px', margin: '1rem 1.5rem', borderRadius: '12px' }}>
               <button 
                 onClick={() => setActiveTab('profile')}
-                style={{ flex: 1, padding: '0.625rem', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, background: activeTab === 'profile' ? 'white' : 'transparent', color: activeTab === 'profile' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'profile' ? 'var(--shadow-sm)' : 'none', transition: 'all 0.2s' }}
+                style={{ flex: 1, padding: '0.625rem', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, background: activeTab === 'profile' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'profile' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'profile' ? 'var(--shadow-sm)' : 'none', transition: 'all 0.2s' }}
               >
                 Hồ sơ cá nhân
               </button>
               <button 
                 onClick={() => setActiveTab('security')}
-                style={{ flex: 1, padding: '0.625rem', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, background: activeTab === 'security' ? 'white' : 'transparent', color: activeTab === 'security' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'security' ? 'var(--shadow-sm)' : 'none', transition: 'all 0.2s' }}
+                style={{ flex: 1, padding: '0.625rem', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, background: activeTab === 'security' ? 'var(--color-surface)' : 'transparent', color: activeTab === 'security' ? 'var(--color-primary)' : 'var(--color-text-light)', boxShadow: activeTab === 'security' ? 'var(--shadow-sm)' : 'none', transition: 'all 0.2s' }}
               >
                 Bảo mật & Mật khẩu
               </button>
@@ -115,7 +115,7 @@ export const AdminProfileModal: React.FC<Props> = ({ isOpen, onClose }) => {
                       <div style={{ width: 100, height: 100, borderRadius: '50%', background: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '2rem', fontWeight: 700, overflow: 'hidden' }}>
                         {formData.avatar_url ? <img src={formData.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : formData.full_name.charAt(0).toUpperCase()}
                       </div>
-                      <button style={{ position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: '50%', background: 'white', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', color: 'var(--color-primary)' }}>
+                      <button style={{ position: 'absolute', bottom: 0, right: 0, width: 32, height: 32, borderRadius: '50%', background: 'var(--color-surface)', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-md)', color: 'var(--color-primary)' }}>
                         <Camera size={16} />
                       </button>
                     </div>

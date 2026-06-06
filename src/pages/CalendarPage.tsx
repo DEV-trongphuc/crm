@@ -96,7 +96,7 @@ export const CalendarPage: React.FC = () => {
           <p className="page-subtitle">Theo dõi các cuộc hẹn, cuộc gọi và nhiệm vụ của bạn</p>
         </div>
         <div className="flex gap-3">
-          <div className="flex items-center bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+          <div className="flex items-center bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-1 shadow-sm">
              <button className="btn-icon sm" onClick={prevMonth}><ChevronLeft size={18} /></button>
              <span className="px-4 font-black capitalize" style={{ minWidth: '140px', textAlign: 'center', color: 'var(--color-text)' }}>
                {monthName} {year}
@@ -107,8 +107,8 @@ export const CalendarPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden flex flex-col card-panel p-0 bg-white border border-slate-200">
-        <div className="grid grid-cols-7 border-b bg-slate-50">
+      <div className="flex-1 overflow-hidden flex flex-col card-panel p-0 bg-[var(--color-surface)] border border-[var(--color-border)]">
+        <div className="grid grid-cols-7 border-b border-[var(--color-border)] bg-[var(--color-bg)]">
           {weekDays.map(wd => (
             <div key={wd} className="py-3 text-center text-xs font-black uppercase tracking-widest" style={{ color: 'var(--color-text-light)' }}>
               {wd}
@@ -167,6 +167,9 @@ export const CalendarPage: React.FC = () => {
         .calendar-event.call { background: #e0f2fe; color: #0369a1; border-left: 3px solid #0369a1; }
         .calendar-event.meeting { background: #fef3c7; color: #92400e; border-left: 3px solid #92400e; }
         .calendar-event.task { background: #dcfce7; color: #166534; border-left: 3px solid #166534; }
+        [data-theme="dark"] .calendar-event.call { background: rgba(59, 130, 246, 0.15); color: #93c5fd; border-left-color: #3b82f6; }
+        [data-theme="dark"] .calendar-event.meeting { background: rgba(245, 158, 11, 0.15); color: #fcd34d; border-left-color: #f59e0b; }
+        [data-theme="dark"] .calendar-event.task { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border-left-color: #10b981; }
         .calendar-event.completed { opacity: 0.5; text-decoration: line-through; }
         .more-events { font-size: 0.65rem; color: var(--color-text-muted); font-weight: 700; text-align: center; margin-top: 2px; }
       `}</style>

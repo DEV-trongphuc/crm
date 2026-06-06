@@ -47,7 +47,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventClick, onDate
 
   // Padding for start of month
   for (let i = 0; i < startOffset; i++) {
-    days.push(<div key={`empty-${i}`} className="calendar-day empty border-r border-b border-slate-100 bg-slate-50/50"></div>);
+    days.push(<div key={`empty-${i}`} className="calendar-day empty border-r border-b border-[var(--color-border-light)] bg-[var(--color-bg)]" style={{ opacity: 0.3 }}></div>);
   }
 
   const T_ICON: Record<string, React.ReactNode> = {
@@ -56,6 +56,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventClick, onDate
   };
 
   const getStyleForType = (type: string) => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      switch (type) {
+        case 'call': return { backgroundColor: 'rgba(59, 130, 246, 0.15)', color: '#93c5fd', borderColor: 'rgba(59, 130, 246, 0.3)' };
+        case 'email': return { backgroundColor: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', borderColor: 'rgba(168, 85, 247, 0.3)' };
+        case 'meeting': return { backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#6ee7b7', borderColor: 'rgba(16, 185, 129, 0.3)' };
+        case 'task': return { backgroundColor: 'rgba(245, 158, 11, 0.15)', color: '#fcd34d', borderColor: 'rgba(245, 158, 11, 0.3)' };
+        default: return { backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#cbd5e1', borderColor: 'rgba(255, 255, 255, 0.1)' };
+      }
+    }
     switch (type) {
       case 'call': return { backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' };
       case 'email': return { backgroundColor: '#faf5ff', color: '#7e22ce', borderColor: '#e9d5ff' };
@@ -107,7 +117,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({ onEventClick, onDate
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: 'var(--color-surface)', borderRadius: 'var(--radius-2xl)', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', borderBottom: '1px solid var(--color-border)', backgroundColor: 'rgba(0,0,0,0.02)' }}>
         <div className="flex items-center gap-4">
-           <div className="flex bg-white rounded-xl border border-slate-200 p-1 shadow-sm">
+           <div className="flex bg-[var(--color-surface)] rounded-xl border border-[var(--color-border)] p-1 shadow-sm">
               <button className="p-1.5 rounded-lg transition-colors hover:bg-[var(--color-surface-hover)]" onClick={prevMonth}><ChevronLeft size={16} /></button>
               <span className="px-4 py-1.5 font-bold capitalize text-sm min-w-[120px] text-center" style={{ color: 'var(--color-text)' }}>
                 {monthName} {year}

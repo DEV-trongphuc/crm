@@ -162,17 +162,17 @@ export const SuppliersPage: React.FC = () => {
             {filtered.map(s => (
               <motion.div 
                 key={s.id} 
-                className="card hover-lift p-5 relative overflow-hidden"
+                className="card hover-lift p-4 relative overflow-hidden"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="avatar-placeholder" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>
-                      <Truck size={20} />
+                    <div className="avatar-placeholder" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', borderRadius: '50%' }}>
+                      <Truck size={18} />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg leading-tight">{s.name}</h3>
+                      <h3 className="font-bold text-base leading-tight">{s.name}</h3>
                       <p className="text-xs text-light flex items-center gap-1 mt-1"><User size={12} /> {s.contact_name || 'Chưa có thông tin'}</p>
                     </div>
                   </div>
@@ -191,10 +191,10 @@ export const SuppliersPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                <div className="flex items-center justify-between pt-4 border-t border-[var(--color-border-light)]">
                   <div>
-                    <p className="text-[10px] text-muted font-black uppercase tracking-wider">Tổng giá trị mua</p>
-                    <p className="font-black text-primary text-lg">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(s.total_ordered || 0)}</p>
+                    <p className="text-[10px] text-muted font-semibold uppercase tracking-wider">Tổng giá trị mua</p>
+                    <p className="font-bold text-primary text-base">{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(s.total_ordered || 0)}</p>
                   </div>
                   <div className="flex gap-2">
                     <button className="btn-icon sm" onClick={() => handleOpenModal(s)}><Pencil size={14} /></button>

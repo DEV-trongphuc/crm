@@ -173,7 +173,7 @@ export const ActivityModal: React.FC<ActivityModalProps> = ({ isOpen, onClose, e
               }}
               onClick={() => setFormData({ ...formData, auto_trigger: !formData.auto_trigger })}
             >
-              <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '12px', background: 'var(--color-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-primary)', boxShadow: 'var(--shadow-sm)' }}>
                 <Zap size={24} fill={formData.auto_trigger ? 'var(--color-primary)' : 'none'} />
               </div>
               <div style={{ flex: 1 }}>

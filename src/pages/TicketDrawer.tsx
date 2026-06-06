@@ -139,7 +139,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
             </div>
 
             {/* ── Content Split ── */}
-            <div className={styles.drawerBody} style={{ background: '#fcfcfd' }}>
+            <div className={styles.drawerBody} style={{ background: 'var(--color-bg)' }}>
               
               {/* Left: Activity Thread */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--color-border)' }}>
@@ -147,7 +147,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                   {loading ? (
                     <div style={{ textAlign: 'center', padding: '2rem' }}>Đang tải ghi chú...</div>
                   ) : comments.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', background: 'white', borderRadius: '16px', border: '1px dashed var(--color-border)' }}>
+                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)', background: 'var(--color-surface)', borderRadius: '16px', border: '1px dashed var(--color-border)' }}>
                       <MessageSquare size={32} style={{ margin: '0 auto 1rem', opacity: 0.3 }} />
                       Chưa có ghi chú nào. Hãy bắt đầu thảo luận!
                     </div>
@@ -163,7 +163,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                           <div style={{ 
                             padding: '0.875rem 1.25rem', 
                             borderRadius: '16px', 
-                            background: msg.is_internal ? 'var(--color-warning-light)' : 'white',
+                            background: msg.is_internal ? 'var(--color-warning-light)' : 'var(--color-surface)',
                             border: '1px solid var(--color-border)',
                             color: 'var(--color-text)',
                             fontSize: '0.9375rem', lineHeight: 1.5,
@@ -178,7 +178,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
                 </div>
 
                 {/* Reply Box */}
-                <div style={{ padding: '1.5rem', background: 'white', borderTop: '1px solid var(--color-border)' }}>
+                <div style={{ padding: '1.5rem', background: 'var(--color-surface)', borderTop: '1px solid var(--color-border)' }}>
                   <div style={{ position: 'relative' }}>
                     <textarea 
                       className="form-input" 
@@ -204,7 +204,7 @@ export const TicketDrawer: React.FC<Props> = ({ isOpen, onClose, ticket, onUpdat
               </div>
 
               {/* Right: Info Panel */}
-              <div style={{ width: '320px', background: 'white', padding: '1.5rem', overflow: 'auto' }}>
+              <div style={{ width: '320px', background: 'var(--color-surface)', padding: '1.5rem', overflow: 'auto' }}>
                 <h4 style={{ fontSize: '0.875rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--color-text-light)', marginBottom: '1rem' }}>Thông tin Ticket</h4>
                 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>

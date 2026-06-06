@@ -156,8 +156,8 @@ export const DemoIndicator: React.FC = () => {
               exit={{ opacity: 0, scale: 0.9, y: '-45%', x: '-50%' }}
               style={{
                 position: 'fixed', top: '50%', left: '50%', width: '900px',
-                maxWidth: '95vw', maxHeight: '90vh', background: '#fafafa', borderRadius: '32px', zIndex: 10001,
-                boxShadow: '0 30px 60px -12px rgba(88, 28, 135, 0.4)',
+                maxWidth: '95vw', maxHeight: '90vh', background: 'var(--color-surface)', borderRadius: '32px', zIndex: 10001,
+                boxShadow: 'var(--shadow-2xl)', border: '1px solid var(--color-border)',
                 overflow: 'visible', display: 'flex'
               }}
             >
@@ -198,20 +198,20 @@ export const DemoIndicator: React.FC = () => {
               </div>
 
               {/* Right Panel: Form */}
-              <div style={{ flex: 1, padding: '2.5rem 3.5rem', position: 'relative', background: 'linear-gradient(180deg, #ffffff 0%, #f3f0ff 100%)', borderTopRightRadius: '32px', borderBottomRightRadius: '32px' }}>
+              <div style={{ flex: 1, padding: '2.5rem 3.5rem', position: 'relative', background: 'linear-gradient(180deg, var(--color-surface) 0%, var(--color-bg) 100%)', borderTopRightRadius: '32px', borderBottomRightRadius: '32px' }}>
                 <button 
                   onClick={() => setShowModal(false)}
-                  style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'white', border: 'none', color: '#4c1d95', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f3f0ff'}
+                  style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'var(--color-bg)', border: 'none', color: 'var(--color-text)', width: 36, height: 36, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--color-surface)'}
                 ><X size={20}/></button>
 
-                <h4 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e1b4b', marginBottom: '0.5rem' }}>Bắt đầu ngay hôm nay</h4>
-                <p style={{ fontSize: '0.925rem', color: '#6b7280', marginBottom: '2.5rem' }}>Để lại thông tin, chuyên gia của chúng tôi sẽ phản hồi trong 24h.</p>
+                <h4 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--color-text)', marginBottom: '0.5rem' }}>Bắt đầu ngay hôm nay</h4>
+                <p style={{ fontSize: '0.925rem', color: 'var(--color-text-muted)', marginBottom: '2.5rem' }}>Để lại thông tin, chuyên gia của chúng tôi sẽ phản hồi trong 24h.</p>
 
                 <form onSubmit={handleSubmit}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 700, color: '#374151' }}>Họ và tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text-light)' }}>Họ và tên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                       <div style={{ position: 'relative' }}>
                         <input 
                           className="form-input lg" style={{ paddingLeft: '2.75rem', borderRadius: '12px' }} 
@@ -223,7 +223,7 @@ export const DemoIndicator: React.FC = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 700, color: '#374151' }}>Số điện thoại</label>
+                      <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text-light)' }}>Số điện thoại</label>
                       <div style={{ position: 'relative' }}>
                         <input 
                           className="form-input lg" style={{ paddingLeft: '2.75rem', borderRadius: '12px' }} 
@@ -235,7 +235,7 @@ export const DemoIndicator: React.FC = () => {
                     </div>
 
                     <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                      <label className="form-label" style={{ fontWeight: 700, color: '#374151' }}>Email doanh nghiệp <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+                      <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text-light)' }}>Email doanh nghiệp <span style={{ color: 'var(--color-danger)' }}>*</span></label>
                       <div style={{ position: 'relative' }}>
                         <input 
                           className="form-input lg" style={{ paddingLeft: '2.75rem', borderRadius: '12px' }} 
@@ -247,7 +247,7 @@ export const DemoIndicator: React.FC = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 700, color: '#374151' }}>Tên doanh nghiệp</label>
+                      <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text-light)' }}>Tên doanh nghiệp</label>
                       <div style={{ position: 'relative' }}>
                         <input 
                           className="form-input lg" style={{ paddingLeft: '2.75rem', borderRadius: '12px' }} 
@@ -259,7 +259,7 @@ export const DemoIndicator: React.FC = () => {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label" style={{ fontWeight: 700, color: '#374151' }}>Quy mô nhân sự</label>
+                      <label className="form-label" style={{ fontWeight: 700, color: 'var(--color-text-light)' }}>Quy mô nhân sự</label>
                       <div style={{ position: 'relative' }}>
                         <div style={{ borderRadius: '12px', height: '44px' }} className="demo-select-wrapper">
                           <CustomSelect 
@@ -300,7 +300,7 @@ export const DemoIndicator: React.FC = () => {
                     {loading ? <><Loader2 size={22} className="animate-spin" style={{ marginRight: 12 }} /> ĐANG XỬ LÝ...</> : 'GỬI ĐĂNG KÝ TRẢI NGHIỆM'}
                   </button>
                   
-                  <div style={{ textAlign: 'center', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: '#6b7280', fontSize: '0.875rem' }}>
+                  <div style={{ textAlign: 'center', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>
                     <AlertCircle size={14} style={{ color: '#f59e0b' }} />
                     <span>Chúng tôi cam kết bảo mật thông tin và phản hồi sớm nhất.</span>
                   </div>

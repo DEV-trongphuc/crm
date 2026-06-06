@@ -293,7 +293,7 @@ export const DashboardPage: React.FC = () => {
 
         return (
           <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(139, 92, 246, 0.08))', border: '1px solid rgba(124, 58, 237, 0.15)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-xl)', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
+            <div style={{ background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(139, 92, 246, 0.08))', border: '1px solid rgba(124, 58, 237, 0.15)', padding: '1rem 1.25rem', borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', gap: '0.875rem' }}>
               <div style={{ width: 36, height: 36, background: 'var(--color-primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Zap size={18} color="white" fill="white" />
               </div>
@@ -336,7 +336,7 @@ export const DashboardPage: React.FC = () => {
                       minWidth: 280,
                       padding: '1.25rem',
                       background: 'var(--color-surface)',
-                      borderRadius: 'var(--radius-xl)',
+                      borderRadius: 'var(--radius-lg)',
                       border: '1px solid var(--color-border)',
                       boxShadow: 'var(--shadow-sm)',
                       cursor: 'pointer',
@@ -376,7 +376,7 @@ export const DashboardPage: React.FC = () => {
           return (
             <motion.div
               key={i}
-              className="stat-card"
+              className={`stat-card hover-lift ${card.id}-card`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
@@ -388,7 +388,7 @@ export const DashboardPage: React.FC = () => {
                 }
                 if (card.id === 'profit' || card.label.includes('Lợi nhuận')) navigate('/reports');
               }}
-              style={{ cursor: 'pointer', minHeight: '140px', display: 'flex', flexDirection: 'column' }}
+              style={{ cursor: 'pointer', minHeight: '110px', display: 'flex', flexDirection: 'column' }}
             >
               <div className="flex items-center justify-between mb-3">
                 <span className="stat-label">{card.label}</span>
@@ -436,16 +436,21 @@ export const DashboardPage: React.FC = () => {
               <ComposedChart data={revenueChart} margin={{ left: -10, right: 5 }}>
                 <defs>
                   <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.18} />
-                    <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
+                    <stop offset="5%" stopColor="var(--color-primary)" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="var(--color-primary)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={38} />
-                <Tooltip formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Chi phí']} contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                <Area type="monotone" dataKey="revenue" stroke="#7c3aed" strokeWidth={3} fill="url(#revGrad)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
-                <Bar dataKey="cost" name="Chi phí" fill="#ef4444" fillOpacity={0.75} radius={[3, 3, 0, 0]} maxBarSize={14} />
+                <Tooltip 
+                  formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Chi phí']} 
+                  contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 10, boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }}
+                  labelStyle={{ color: 'var(--color-text)', fontWeight: 700 }}
+                  itemStyle={{ color: 'var(--color-primary)' }}
+                />
+                <Area type="monotone" dataKey="revenue" stroke="var(--color-primary)" strokeWidth={3} fill="url(#revGrad)" dot={false} activeDot={{ r: 6, strokeWidth: 0 }} />
+                <Bar dataKey="cost" name="Chi phí" fill="var(--color-danger)" fillOpacity={0.75} radius={[3, 3, 0, 0]} maxBarSize={14} />
               </ComposedChart>
             </ResponsiveContainer>
           )}
@@ -489,7 +494,7 @@ export const DashboardPage: React.FC = () => {
               {leaderboard.map((sale: any, i: number) => (
                 <div key={sale.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 0', borderBottom: i < leaderboard.length - 1 ? '1px solid var(--color-border-light)' : 'none' }}>
                   <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <Avatar name={sale.full_name} src={sale.avatar_url} size={38} style={{ borderRadius: '10px' }} />
+                    <Avatar name={sale.full_name} src={sale.avatar_url} size={38} />
                     <div style={{ position: 'absolute', top: -5, right: -5, width: 20, height: 20, background: i === 0 ? 'var(--color-primary)' : i === 1 ? '#8b5cf6' : 'var(--color-border)', color: i < 2 ? 'white' : 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.65rem', borderRadius: '50%', border: '2px solid white', boxShadow: 'var(--shadow-sm)', zIndex: 1 }}>
                       {i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}
                     </div>
@@ -516,9 +521,13 @@ export const DashboardPage: React.FC = () => {
           <ResponsiveContainer width="100%" height={isMobile ? 180 : 200}>
             <PieChart>
               <Pie data={leadSources} nameKey="source" dataKey="count" cx="50%" cy="50%" innerRadius={60} outerRadius={85} paddingAngle={4}>
-                {leadSources.map((_: any, i: number) => <Cell key={i} fill={leadSources[i]?.color || '#6366f1'} />)}
+                {leadSources.map((_: any, i: number) => <Cell key={i} fill={leadSources[i]?.color || 'var(--color-primary)'} />)}
               </Pie>
-              <Tooltip formatter={(v: any, _: any, entry: any) => [`${v} liên hệ`, entry.payload.source]} contentStyle={{ borderRadius: 8, border: 'none', boxShadow: 'var(--shadow-md)', fontSize: '0.8125rem' }} />
+              <Tooltip 
+                formatter={(v: any, _: any, entry: any) => [`${v} liên hệ`, entry.payload.source]} 
+                contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', fontSize: '0.8125rem' }}
+                itemStyle={{ color: 'var(--color-text)', fontWeight: 600 }}
+              />
             </PieChart>
           </ResponsiveContainer>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', marginTop: '0.25rem' }}>
@@ -565,7 +574,9 @@ export const DashboardPage: React.FC = () => {
                   <Tooltip
                     cursor={{ fill: 'var(--color-primary-light)' }}
                     formatter={(v: any) => [v + ' lead', 'Số lead']}
-                    contentStyle={{ borderRadius: 8, border: 'none', boxShadow: 'var(--shadow-md)', fontSize: '0.8125rem' }}
+                    contentStyle={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 8, boxShadow: 'var(--shadow-md)', fontSize: '0.8125rem' }}
+                    labelStyle={{ color: 'var(--color-text)', fontWeight: 700 }}
+                    itemStyle={{ color: 'var(--color-primary)' }}
                   />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={22}>
                     {tagStats.map((entry, i) => <Cell key={i} fill={entry.color || 'var(--color-primary)'} />)}

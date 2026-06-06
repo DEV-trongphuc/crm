@@ -351,24 +351,24 @@ export const ReportsPage: React.FC = () => {
           </div>
 
           {/* Revenue chart */}
-          <div className="card" style={{ padding: '1.25rem' }}>
+          <div className="card" style={{ padding: '1rem' }}>
             <h3 style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Doanh thu vs Mục tiêu</h3>
-            <p className="text-sm text-light mb-4">So sánh doanh thu thực tế với chỉ tiêu — 9 tháng gần nhất</p>
+            <p className="text-xs text-light mb-4">So sánh doanh thu thực tế với chỉ tiêu — 9 tháng gần nhất</p>
             {loading ? (
-              <div style={{ height: 260, display: 'flex', alignItems: 'flex-end', gap: '1.25rem', padding: '1rem' }}>
+              <div style={{ height: 200, display: 'flex', alignItems: 'flex-end', gap: '1.25rem', padding: '1rem' }}>
                 {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} height={`${((i * 13) % 40) + 40}%`} width="100%" />)}
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={salesData?.by_month || MONTHLY} margin={{ left: -10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-light)" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
-                  <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={36} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={FMT} tick={{ fontSize: 9, fill: 'var(--color-text-light)' }} axisLine={false} tickLine={false} width={36} />
                   <Tooltip formatter={(v: any, name: any) => [FMT_VND(Number(v || 0)), name === 'revenue' ? 'Doanh thu' : 'Mục tiêu']}
                     contentStyle={{ borderRadius: 10, border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
-                  <Legend iconType="circle" iconSize={8} />
-                  <Bar dataKey="revenue" name="Doanh thu" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                  <Bar dataKey="target" name="Mục tiêu" fill="#e5e7eb" radius={[4, 4, 0, 0]} maxBarSize={40} />
+                  <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', marginTop: '6px' }} />
+                  <Bar dataKey="revenue" name="Doanh thu" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={12} />
+                  <Bar dataKey="target" name="Mục tiêu" fill="var(--color-border-light)" radius={[4, 4, 0, 0]} maxBarSize={12} />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -424,14 +424,14 @@ export const ReportsPage: React.FC = () => {
       )}
 
       {tab === 'pipeline' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="grid grid-2" style={{ gap: '1.5rem' }}>
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontWeight: 800, fontSize: '1rem', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Filter size={18} color="var(--color-primary)" />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="grid grid-2" style={{ gap: '1.25rem' }}>
+            <div className="card" style={{ padding: '1rem' }}>
+              <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Filter size={16} color="var(--color-primary)" />
                 Phễu chuyển đổi (Conversion Funnel)
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
                 {(() => {
                   const data = pipelineData.length ? pipelineData : [];
                   const maxVal = Math.max(...data.map((d: any) => d.count)) || 1;
@@ -443,26 +443,25 @@ export const ReportsPage: React.FC = () => {
                     
                     return (
                       <React.Fragment key={s.stage}>
-                        <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                        <div style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                           <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--color-text)' }}>{s.stage}</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text)' }}>{s.stage}</span>
                           </div>
-                          <div style={{ width: '300px', display: 'flex', justifyContent: 'center' }}>
+                          <div style={{ width: '220px', display: 'flex', justifyContent: 'center' }}>
                             <motion.div 
                               initial={{ width: 0 }} animate={{ width: `${width}%` }}
-                              style={{ height: '36px', background: s.color || 'var(--color-primary)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '0.875rem', position: 'relative', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
+                              style={{ height: '26px', background: s.color || 'var(--color-primary)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: '0.75rem', position: 'relative', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}
                             >
                               {s.count}
                             </motion.div>
                           </div>
                           <div style={{ flex: 1 }}>
-                            <span style={{ fontSize: '0.8125rem', color: 'var(--color-text-light)', fontWeight: 600 }}>{FMT_VND(s.total_value)}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 500 }}>{FMT_VND(s.total_value)}</span>
                           </div>
                         </div>
                         {dropoff !== null && (
-                          <div style={{ height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.75rem', fontWeight: 700 }}>
-                            <div style={{ height: '20px', width: '2px', background: 'var(--color-border)', margin: '0 1rem' }} />
-                            Tỷ lệ chuyển đổi: <span style={{ color: dropoff < 50 ? 'var(--color-danger)' : 'var(--color-success)', marginLeft: '4px' }}>{dropoff}%</span>
+                          <div style={{ height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-muted)', fontSize: '0.7rem' }}>
+                            Tỷ lệ chuyển đổi: <span style={{ color: dropoff < 50 ? 'var(--color-danger)' : 'var(--color-success)', marginLeft: '4px', fontWeight: 600 }}>{dropoff}%</span>
                           </div>
                         )}
                       </React.Fragment>
@@ -472,85 +471,85 @@ export const ReportsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="card" style={{ padding: '1.5rem' }}>
-               <h3 style={{ fontWeight: 800, fontSize: '1rem', marginBottom: '1.5rem' }}>Phân bổ theo giai đoạn</h3>
-               <div style={{ height: 300 }}>
+            <div className="card" style={{ padding: '1rem' }}>
+               <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Phân bổ theo giai đoạn</h3>
+               <div style={{ height: 200 }}>
                  <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={pipelineData} dataKey="count" nameKey="stage" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4}>
+                       <Pie data={pipelineData} dataKey="count" nameKey="stage" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
                         {pipelineData.map((s: any, i: number) => (
-                          <Cell key={`cell-${i}`} fill={s.color || COLORS[i % COLORS.length]} />
+                           <Cell key={`cell-${i}`} fill={s.color || COLORS[i % COLORS.length]} />
                         ))}
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                      <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
+                       </Pie>
+                       <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
+                       <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
                     </PieChart>
                  </ResponsiveContainer>
                </div>
             </div>
           </div>
 
-          <div className="grid grid-3" style={{ gap: '1.5rem' }}>
-            <div className="card" style={{ padding: '1.5rem' }}>
-               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Giá trị trung bình mỗi deal</p>
-               <p style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--color-primary)' }}>{FMT_VND(pipelineData.reduce((s,d) => s+Number(d.total_value),0) / (pipelineData.reduce((s,d) => s+Number(d.count),0) || 1))}</p>
+          <div className="grid grid-3" style={{ gap: '1.25rem' }}>
+            <div className="card" style={{ padding: '0.875rem' }}>
+               <p style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '2px' }}>Giá trị trung bình mỗi deal</p>
+               <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-primary)' }}>{FMT_VND(pipelineData.reduce((s,d) => s+Number(d.total_value),0) / (pipelineData.reduce((s,d) => s+Number(d.count),0) || 1))}</p>
             </div>
-            <div className="card" style={{ padding: '1.5rem' }}>
-               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Tổng cơ hội đang mở</p>
-               <p style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--color-text)' }}>{pipelineData.reduce((s,d) => s+Number(d.count),0)}</p>
+            <div className="card" style={{ padding: '0.875rem' }}>
+               <p style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '2px' }}>Tổng cơ hội đang mở</p>
+               <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-text)' }}>{pipelineData.reduce((s,d) => s+Number(d.count),0)}</p>
             </div>
-            <div className="card" style={{ padding: '1.5rem' }}>
-               <p style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '4px' }}>Tổng giá trị Pipeline</p>
-               <p style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--color-success)' }}>{FMT_VND(pipelineData.reduce((s,d) => s+Number(d.total_value),0))}</p>
+            <div className="card" style={{ padding: '0.875rem' }}>
+               <p style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '2px' }}>Tổng giá trị Pipeline</p>
+               <p style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--color-success)' }}>{FMT_VND(pipelineData.reduce((s,d) => s+Number(d.total_value),0))}</p>
             </div>
           </div>
         </div>
       )}
 
       {tab === 'customers' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="grid grid-2" style={{ gap: '1.5rem' }}>
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '1.5rem' }}>Nguồn khách hàng</h3>
-              <div style={{ height: 300 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="grid grid-2" style={{ gap: '1.25rem' }}>
+            <div className="card" style={{ padding: '1rem' }}>
+              <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Nguồn khách hàng</h3>
+              <div style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={customerData?.by_source || []} dataKey="count" nameKey="source" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4}>
+                    <Pie data={customerData?.by_source || []} dataKey="count" nameKey="source" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
                       {(customerData?.by_source || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                    <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             </div>
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '1.5rem' }}>Tăng trưởng khách hàng mới</h3>
-              <div style={{ height: 300 }}>
+            <div className="card" style={{ padding: '1rem' }}>
+              <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Tăng trưởng khách hàng mới</h3>
+              <div style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={customerData?.trend || []}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                    <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                    <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={12} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
-          <div className="card" style={{ padding: '1.5rem' }}>
-            <h3 style={{ fontWeight: 700, marginBottom: '1.5rem' }}>Phân bổ theo Lead Score</h3>
-            <div style={{ height: 300 }}>
+          <div className="card" style={{ padding: '1rem' }}>
+            <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Phân bổ theo Lead Score</h3>
+            <div style={{ height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={customerData?.by_score || []}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
-                  <XAxis dataKey="bucket" label={{ value: 'Điểm tiềm năng', position: 'insideBottom', offset: -5 }} />
-                  <YAxis label={{ value: 'Số lượng', angle: -90, position: 'insideLeft' }} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                  <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                  <XAxis dataKey="bucket" label={{ value: 'Điểm tiềm năng', position: 'insideBottom', offset: -5, style: { fontSize: 10, fill: 'var(--color-text-light)' } }} tick={{ fontSize: 10 }} />
+                  <YAxis label={{ value: 'Số lượng', angle: -90, position: 'insideLeft', style: { fontSize: 10, fill: 'var(--color-text-light)' } }} tick={{ fontSize: 10 }} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                  <Bar dataKey="count" fill="var(--color-primary)" radius={[4, 4, 0, 0]} maxBarSize={12} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -559,51 +558,51 @@ export const ReportsPage: React.FC = () => {
       )}
 
       {tab === 'companies' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="grid grid-2" style={{ gap: '1.5rem' }}>
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '1.5rem' }}>Phân loại theo lĩnh vực</h3>
-              <div style={{ height: 300 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="grid grid-2" style={{ gap: '1.25rem' }}>
+            <div className="card" style={{ padding: '1rem' }}>
+              <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Phân loại theo lĩnh vực</h3>
+              <div style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={companyData?.by_industry || []} dataKey="count" nameKey="industry" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4}>
+                    <Pie data={companyData?.by_industry || []} dataKey="count" nameKey="industry" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
                       {(companyData?.by_industry || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                    <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             </div>
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '1.5rem' }}>Quy mô doanh nghiệp</h3>
-              <div style={{ height: 300 }}>
+            <div className="card" style={{ padding: '1rem' }}>
+              <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Quy mô doanh nghiệp</h3>
+              <div style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={companyData?.by_size || []} dataKey="count" nameKey="size" cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={4}>
+                    <Pie data={companyData?.by_size || []} dataKey="count" nameKey="size" cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4}>
                       {(companyData?.by_size || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                    <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
-          <div className="card" style={{ padding: '1.5rem' }}>
-            <h3 style={{ fontWeight: 700, marginBottom: '1.5rem' }}>Top 10 thành phố</h3>
-            <div style={{ height: 300 }}>
+          <div className="card" style={{ padding: '1rem' }}>
+            <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Top 10 thành phố</h3>
+            <div style={{ height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={companyData?.by_city || []} layout="vertical" margin={{ left: 20 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--color-border-light)" />
                   <XAxis type="number" hide />
-                  <YAxis dataKey="city" type="category" tick={{ fontSize: 11 }} width={80} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                  <Bar dataKey="count" fill="var(--color-primary)" radius={[0, 4, 4, 0]} maxBarSize={40} />
+                  <YAxis dataKey="city" type="category" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} width={80} />
+                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                  <Bar dataKey="count" fill="var(--color-primary)" radius={[0, 4, 4, 0]} maxBarSize={12} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -612,11 +611,11 @@ export const ReportsPage: React.FC = () => {
       )}
 
       {tab === 'expenses' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="grid grid-2" style={{ gap: '1.5rem' }}>
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '1.5rem' }}>Cơ cấu chi phí</h3>
-              <div style={{ height: 300 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div className="grid grid-2" style={{ gap: '1.25rem' }}>
+            <div className="card" style={{ padding: '1rem' }}>
+              <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Cơ cấu chi phí</h3>
+              <div style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie 
@@ -625,23 +624,23 @@ export const ReportsPage: React.FC = () => {
                       nameKey="category" 
                       cx="50%" 
                       cy="50%" 
-                      innerRadius={70}
-                      outerRadius={100} 
+                      innerRadius={50}
+                      outerRadius={70} 
                       paddingAngle={4}
                     >
                       {(expenseData?.by_category || []).map((_: any, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v: any) => FMT_VND(Number(v))} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
+                    <Tooltip formatter={(v: any) => FMT_VND(Number(v))} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                    <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             </div>
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '1.5rem' }}>Biến động chi phí theo ngày</h3>
-              <div style={{ height: 300 }}>
+            <div className="card" style={{ padding: '1rem' }}>
+              <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Biến động chi phí theo ngày</h3>
+              <div style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={expenseData?.trend || []}>
                     <defs>
@@ -651,9 +650,9 @@ export const ReportsPage: React.FC = () => {
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                    <YAxis tickFormatter={FMT} tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(v: any) => FMT_VND(Number(v))} />
+                    <XAxis dataKey="date" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} />
+                    <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} />
+                    <Tooltip formatter={(v: any) => FMT_VND(Number(v))} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
                     <Area type="monotone" dataKey="total" stroke="#ef4444" fillOpacity={1} fill="url(#colorTotal)" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -661,17 +660,17 @@ export const ReportsPage: React.FC = () => {
             </div>
           </div>
           
-          <div className="card" style={{ padding: '1.5rem' }}>
-            <h3 style={{ fontWeight: 700, marginBottom: '1rem' }}>Chi phí vs Doanh thu (Kết hợp)</h3>
-            <div style={{ height: 350 }}>
+          <div className="card" style={{ padding: '1rem' }}>
+            <h3 style={{ fontWeight: 700, marginBottom: '0.75rem' }}>Chi phí vs Doanh thu (Kết hợp)</h3>
+            <div style={{ height: 200 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={salesData?.by_month || []}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-border-light)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tickFormatter={FMT} tick={{ fontSize: 10 }} />
-                  <Tooltip formatter={(v: any) => FMT_VND(Number(v))} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} />
-                  <Bar dataKey="revenue" name="Doanh thu" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={50} />
+                  <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} />
+                  <YAxis tickFormatter={FMT} tick={{ fontSize: 10, fill: 'var(--color-text-light)' }} />
+                  <Tooltip formatter={(v: any) => FMT_VND(Number(v))} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', fontSize: '0.8125rem' }} />
+                  <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} />
+                  <Bar dataKey="revenue" name="Doanh thu" fill="#7c3aed" radius={[4, 4, 0, 0]} maxBarSize={12} />
                   <Line type="monotone" dataKey="cost" name="Chi phí" stroke="#ef4444" strokeWidth={3} dot={{ r: 4, fill: '#ef4444' }} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -683,9 +682,9 @@ export const ReportsPage: React.FC = () => {
       {tab === 'activities' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           <div className="grid grid-2">
-            <div className="card" style={{ padding: '1.5rem' }}>
-              <h3 style={{ fontWeight: 700, marginBottom: '1.25rem' }}>Phân bổ loại hoạt động</h3>
-              <div style={{ height: 300 }}>
+            <div className="card" style={{ padding: '1rem' }}>
+              <h3 style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>Phân bổ loại hoạt động</h3>
+              <div style={{ height: 200 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie 
@@ -694,8 +693,8 @@ export const ReportsPage: React.FC = () => {
                       nameKey="type" 
                       cx="50%" 
                       cy="50%" 
-                      innerRadius={60}
-                      outerRadius={85} 
+                      innerRadius={50}
+                      outerRadius={70} 
                       paddingAngle={4}
                     >
                       {(activityData?.by_type || []).map((_: any, index: number) => (
@@ -703,7 +702,7 @@ export const ReportsPage: React.FC = () => {
                       ))}
                     </Pie>
                     <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '0.8125rem', fontWeight: 500 }} formatter={(v) => T_LABEL[v as string] || v} />
+                    <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: '0.75rem', fontWeight: 500 }} formatter={(v) => T_LABEL[v as string] || v} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
