@@ -723,7 +723,7 @@ export const ContactsPage: React.FC = () => {
               className="overlay-backdrop" 
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
               onClick={() => !creating && setShowCreateModal(false)} 
-              style={{ zIndex: 400 }} 
+              style={{ zIndex: 1000 }} 
             />
             <motion.div
               className="modal-sheet"
@@ -733,11 +733,11 @@ export const ContactsPage: React.FC = () => {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               style={isMobile ? { 
                 position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
-                maxWidth: '100vw', zIndex: 410, overflow: 'hidden', borderRadius: 0,
+                maxWidth: '100vw', zIndex: 1010, overflow: 'hidden', borderRadius: 0,
                 display: 'flex', flexDirection: 'column'
               } : { 
                 position: 'fixed', top: '50%', left: '50%', width: 640, 
-                maxWidth: 'calc(100vw - 2rem)', zIndex: 410, overflow: 'visible'
+                maxWidth: 'calc(100vw - 2rem)', zIndex: 1010, overflow: 'visible'
               }}
             >
               {/* Header */}

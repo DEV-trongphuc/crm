@@ -52,7 +52,7 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
               className="overlay-backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={onClose}
-              style={{ zIndex: 400 }}
+              style={{ zIndex: 1000 }}
             />
             <motion.div
               className={styles.drawer}
@@ -491,14 +491,14 @@ export const EntityDrawer: React.FC<EntityDrawerProps> = ({ isOpen, onClose, ent
               className="overlay-backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setHelpModal(null)}
-              style={{ zIndex: 600, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
+              style={{ zIndex: 1100, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(2px)' }}
             />
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 10 }}
               style={{
                 position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                 background: 'var(--color-surface)', width: '400px', borderRadius: 'var(--radius-lg)',
-                boxShadow: 'var(--shadow-xl)', zIndex: 610, border: '1px solid var(--color-border)',
+                boxShadow: 'var(--shadow-xl)', zIndex: 1110, border: '1px solid var(--color-border)',
                 overflow: 'hidden'
               }}
             >

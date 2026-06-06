@@ -696,7 +696,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
               className="overlay-backdrop"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={onClose}
-              style={{ zIndex: 400 }}
+              style={{ zIndex: 1000 }}
             />
             <motion.div
               className={styles.drawer}
@@ -2137,7 +2137,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* CREATE DEAL MODAL */}
       <AnimatePresence>
         {showDealModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 1000 }} onClick={() => setShowDealModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 1100 }} onClick={() => setShowDealModal(false)}>
             <motion.div
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 520 }}
@@ -2204,7 +2204,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* CREATE TASK MODAL */}
       <AnimatePresence>
         {showTaskModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 1000 }} onClick={() => setShowTaskModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 1100 }} onClick={() => setShowTaskModal(false)}>
             <motion.div
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 520 }}
@@ -2262,7 +2262,7 @@ export const CustomerProfileDrawer: React.FC<Props> = ({ isOpen, onClose, contac
       {/* CREATE TICKET MODAL */}
       <AnimatePresence>
         {showTicketModal && (
-          <div className="overlay-backdrop" style={{ zIndex: 1000 }} onClick={() => setShowTicketModal(false)}>
+          <div className="overlay-backdrop" style={{ zIndex: 1100 }} onClick={() => setShowTicketModal(false)}>
             <motion.div
               className="modal-sheet"
               style={{ width: '100%', maxWidth: 540 }}

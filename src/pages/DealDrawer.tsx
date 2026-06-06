@@ -108,7 +108,7 @@ export const DealDrawer: React.FC<DealDrawerProps> = ({ isOpen, onClose, deal, o
             className="overlay-backdrop" 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
             onClick={onClose} 
-            style={{ zIndex: 400 }}
+            style={{ zIndex: 1000 }}
           />
           <motion.div 
             className={styles.drawer}

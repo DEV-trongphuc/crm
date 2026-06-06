@@ -502,7 +502,7 @@ export const SettingsPage: React.FC = () => {
                 position: 'fixed', top: '50%', left: '50%', width: '480px',
                 maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)',
                 borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-2xl)',
-                border: '1px solid var(--color-border)', zIndex: 300, overflow: 'hidden'
+                border: '1px solid var(--color-border)', zIndex: 1010, overflow: 'hidden'
               }}
               initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}
               animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
@@ -615,7 +615,7 @@ export const SettingsPage: React.FC = () => {
         {activeModal.type && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveModal({ type: null, item: null })} />
-            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', width: '460px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 300 }}
+            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', width: '460px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 1010 }}
               initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
                 <h3 style={{ fontWeight: 700 }}>

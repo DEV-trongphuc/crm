@@ -160,7 +160,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
             className="overlay-backdrop" 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
             onClick={onClose} 
-            style={{ zIndex: 400 }}
+            style={{ zIndex: 1000 }}
           />
           <motion.div 
             className={styles.drawer}
@@ -720,7 +720,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
           {/* Help Modal */}
           <AnimatePresence>
             {helpModal && (
-              <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <motion.div 
                   className="overlay-backdrop" 
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} 
@@ -732,7 +732,7 @@ export const CompanyDrawer: React.FC<CompanyDrawerProps> = ({ isOpen, onClose, e
                   style={{
                     position: 'relative',
                     background: 'var(--color-surface)', width: '400px', borderRadius: 'var(--radius-lg)',
-                    boxShadow: 'var(--shadow-xl)', zIndex: 1010, border: '1px solid var(--color-border)',
+                    boxShadow: 'var(--shadow-xl)', zIndex: 1110, border: '1px solid var(--color-border)',
                     overflow: 'hidden'
                   }}
                 >

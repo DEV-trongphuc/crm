@@ -294,7 +294,7 @@ export const ProductsPage: React.FC = () => {
 
       <AnimatePresence>
         {showModal && (
-          <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 300 }}>
+          <div className="overlay-backdrop" onClick={() => !saving && setShowModal(false)} style={{ zIndex: 1000 }}>
             <motion.div className="modal-sheet shadow-2xl"
               initial={{ opacity:0, scale:0.96, y: 20 }} 
               animate={{ opacity:1, scale:1, y: 0 }} 
@@ -433,8 +433,8 @@ export const ProductsPage: React.FC = () => {
       <AnimatePresence>
         {showCatModal && (
           <>
-            <motion.div className="overlay-backdrop" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onClick={() => setShowCatModal(false)} />
-            <motion.div className="modal-sheet" style={{ position:'fixed', top:'50%', left:'50%', width:'700px', maxWidth:'calc(100vw - 2rem)', maxHeight: '90vh', overflowY: 'auto', zIndex:300 }}
+            <motion.div className="overlay-backdrop" initial={{ opacity:0 }} animate={{ opacity:1 }} exit={{ opacity:0 }} onClick={() => setShowCatModal(false)} style={{ zIndex: 1000 }} />
+            <motion.div className="modal-sheet" style={{ position:'fixed', top:'50%', left:'50%', width:'700px', maxWidth:'calc(100vw - 2rem)', maxHeight: '90vh', overflowY: 'auto', zIndex: 1010 }}
               initial={{ opacity:0, scale:0.96, x: '-50%', y: '-45%' }} animate={{ opacity:1, scale:1, x: '-50%', y: '-50%' }} exit={{ opacity:0, scale:0.96, x: '-50%', y: '-45%' }}>
               
               <div className="modal-header" style={{ padding: '1.25rem 1.75rem', borderBottom: '1px solid var(--color-border)' }}>

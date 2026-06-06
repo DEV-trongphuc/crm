@@ -72,7 +72,7 @@ export const DemoIndicator: React.FC = () => {
           position: 'fixed',
           top: 12,
           left: '50%',
-          zIndex: 9999,
+          zIndex: 900,
           pointerEvents: 'auto'
         }}
       >

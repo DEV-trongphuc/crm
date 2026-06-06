@@ -455,7 +455,7 @@ export const ActivitiesPage: React.FC = () => {
         {showModal && (
           <>
             <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !saving && setShowModal(false)} />
-            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', width: '520px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 300 }}
+            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', width: '520px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 1010 }}
               initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} 
               animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} 
               exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
