@@ -19,7 +19,7 @@ class ReportController
         $pInv = [$tid, $from, $to];
         $pOwner = [$tid];
         
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $saleFilterInv = " AND created_by=?";
             $pInv[] = $auth['user_id'];
             
@@ -40,8 +40,8 @@ class ReportController
         $revs = $stmt->fetchAll(PDO::FETCH_UNIQUE|PDO::FETCH_ASSOC);
 
         // Expenses by month
-        $saleFilterExp = ($auth['role'] === 'sale') ? " AND created_by=?" : "";
-        $pExp = [$tid, $from, $to]; if($auth['role'] === 'sale') $pExp[] = $auth['user_id'];
+        $saleFilterExp = ($auth['role'] === 'sales') ? " AND created_by=?" : "";
+        $pExp = [$tid, $from, $to]; if($auth['role'] === 'sales') $pExp[] = $auth['user_id'];
         
         $stmtE = $this->db->prepare("
             SELECT DATE_FORMAT(date,'%Y-%m') as month,
@@ -75,7 +75,7 @@ class ReportController
             FROM users u
             LEFT JOIN deals d ON u.id = d.owner_id AND d.tenant_id = u.tenant_id AND d.deleted_at IS NULL
             LEFT JOIN pipeline_stages ps ON d.stage_id = ps.id
-            WHERE u.tenant_id = ? ".($auth['role'] === 'sale' ? " AND u.id=?" : "")."
+            WHERE u.tenant_id = ? ".($auth['role'] === 'sales' ? " AND u.id=?" : "")."
             GROUP BY u.id
             ORDER BY revenue DESC
         ");
@@ -85,7 +85,7 @@ class ReportController
             SELECT COUNT(*) as total_deals,
                    COALESCE(SUM(value),0) as total_revenue
             FROM deals
-            WHERE tenant_id=? AND deleted_at IS NULL ".($auth['role'] === 'sale' ? " AND owner_id=?" : "")."
+            WHERE tenant_id=? AND deleted_at IS NULL ".($auth['role'] === 'sales' ? " AND owner_id=?" : "")."
         ");
         $sDeals->execute($pOwner);
         $dealStats = $sDeals->fetch(PDO::FETCH_ASSOC);
@@ -94,12 +94,12 @@ class ReportController
             SELECT COUNT(*) 
             FROM deals d 
             JOIN pipeline_stages ps ON d.stage_id=ps.id 
-            WHERE d.tenant_id=? AND d.deleted_at IS NULL AND ps.is_won=1 ".($auth['role'] === 'sale' ? " AND d.owner_id=?" : "")."
+            WHERE d.tenant_id=? AND d.deleted_at IS NULL AND ps.is_won=1 ".($auth['role'] === 'sales' ? " AND d.owner_id=?" : "")."
         ");
         $sWon->execute($pOwner);
         $wonCount = (int)$sWon->fetchColumn();
 
-        $sContacts = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL ".($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
+        $sContacts = $this->db->prepare("SELECT COUNT(*) FROM contacts WHERE tenant_id=? AND deleted_at IS NULL ".($auth['role'] === 'sales' ? " AND owner_id=?" : ""));
         $sContacts->execute($pOwner);
 
         // 1. Calculate Inventory Loss Value (EXPORT_INTERNAL)
@@ -148,14 +148,14 @@ class ReportController
         $stmt = $this->db->prepare("
             SELECT ps.name as stage, ps.color, 
                    (
-                     (SELECT COUNT(*) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid1 AND created_at BETWEEN :f1 AND :t1 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid1" : "").") +
-                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid2 AND created_at BETWEEN :f2 AND :t2 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid2" : "").") +
-                     (SELECT COUNT(*) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 AND created_at BETWEEN :f3 AND :t3 ".(($auth['role'] === 'sale') ? " AND cp.owner_id = :uid3" : "").")
+                      (SELECT COUNT(*) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid1 AND created_at BETWEEN :f1 AND :t1 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid1" : "").") +
+                      (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid2 AND created_at BETWEEN :f2 AND :t2 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid2" : "").") +
+                      (SELECT COUNT(*) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 AND created_at BETWEEN :f3 AND :t3 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid3" : "").")
                    ) as count,
                    (
-                     (SELECT COALESCE(SUM(value),0) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid4 AND created_at BETWEEN :f4 AND :t4 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid4" : "").") +
-                     (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid5 AND created_at BETWEEN :f5 AND :t5 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid5" : "").") +
-                     (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 AND created_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sale') ? " AND cp.owner_id = :uid6" : "").")
+                      (SELECT COALESCE(SUM(value),0) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid4 AND created_at BETWEEN :f4 AND :t4 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid4" : "").") +
+                      (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid5 AND created_at BETWEEN :f5 AND :t5 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid5" : "").") +
+                      (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 AND created_at BETWEEN :f6 AND :t6 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid6" : "").")
                    ) as total_value
             FROM pipeline_stages ps 
             WHERE ps.tenant_id = :tid_main
@@ -173,7 +173,7 @@ class ReportController
             'f5' => $from, 't5' => $to,
             'f6' => $from, 't6' => $to
         ];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $p['uid1'] = $auth['user_id']; $p['uid2'] = $auth['user_id']; $p['uid3'] = $auth['user_id'];
             $p['uid4'] = $auth['user_id']; $p['uid5'] = $auth['user_id']; $p['uid6'] = $auth['user_id'];
         }
@@ -189,7 +189,7 @@ class ReportController
         
         $saleFilter = "";
         $params = [$tid];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $saleFilter = " AND owner_id=?";
             $params[] = $auth['user_id'];
         }
@@ -206,7 +206,7 @@ class ReportController
 
         // Growth trend
         $pTrend = array_merge([$tid], [$from . ' 00:00:00', $to . ' 23:59:59']);
-        if ($auth['role'] === 'sale') $pTrend[] = $auth['user_id'];
+        if ($auth['role'] === 'sales') $pTrend[] = $auth['user_id'];
         
         $s3 = $this->db->prepare("
             SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as date, COUNT(*) as count 
@@ -246,7 +246,7 @@ class ReportController
 
         $saleFilter = "";
         $params = [$tid];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $saleFilter = " AND owner_id=?";
             $params[] = $auth['user_id'];
         }
@@ -278,7 +278,7 @@ class ReportController
 
         $saleFilter = "";
         $params = [$tid, $from, $to];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $saleFilter = " AND created_by=?";
             $params[] = $auth['user_id'];
         }
@@ -316,7 +316,7 @@ class ReportController
             WHERE a.tenant_id=? AND a.created_at BETWEEN ? AND ?
         ";
         $params = [$tid, $from . ' 00:00:00', $to . ' 23:59:59'];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND a.user_id=?";
             $params[] = $auth['user_id'];
         }
@@ -329,7 +329,7 @@ class ReportController
         // Global type breakdown
         $sql2 = "SELECT type, COUNT(*) as total FROM activities WHERE tenant_id=? AND created_at BETWEEN ? AND ?";
         $p2 = [$tid, $from . ' 00:00:00', $to . ' 23:59:59'];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql2 .= " AND user_id=?";
             $p2[] = $auth['user_id'];
         }

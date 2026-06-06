@@ -257,7 +257,7 @@ function returnStock(PDO $db, int $tid, int $uid, string $invNum): void {
 
     foreach ($logs as $log) {
         $bid = (int)$log['batch_id'];
-        $qty = (int)$log['qty'];
+        $qty = (float)$log['qty'];
 
         // 2. Put stock back into batch
         $db->prepare("UPDATE batches SET current_qty = current_qty + ? WHERE id=?")->execute([$qty, $bid]);
@@ -311,6 +311,36 @@ $resourceId    = $segments[1] ?? null;
 $subResource   = $segments[2] ?? null;
 
 $db = Database::getInstance();
+
+// ── Auto-Migrate Database schema ───────────────────────────────
+try {
+    $db->exec("CREATE TABLE IF NOT EXISTS schema_migrations (
+        migration VARCHAR(255) PRIMARY KEY,
+        applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $applied = $db->query("SELECT migration FROM schema_migrations")->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    $sqlFiles = ['migrate_2026_05_06_v3_files.sql', 'migrate_activity_comments.sql', 'migrate_fractional_quantities.sql'];
+    
+    foreach ($sqlFiles as $file) {
+        if (!in_array($file, $applied, true)) {
+            $path = __DIR__ . '/' . $file;
+            if (file_exists($path)) {
+                $sql = file_get_contents($path);
+                $stmts = array_filter(array_map('trim', explode(';', $sql)));
+                foreach ($stmts as $s) {
+                    if ($s !== '') {
+                        $db->exec($s);
+                    }
+                }
+                $stmtInsert = $db->prepare("INSERT INTO schema_migrations (migration) VALUES (?)");
+                $stmtInsert->execute([$file]);
+            }
+        }
+    }
+} catch (Exception $e) {
+    error_log("Auto Migration Error: " . $e->getMessage());
+}
 
 if ($resource === 'check') {
     require_once __DIR__ . '/check_data.php';
@@ -407,6 +437,7 @@ switch ($resource) {
         if ($resourceId === 'bulk-delete' && $method === 'POST') $ctrl->bulkDelete($auth);
         elseif (!$resourceId && $method === 'GET')    $ctrl->index($auth);
         elseif (!$resourceId && $method === 'POST')   $ctrl->store($auth);
+        elseif ($resourceId  && $subResource === 'stage' && $method === 'PATCH') $ctrl->moveStage($auth, (int)$resourceId);
         elseif ($resourceId  && $subResource === 'move' && $method === 'POST') $ctrl->moveStage($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'GET')    $ctrl->show($auth, (int)$resourceId);
         elseif ($resourceId  && $method === 'PUT')    $ctrl->update($auth, (int)$resourceId);
@@ -651,7 +682,7 @@ switch ($resource) {
         $auth = requireAuth();
         requireRole($auth, ['admin', 'super_admin']);
         if ($resourceId === 'patch' && $method === 'POST') {
-            $sqlFiles = ['migrate_2026_05_06_v3_files.sql', 'migrate_activity_comments.sql'];
+            $sqlFiles = ['migrate_2026_05_06_v3_files.sql', 'migrate_activity_comments.sql', 'migrate_fractional_quantities.sql'];
             $results = [];
             foreach ($sqlFiles as $file) {
                 $path = __DIR__ . '/' . $file;

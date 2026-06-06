@@ -28,7 +28,7 @@ class ImportController {
             $headers = ['title', 'value', 'currency', 'expected_close_date', 'probability', 'contact_email', 'company_name', 'stage_name'];
             $sample  = ['Hợp đồng phần mềm', '50000000', 'VND', date('Y-m-d', strtotime('+30 days')), '50', 'a@example.com', 'Công ty ABC', 'Mới'];
         } elseif ($type === 'product') {
-            $headers = ['name', 'sku', 'category', 'unit', 'base_price', 'description'];
+            $headers = ['name', 'sku', 'category', 'unit', 'price', 'description'];
             $sample  = ['Sản phẩm A', 'SKU-001', 'Phần mềm', 'Gói', '1500000', 'Mô tả sản phẩm'];
         } elseif ($type === 'inventory') {
             $headers = ['product_name', 'batch_code', 'import_date', 'expiry_date', 'import_price', 'initial_qty'];
@@ -52,7 +52,7 @@ class ImportController {
 
     /** POST /import/process — Upload & process CSV */
     public function process(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'manager'])) {
+        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) {
             respond(403, null, 'Bạn không có quyền nhập dữ liệu', false);
         }
 
@@ -203,11 +203,11 @@ class ImportController {
 
     private function importProduct(array $auth, array $data): ?int {
         if (empty($data['name'])) return null;
-        $stmt = $this->db->prepare("INSERT INTO products (tenant_id, name, sku, category, unit, base_price, description, created_by) VALUES (?,?,?,?,?,?,?,?)");
+        $stmt = $this->db->prepare("INSERT INTO products (tenant_id, name, sku, category, unit, price, description, created_by) VALUES (?,?,?,?,?,?,?,?)");
         $stmt->execute([
             $auth['tenant_id'], $data['name'], $data['sku'] ?? null,
             $data['category'] ?? null, $data['unit'] ?? 'Cái',
-            $data['base_price'] ?? 0, $data['description'] ?? null,
+            $data['price'] ?? 0, $data['description'] ?? null,
             $auth['user_id']
         ]);
         return (int)$this->db->lastInsertId();

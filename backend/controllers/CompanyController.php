@@ -24,7 +24,7 @@ class CompanyController {
         if (!in_array($sortBy, $allowedSort)) $sortBy = 'created_at';
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
 
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $where[] = 'c.owner_id = ?';
             $params[] = $auth['user_id'];
         }
@@ -45,7 +45,7 @@ class CompanyController {
             LEFT JOIN pipeline_stages ps ON c.stage_id=ps.id
             LEFT JOIN contacts ct ON ct.company_id=c.id AND ct.deleted_at IS NULL
             WHERE $w 
-            GROUP BY c.id
+            GROUP BY c.id, u.id, ps.id
             ORDER BY c.$sortBy $order 
             LIMIT $limit OFFSET $offset
         ");
@@ -116,7 +116,7 @@ class CompanyController {
             WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
         
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             // Can see company if owner OR manages a contact in that company
             $sql .= " AND (c.owner_id=? OR EXISTS (SELECT 1 FROM contacts ct2 WHERE ct2.company_id=c.id AND ct2.owner_id=? AND ct2.deleted_at IS NULL))";
             $p[] = $auth['user_id'];
@@ -146,9 +146,9 @@ class CompanyController {
         }
 
         // Check permission first
-        $check = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
+        $check = $this->db->prepare("SELECT id FROM companies WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND owner_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
+        if ($auth['role'] === 'sales') $cp[] = $auth['user_id'];
         $check->execute($cp);
         if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 
@@ -193,7 +193,7 @@ class CompanyController {
 
         $sql = "UPDATE companies SET stage_id=? WHERE id=? AND tenant_id=?";
         $p = [$b['stage_id'], $id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND owner_id=?";
             $p[] = $auth['user_id'];
         }
@@ -207,7 +207,7 @@ class CompanyController {
     }
 
     public function destroy(array $auth, int $id): void {
-        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa công ty', false);
+        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa công ty', false);
         $sql = "UPDATE companies SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
         $stmt = $this->db->prepare($sql);
@@ -218,7 +218,7 @@ class CompanyController {
     }
 
     public function bulkDelete(array $auth): void {
-        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa công ty', false);
+        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa công ty', false);
         $b = getBody();
         $ids = $b['ids'] ?? [];
         if (empty($ids)) respond(400, null, 'ID không hợp lệ', false);

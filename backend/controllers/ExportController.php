@@ -5,7 +5,7 @@ class ExportController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function export(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'manager', 'sale'])) {
+        if (!in_array($auth['role'], ['super_admin', 'admin', 'manager', 'sales', 'sale'])) {
             respond(403, null, 'Bạn không có quyền xuất dữ liệu', false);
         }
         
@@ -38,7 +38,7 @@ class ExportController {
         $baseColumns = [];
         $sql = "";
         $params = [$auth['tenant_id']];
-        $saleFilter = ($auth['role'] === 'sale') ? " AND t.owner_id = ?" : "";
+        $saleFilter = (in_array($auth['role'], ['sales', 'sale'], true)) ? " AND t.owner_id = ?" : "";
         if ($saleFilter && !in_array($type, ['product', 'inventory'])) $params[] = $auth['user_id'];
 
         if ($type === 'contact') {
@@ -67,7 +67,7 @@ class ExportController {
                     LEFT JOIN pipeline_stages ps ON t.stage_id = ps.id
                     WHERE t.tenant_id = ? AND t.deleted_at IS NULL $saleFilter ORDER BY t.created_at DESC";
         } elseif ($type === 'product') {
-            $baseColumns = ['id' => 'ID', 'name' => 'Tên sản phẩm', 'sku' => 'SKU', 'category' => 'Danh mục', 'unit' => 'Đơn vị', 'base_price' => 'Giá cơ bản', 'description' => 'Mô tả', 'created_at' => 'Ngày tạo'];
+            $baseColumns = ['id' => 'ID', 'name' => 'Tên sản phẩm', 'sku' => 'SKU', 'category' => 'Danh mục', 'unit' => 'Đơn vị', 'price' => 'Giá bán', 'cost' => 'Giá vốn', 'description' => 'Mô tả', 'created_at' => 'Ngày tạo'];
             $sql = "SELECT t.* FROM products t WHERE t.tenant_id = ? AND t.deleted_at IS NULL ORDER BY t.name ASC";
         } elseif ($type === 'inventory') {
             $baseColumns = ['id' => 'ID', 'product_name' => 'Sản phẩm', 'sku' => 'SKU', 'batch_code' => 'Mã lô', 'import_date' => 'Ngày nhập', 'expiry_date' => 'Hạn sử dụng', 'import_price' => 'Giá nhập', 'initial_qty' => 'Số lượng ban đầu', 'current_qty' => 'Tồn kho hiện tại', 'status' => 'Trạng thái'];

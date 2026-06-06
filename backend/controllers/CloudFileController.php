@@ -106,7 +106,7 @@ class CloudFileController {
         if (!$file) respond(404, null, 'Không tìm thấy tệp tin', false);
 
         // Permission check: Only uploader or admin/manager
-        if ($auth['role'] === 'sale' && (int)$file['uploaded_by'] !== (int)$auth['user_id']) {
+        if (in_array($auth['role'], ['sales', 'sale'], true) && (int)$file['uploaded_by'] !== (int)$auth['user_id']) {
             respond(403, null, 'Bạn không có quyền xóa tệp tin của người khác', false);
         }
         $path = $file['file_path'];

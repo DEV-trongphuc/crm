@@ -4,13 +4,13 @@ class UserController {
     public function __construct(PDO $db) { $this->db = $db; }
 
     public function index(array $auth): void {
-        if ($auth['role'] !== 'admin') respond(403, null, 'Quyền admin là bắt buộc', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
         $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE tenant_id=? ORDER BY full_name");
         $stmt->execute([$auth['tenant_id']]);
         respond(200,$stmt->fetchAll());
     }
     public function store(array $auth): void {
-        if ($auth['role'] !== 'admin') respond(403, null, 'Quyền admin là bắt buộc', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
         $b=getBody();
         if(empty($b['email'])||empty($b['password'])||empty($b['full_name'])) respond(422,null,'Email, mật khẩu và tên là bắt buộc',false);
         // Check duplicate
@@ -27,23 +27,23 @@ class UserController {
         $this->show($auth, $newId);
     }
     public function show(array $auth,int $id): void {
-        if ($auth['role'] !== 'admin' && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền xem thông tin người khác', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền xem thông tin người khác', false);
         $stmt=$this->db->prepare("SELECT id,email,full_name,role,avatar_url,phone,is_active,last_login_at,created_at FROM users WHERE id=? AND tenant_id=?");
         $stmt->execute([$id,$auth['tenant_id']]); $row=$stmt->fetch();
         if(!$row) respond(404,null,'Không tìm thấy người dùng',false);
         respond(200,$row);
     }
     public function update(array $auth,int $id): void {
-        if ($auth['role'] !== 'admin' && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin'], true) && $auth['user_id'] !== $id) respond(403, null, 'Không có quyền cập nhật thông tin người khác', false);
         $b=getBody(); $fields=['full_name','phone']; // Fields anyone can update on themselves
-        if ($auth['role'] === 'admin') {
+        if (in_array($auth['role'], ['admin', 'super_admin'], true)) {
             $fields[] = 'role';
             $fields[] = 'is_active';
         }
 
         // Admin lockout prevention
         if ($auth['user_id'] === $id) {
-            if (isset($b['role']) && $b['role'] !== 'admin') {
+            if (isset($b['role']) && !in_array($b['role'], ['admin', 'super_admin'], true)) {
                 respond(403, null, 'Bạn không thể tự tước quyền quản trị của chính mình', false);
             }
             if (isset($b['is_active']) && !$b['is_active']) {
@@ -66,7 +66,7 @@ class UserController {
         $this->show($auth,$id);
     }
     public function destroy(array $auth,int $id): void {
-        if ($auth['role'] !== 'admin') respond(403, null, 'Quyền admin là bắt buộc', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Quyền admin là bắt buộc', false);
         if($id===$auth['user_id']) respond(403,null,'Không thể xóa tài khoản của chính mình',false);
         try {
             $this->db->prepare("DELETE FROM users WHERE id=? AND tenant_id=?")->execute([$id,$auth['tenant_id']]);

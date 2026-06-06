@@ -15,6 +15,7 @@ class ContactController {
         $source  = $_GET['source'] ?? '';
         $owner   = $_GET['owner_id'] ?? '';
         $stage   = $_GET['stage_id'] ?? '';
+        $companyId = $_GET['company_id'] ?? '';
         $segment = $_GET['segment'] ?? 'all';
         $sortBy  = $_GET['sort'] ?? 'created_at';
         $order   = $_GET['order'] ?? 'DESC';
@@ -28,7 +29,7 @@ class ContactController {
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'DESC';
 
         // Role-based visibility: Sale can only see their own contacts
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $where[] = 'c.owner_id = ?';
             $params[] = $auth['user_id'];
         }
@@ -44,6 +45,7 @@ class ContactController {
         if ($source) { $where[] = 'c.source = ?'; $params[] = $source; }
         if ($owner)  { $where[] = 'c.owner_id = ?'; $params[] = (int)$owner; }
         if ($stage)  { $where[] = 'c.stage_id = ?'; $params[] = (int)$stage; }
+        if ($companyId) { $where[] = 'c.company_id = ?'; $params[] = (int)$companyId; }
 
         switch ($segment) {
             case 'hot':        $where[] = 'c.lead_score >= 80'; break;
@@ -186,7 +188,7 @@ class ContactController {
             WHERE c.id=? AND c.tenant_id=? AND c.deleted_at IS NULL";
         
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND c.owner_id=?";
             $p[] = $auth['user_id'];
         }
@@ -269,9 +271,9 @@ class ContactController {
         }
 
         // Check permission first
-        $check = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND owner_id=?" : ""));
+        $check = $this->db->prepare("SELECT id FROM contacts WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND owner_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
+        if ($auth['role'] === 'sales') $cp[] = $auth['user_id'];
         $check->execute($cp);
         if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
 
@@ -299,7 +301,7 @@ class ContactController {
 
         $sql = "UPDATE contacts SET stage_id=? WHERE id=? AND tenant_id=?";
         $p = [$b['stage_id'], $id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND owner_id=?";
             $p[] = $auth['user_id'];
         }
@@ -313,7 +315,7 @@ class ContactController {
     }
 
     public function destroy(array $auth, int $id): void {
-        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
+        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
         $sql = "UPDATE contacts SET deleted_at=NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
         $stmt = $this->db->prepare($sql);
@@ -324,7 +326,7 @@ class ContactController {
     }
 
     public function bulkDelete(array $auth): void {
-        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
+        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa liên hệ', false);
         $b = getBody();
         $ids = $b['ids'] ?? [];
         if (empty($ids)) respond(400, null, 'Danh sách ID không hợp lệ', false);

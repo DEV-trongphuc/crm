@@ -12,11 +12,17 @@ class TicketController {
         $offset = ($page - 1) * $limit;
         $status = $_GET['status'] ?? '';
         $search = $_GET['search'] ?? '';
+        $contactId = $_GET['contact_id'] ?? '';
         
         $where = ['t.tenant_id=?'];
         $params = [$tid];
         
-        if ($auth['role'] === 'sale') {
+        if ($contactId) {
+            $where[] = "JSON_CONTAINS(t.related_contacts, ?)";
+            $params[] = json_encode((int)$contactId);
+        }
+        
+        if ($auth['role'] === 'sales') {
             $where[] = '(t.created_by = ? OR t.assignee_id = ?)';
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -69,7 +75,7 @@ class TicketController {
             LEFT JOIN users u ON t.assignee_id = u.id
             WHERE t.id=? AND t.tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND (t.created_by = ? OR t.assignee_id = ?)";
             $p[] = $auth['user_id'];
             $p[] = $auth['user_id'];
@@ -206,7 +212,7 @@ class TicketController {
         $params[] = $auth['tenant_id'];
         
         $sql = "UPDATE tickets SET " . implode(',', $sets) . " WHERE id=? AND tenant_id=?";
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND (created_by = ? OR assignee_id = ?)";
             $params[] = $auth['user_id'];
             $params[] = $auth['user_id'];
@@ -233,7 +239,7 @@ class TicketController {
     }
 
     public function destroy(array $auth, int $id): void {
-        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền xóa ticket', false);
+        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền xóa ticket', false);
         $stmt = $this->db->prepare("DELETE FROM tickets WHERE id=? AND tenant_id=?");
         $stmt->execute([$id, $auth['tenant_id']]);
         if (!$stmt->rowCount()) respond(404, null, 'Không tìm thấy ticket', false);

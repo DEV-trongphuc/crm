@@ -21,7 +21,7 @@ class POSController {
         // Server-side validation of total_amount
         $calculatedTotal = 0;
         foreach ($data['cart'] as $item) {
-            $qty = (int)$item['quantity'];
+            $qty = (float)$item['quantity'];
             $price = (float)$item['price'];
             if ($qty <= 0 || $price < 0) {
                 respond(422, null, "Số lượng phải lớn hơn 0 và giá không được âm", false);
@@ -97,7 +97,7 @@ class POSController {
                     $pCheck = $this->db->prepare("SELECT track_inventory FROM products WHERE id=? AND tenant_id=?");
                     $pCheck->execute([(int) $item['id'], $tid]);
                     if ($pCheck->fetchColumn()) {
-                        deductStockFIFO($this->db, $tid, $uid, (int)$item['id'], (int)$item['quantity'], $invNum);
+                        deductStockFIFO($this->db, $tid, $uid, (int)$item['id'], (float)$item['quantity'], $invNum);
                     }
                 }
             }

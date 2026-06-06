@@ -10,7 +10,7 @@ class NoteController {
 
         $sql = "SELECT id FROM $table WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND owner_id=?";
             $p[] = $auth['user_id'];
         }
@@ -25,7 +25,7 @@ class NoteController {
         }
 
         $stmt = $this->db->prepare("
-            SELECT n.*, u.full_name as author_name, u.avatar_url as author_avatar,
+            SELECT n.*, u.full_name as author_name, u.full_name as user_name, u.avatar_url as author_avatar,
                    p.full_name as parent_author
             FROM notes n
             LEFT JOIN users u ON n.user_id = u.id
@@ -42,7 +42,7 @@ class NoteController {
             $noteIds = array_column($notes, 'id');
             $in = str_repeat('?,', count($noteIds) - 1) . '?';
             $repliesStmt = $this->db->prepare("
-                SELECT n.*, u.full_name as author_name, u.avatar_url as author_avatar
+                SELECT n.*, u.full_name as author_name, u.full_name as user_name, u.avatar_url as author_avatar
                 FROM notes n LEFT JOIN users u ON n.user_id=u.id
                 WHERE n.tenant_id=? AND n.parent_id IN ($in) ORDER BY n.created_at ASC
             ");
@@ -129,11 +129,11 @@ class NoteController {
     }
 
     public function destroy(array $auth, int $id): void {
-        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa ghi chú', false);
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xóa ghi chú', false);
         // 1. Verify existence and permission
-        $check = $this->db->prepare("SELECT id FROM notes WHERE id=? AND tenant_id=?" . ($auth['role'] !== 'admin' && $auth['role'] !== 'manager' ? " AND user_id=?" : ""));
+        $check = $this->db->prepare("SELECT id FROM notes WHERE id=? AND tenant_id=?" . (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true) ? " AND user_id=?" : ""));
         $cp = [$id, $auth['tenant_id']];
-        if ($auth['role'] !== 'admin' && $auth['role'] !== 'manager') $cp[] = $auth['user_id'];
+        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) $cp[] = $auth['user_id'];
         $check->execute($cp);
         if (!$check->fetch()) respond(404, null, 'Không tìm thấy ghi chú hoặc không có quyền', false);
 

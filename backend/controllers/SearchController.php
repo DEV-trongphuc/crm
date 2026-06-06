@@ -13,7 +13,7 @@ class SearchController {
         // Contacts
         $sqlC = "SELECT id, CONCAT(first_name,' ',last_name) as label, email as sublabel, 'contact' as type, status FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND (CONCAT(first_name,' ',last_name) LIKE ? OR email LIKE ? OR phone LIKE ?)";
         $pC = [$tid, $like, $like, $like];
-        if ($auth['role'] === 'sale') { $sqlC .= " AND owner_id=?"; $pC[] = $auth['user_id']; }
+        if ($auth['role'] === 'sales') { $sqlC .= " AND owner_id=?"; $pC[] = $auth['user_id']; }
         $s = $this->db->prepare($sqlC . " LIMIT 10");
         $s->execute($pC);
         foreach ($s->fetchAll() as $r) $results[] = $r;
@@ -21,7 +21,7 @@ class SearchController {
         // Companies
         $sqlComp = "SELECT id, name as label, city as sublabel, 'company' as type, status FROM companies WHERE tenant_id=? AND deleted_at IS NULL AND (name LIKE ? OR email LIKE ?)";
         $pComp = [$tid, $like, $like];
-        if ($auth['role'] === 'sale') { $sqlComp .= " AND owner_id=?"; $pComp[] = $auth['user_id']; }
+        if ($auth['role'] === 'sales') { $sqlComp .= " AND owner_id=?"; $pComp[] = $auth['user_id']; }
         $s = $this->db->prepare($sqlComp . " LIMIT 10");
         $s->execute($pComp);
         foreach ($s->fetchAll() as $r) $results[] = $r;
@@ -31,7 +31,7 @@ class SearchController {
                  FROM notes n 
                  WHERE n.tenant_id=? AND n.body LIKE ?";
         $pN = [$tid, $like];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             // Only search notes on entities owned by the salesperson OR created by them
             $sqlN .= " AND (n.user_id=? OR EXISTS (
                 SELECT 1 FROM contacts c WHERE c.id=n.entity_id AND n.entity_type='contact' AND c.owner_id=?
@@ -66,7 +66,7 @@ class SearchController {
             
             $saleFilter = "";
             $params = [$tid, $tid, $days];
-            if ($auth['role'] === 'sale') {
+            if ($auth['role'] === 'sales') {
                 $saleFilter = " AND c.owner_id = ?";
                 $params[] = $auth['user_id'];
             }
@@ -92,7 +92,7 @@ class SearchController {
 
             $saleFilter = "";
             $params = [$tid, $val];
-            if ($auth['role'] === 'sale') {
+            if ($auth['role'] === 'sales') {
                 $saleFilter = " AND c.owner_id = ?";
                 $params[] = $auth['user_id'];
             }

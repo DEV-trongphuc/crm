@@ -10,13 +10,19 @@ class QuoteController {
         $offset = ($page - 1) * $limit;
         $status = $_GET['status'] ?? '';
         $search = $_GET['search'] ?? '';
+        $contactId = $_GET['contact_id'] ?? '';
         $from   = $_GET['from'] ?? '';
         $to     = $_GET['to'] ?? '';
         
         $where  = ['q.tenant_id = ?'];
         $params = [$tid];
 
-        if ($auth['role'] === 'sale') {
+        if ($contactId) {
+            $where[] = 'q.contact_id = ?';
+            $params[] = (int)$contactId;
+        }
+
+        if ($auth['role'] === 'sales') {
             $where[] = 'q.created_by = ?';
             $params[] = $auth['user_id'];
         }
@@ -102,7 +108,7 @@ class QuoteController {
         if(!empty($b['items'])) {
             $ins=$this->db->prepare("INSERT INTO quote_items (quote_id,product_id,name,description,quantity,unit_price,discount,subtotal,sort_order) VALUES (?,?,?,?,?,?,?,?,?)");
             foreach($b['items'] as $i=>$item) {
-                $qty = (int)($item['quantity'] ?? 1);
+                $qty = (float)($item['quantity'] ?? 1.0);
                 $price = (float)($item['unit_price'] ?? 0);
                 if ($qty <= 0 || $price < 0) {
                     throw new Exception('Số lượng sản phẩm phải lớn hơn 0 và đơn giá không được âm');
@@ -130,7 +136,7 @@ class QuoteController {
     public function show(array $auth,int $id): void {
         $sql = "SELECT q.*,u.full_name as created_by_name FROM quotes q LEFT JOIN users u ON q.created_by=u.id WHERE q.id=? AND q.tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND q.created_by=?";
             $p[] = $auth['user_id'];
         }
@@ -176,7 +182,7 @@ class QuoteController {
 
             $sql = "UPDATE quotes SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?";
             $params[]=$id;$params[]=$auth['tenant_id'];
-            if ($auth['role'] === 'sale') {
+            if ($auth['role'] === 'sales') {
                 $sql .= " AND created_by=?";
                 $params[] = $auth['user_id'];
             }
@@ -204,7 +210,7 @@ class QuoteController {
             // 1. Get quote and items with permission check
             $sql = "SELECT * FROM quotes WHERE id=? AND tenant_id=?";
             $p = [$id, $tid];
-            if ($auth['role'] === 'sale') {
+            if ($auth['role'] === 'sales') {
                 $sql .= " AND created_by=?";
                 $p[] = $uid;
             }
@@ -253,7 +259,7 @@ class QuoteController {
     }
 
     public function destroy(array $auth,int $id): void {
-        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa báo giá', false);
+        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa báo giá', false);
         $sql = "DELETE FROM quotes WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
         $stmt = $this->db->prepare($sql);

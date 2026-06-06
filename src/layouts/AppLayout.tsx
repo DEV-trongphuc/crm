@@ -146,7 +146,7 @@ export const AppLayout: React.FC = () => {
         <div className={styles.navScrollArea}>
           {NAV_GROUPS.map((group) => {
             const visibleItems = group.items.filter(({ to }) => {
-              if (user?.role === 'sale' && ['/reports', '/suppliers'].includes(to)) return false;
+              if (user?.role === 'sales' && ['/reports', '/suppliers'].includes(to)) return false;
               if (user?.role === 'accountant' && !['/', '/invoices', '/expenses', '/reports', '/files'].includes(to)) return false;
               return true;
             });
@@ -174,7 +174,7 @@ export const AppLayout: React.FC = () => {
 
         {/* FIXED FOOTER */}
         <div className={styles.sidebarFooter}>
-          {user?.role !== 'sale' && (
+          {user?.role !== 'sales' && (
             <NavLink to="/settings"
               className={({ isActive }) => `${styles.navItem} ${isActive ? styles.active : ''}`}
               title={collapsed ? 'Cài đặt' : undefined}

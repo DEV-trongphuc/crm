@@ -3,6 +3,7 @@ import { Users, Shield, Sliders, Plus, Pencil, Trash2, X, Tag as TagIcon, Layout
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar } from '../components/ui/Avatar';
 import { CustomSelect } from '../components/ui/CustomSelect';
+import { CustomModal } from '../components/ui/CustomModal';
 import { useAuthStore } from '../store/authStore';
 import { useUIStore } from '../store/uiStore';
 import api from '../api/axios';
@@ -489,288 +490,255 @@ export const SettingsPage: React.FC = () => {
       )}
 
       {/* User Modal - Enhanced UI */}
-      <AnimatePresence>
-        {showModal && (
-          <>
-            <motion.div
-              className="overlay-backdrop"
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => !saving && setShowModal(false)}
+      <CustomModal
+        isOpen={showModal}
+        onClose={() => !saving && setShowModal(false)}
+        title={editUser ? 'Cập nhật thành viên' : 'Thêm thành viên mới'}
+        width="480px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', marginTop: '-0.5rem', marginBottom: '-0.5rem' }}>
+            Thiết lập thông tin truy cập hệ thống.
+          </p>
+
+          <div className="form-group">
+            <label className="form-label" style={{ fontWeight: 600 }}>Họ & Tên nhân viên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-input"
+                style={{ paddingLeft: '2.5rem' }}
+                placeholder="Ví dụ: Nguyễn Văn A"
+                value={form.full_name}
+                onChange={e => setForm({ ...form, full_name: e.target.value })}
+              />
+              <Users size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label" style={{ fontWeight: 600 }}>Email công việc <span style={{ color: 'var(--color-danger)' }}>*</span></label>
+            <div style={{ position: 'relative' }}>
+              <input
+                className="form-input"
+                type="email"
+                style={{ paddingLeft: '2.5rem' }}
+                placeholder="email@company.com"
+                value={form.email}
+                onChange={e => setForm({ ...form, email: e.target.value })}
+              />
+              <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>Vai trò (Role)</label>
+              <CustomSelect 
+                options={ROLES.map(r => ({ 
+                  value: r, 
+                  label: R_LABEL[r],
+                  sublabel: r === 'admin' ? 'Quyền cao nhất' : r === 'manager' ? 'Quản lý phòng ban' : r === 'sales' ? 'Nhân viên kinh doanh' : 'Chỉ xem dữ liệu'
+                }))}
+                value={form.role}
+                onChange={val => setForm({ ...form, role: val.toString() })}
+                direction="up"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 600 }}>{editUser ? 'Mật khẩu mới' : 'Mật khẩu truy cập *'}</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  className="form-input"
+                  type="password"
+                  style={{ paddingLeft: '2.5rem' }}
+                  placeholder={editUser ? 'Để trống nếu không đổi' : 'Tối thiểu 6 ký tự'}
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                />
+                <Shield size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding: '1rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)' }}>
+            <CustomCheckbox 
+              checked={form.is_active} 
+              onChange={() => setForm({ ...form, is_active: !form.is_active })} 
+              label="Kích hoạt tài khoản"
             />
-            <motion.div
-              style={{
-                position: 'fixed', top: '50%', left: '50%', width: '480px',
-                maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)',
-                borderRadius: 'var(--radius-2xl)', boxShadow: 'var(--shadow-2xl)',
-                border: '1px solid var(--color-border)', zIndex: 1010, overflow: 'hidden'
-              }}
-              initial={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}
-              animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
-              exit={{ opacity: 0, scale: 0.9, x: '-50%', y: '-45%' }}
-            >
-              <div style={{ padding: '1.5rem 2rem', background: 'linear-gradient(to right, var(--color-bg), var(--color-surface))', borderBottom: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--color-text)' }}>{editUser ? 'Cập nhật thành viên' : 'Thêm thành viên mới'}</h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', marginTop: 4 }}>Thiết lập thông tin truy cập hệ thống.</p>
-                </div>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="btn-icon-bare"
-                  disabled={saving}
-                >
-                  <X size={20} />
-                </button>
-              </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: '2rem', marginTop: '-0.25rem' }}>Cho phép người dùng này đăng nhập ngay.</p>
+          </div>
+        </div>
 
-              <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Họ & Tên nhân viên <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-input"
-                      style={{ paddingLeft: '2.5rem' }}
-                      placeholder="Ví dụ: Nguyễn Văn A"
-                      value={form.full_name}
-                      onChange={e => setForm({ ...form, full_name: e.target.value })}
-                    />
-                    <Users size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Email công việc <span style={{ color: 'var(--color-danger)' }}>*</span></label>
-                  <div style={{ position: 'relative' }}>
-                    <input
-                      className="form-input"
-                      type="email"
-                      style={{ paddingLeft: '2.5rem' }}
-                      placeholder="email@company.com"
-                      value={form.email}
-                      onChange={e => setForm({ ...form, email: e.target.value })}
-                    />
-                    <Mail size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>Vai trò (Role)</label>
-                    <CustomSelect 
-                      options={ROLES.map(r => ({ 
-                        value: r, 
-                        label: R_LABEL[r],
-                        sublabel: r === 'admin' ? 'Quyền cao nhất' : r === 'manager' ? 'Quản lý phòng ban' : r === 'sales' ? 'Nhân viên kinh doanh' : 'Chỉ xem dữ liệu'
-                      }))}
-                      value={form.role}
-                      onChange={val => setForm({ ...form, role: val.toString() })}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 600 }}>{editUser ? 'Mật khẩu mới' : 'Mật khẩu truy cập *'}</label>
-                    <div style={{ position: 'relative' }}>
-                      <input
-                        className="form-input"
-                        type="password"
-                        style={{ paddingLeft: '2.5rem' }}
-                        placeholder={editUser ? 'Để trống nếu không đổi' : 'Tối thiểu 6 ký tự'}
-                        value={form.password}
-                        onChange={e => setForm({ ...form, password: e.target.value })}
-                      />
-                      <Shield size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ padding: '1rem', background: 'var(--color-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border-light)' }}>
-                  <CustomCheckbox 
-                    checked={form.is_active} 
-                    onChange={() => setForm({ ...form, is_active: !form.is_active })} 
-                    label="Kích hoạt tài khoản"
-                  />
-                  <p style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', marginLeft: '2rem', marginTop: '-0.25rem' }}>Cho phép người dùng này đăng nhập ngay.</p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', padding: '1.5rem 2rem', background: 'var(--color-bg)', borderTop: '1px solid var(--color-border)' }}>
-                <button className="btn secondary" onClick={() => setShowModal(false)} disabled={saving}>Hủy</button>
-                <button
-                  className="btn primary"
-                  onClick={handleSave}
-                  disabled={saving}
-                  style={{ minWidth: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  {saving ? (
-                    <><Loader2 size={16} className="spin" /> Đang xử lý...</>
-                  ) : (
-                    <>{editUser ? 'Lưu thay đổi' : 'Tạo tài khoản'}</>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', padding: '1.25rem 0 0 0', marginTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
+          <button className="btn secondary" onClick={() => setShowModal(false)} disabled={saving}>Hủy</button>
+          <button
+            className="btn primary"
+            onClick={handleSave}
+            disabled={saving}
+            style={{ minWidth: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            {saving ? (
+              <><Loader2 size={16} className="spin" /> Đang xử lý...</>
+            ) : (
+              <>{editUser ? 'Lưu thay đổi' : 'Tạo tài khoản'}</>
+            )}
+          </button>
+        </div>
+      </CustomModal>
       {/* Generic Modal for Settings */}
-      <AnimatePresence>
-        {activeModal.type && (
-          <>
-            <motion.div className="overlay-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveModal({ type: null, item: null })} />
-            <motion.div style={{ position: 'fixed', top: '50%', left: '50%', width: '460px', maxWidth: 'calc(100vw - 2rem)', background: 'var(--color-surface)', borderRadius: 'var(--radius-xl)', boxShadow: 'var(--shadow-xl)', border: '1px solid var(--color-border)', zIndex: 1010 }}
-              initial={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }} animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }} exit={{ opacity: 0, scale: 0.96, x: '-50%', y: '-50%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--color-border)' }}>
-                <h3 style={{ fontWeight: 700 }}>
-                  {activeModal.item ? 'Chỉnh sửa ' : 'Thêm mới '}
-                  {activeModal.type === 'pipeline' ? 'giai đoạn Pipeline' : activeModal.type === 'tag' ? 'Tag' : 'Trường tùy chỉnh'}
-                </h3>
-                <button onClick={() => setActiveModal({ type: null, item: null })} style={{ color: 'var(--color-text-muted)' }}><X size={18} /></button>
-              </div>
-              <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <CustomModal
+        isOpen={!!activeModal.type}
+        onClose={() => setActiveModal({ type: null, item: null })}
+        title={(activeModal.item ? 'Chỉnh sửa ' : 'Thêm mới ') + (activeModal.type === 'pipeline' ? 'giai đoạn Pipeline' : activeModal.type === 'tag' ? 'Tag' : 'Trường tùy chỉnh')}
+        width="460px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="form-group">
+            <label className="form-label">Tên {activeModal.type === 'pipeline' ? 'giai đoạn' : activeModal.type === 'tag' ? 'Tag' : 'trường'} *</label>
+            <input className="form-input" value={activeModal.type === 'field' ? (genericForm.label || '') : (genericForm.name || '')} onChange={e => setGenericForm({ ...genericForm, [activeModal.type === 'field' ? 'label' : 'name']: e.target.value })} autoFocus />
+          </div>
+
+          {(activeModal.type === 'pipeline' || activeModal.type === 'tag') && (
+            <div className="form-group">
+              <label className="form-label">Màu sắc</label>
+              <input type="color" value={genericForm.color || '#000000'} onChange={e => setGenericForm({ ...genericForm, color: e.target.value })} style={{ width: '100%', height: 40, padding: 0, border: 'none', borderRadius: '8px', cursor: 'pointer' }} />
+            </div>
+          )}
+
+          {activeModal.type === 'field' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
-                  <label className="form-label">Tên {activeModal.type === 'pipeline' ? 'giai đoạn' : activeModal.type === 'tag' ? 'Tag' : 'trường'} *</label>
-                  <input className="form-input" value={activeModal.type === 'field' ? (genericForm.label || '') : (genericForm.name || '')} onChange={e => setGenericForm({ ...genericForm, [activeModal.type === 'field' ? 'label' : 'name']: e.target.value })} autoFocus />
+                  <label className="form-label">Module áp dụng</label>
+                  <CustomSelect 
+                    options={[
+                      { value: 'contact', label: 'Liên hệ' },
+                      { value: 'company', label: 'Công ty' },
+                      { value: 'deal', label: 'Cơ hội (Deal)' }
+                    ]} 
+                    value={genericForm.entity_type || 'contact'} 
+                    onChange={val => setGenericForm({ ...genericForm, entity_type: val.toString() })} 
+                    direction="up"
+                  />
                 </div>
-
-                {(activeModal.type === 'pipeline' || activeModal.type === 'tag') && (
-                  <div className="form-group">
-                    <label className="form-label">Màu sắc</label>
-                    <input type="color" value={genericForm.color || '#000000'} onChange={e => setGenericForm({ ...genericForm, color: e.target.value })} style={{ width: '100%', height: 40, padding: 0, border: 'none', borderRadius: '8px', cursor: 'pointer' }} />
-                  </div>
-                )}
-
-                {activeModal.type === 'field' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <div className="form-group">
-                        <label className="form-label">Module áp dụng</label>
-                        <CustomSelect 
-                          options={[
-                            { value: 'contact', label: 'Liên hệ' },
-                            { value: 'company', label: 'Công ty' },
-                            { value: 'deal', label: 'Cơ hội (Deal)' }
-                          ]} 
-                          value={genericForm.entity_type || 'contact'} 
-                          onChange={val => setGenericForm({ ...genericForm, entity_type: val.toString() })} 
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Loại dữ liệu</label>
-                        <CustomSelect 
-                          options={[
-                            { value: 'text', label: 'Văn bản (Text)' },
-                            { value: 'number', label: 'Số (Number)' },
-                            { value: 'date', label: 'Ngày tháng (Date)' },
-                            { value: 'dropdown', label: 'Chọn 1 (Dropdown)' },
-                            { value: 'multiselect', label: 'Chọn nhiều (Multi-select)' },
-                            { value: 'checkbox', label: 'Hộp kiểm (Checkbox)' }
-                          ]} 
-                          value={genericForm.field_type || 'text'} 
-                          onChange={val => setGenericForm({ ...genericForm, field_type: val.toString() })} 
-                        />
-                      </div>
-                    </div>
-                    {['dropdown', 'multiselect'].includes(genericForm.field_type) && (
-                      <div className="form-group">
-                        <label className="form-label">Các tùy chọn (cách nhau bởi dấu phẩy)</label>
-                        <input className="form-input" value={Array.isArray(genericForm.options) ? genericForm.options.join(', ') : (genericForm.options || '')} onChange={e => setGenericForm({ ...genericForm, options: e.target.value })} placeholder="VD: Vàng, Bạc, Đồng" />
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className="form-group">
+                  <label className="form-label">Loại dữ liệu</label>
+                  <CustomSelect 
+                    options={[
+                      { value: 'text', label: 'Văn bản (Text)' },
+                      { value: 'number', label: 'Số (Number)' },
+                      { value: 'date', label: 'Ngày tháng (Date)' },
+                      { value: 'dropdown', label: 'Chọn 1 (Dropdown)' },
+                      { value: 'multiselect', label: 'Chọn nhiều (Multi-select)' },
+                      { value: 'checkbox', label: 'Hộp kiểm (Checkbox)' }
+                    ]} 
+                    value={genericForm.field_type || 'text'} 
+                    onChange={val => setGenericForm({ ...genericForm, field_type: val.toString() })} 
+                    direction="up"
+                  />
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem 1.5rem', borderTop: '1px solid var(--color-border)' }}>
-                {activeModal.item ? (
-                  <button className="btn danger sm" onClick={() => {
-                    showConfirm(
-                      'Xác nhận xóa?',
-                      'Bạn có chắc chắn muốn xóa mục này? Thao tác này không thể hoàn tác.',
-                      async () => {
-                        try {
-                          if (activeModal.type === 'pipeline') {
-                            const dealCount = activeModal.item.deals || 0;
-                            if (dealCount > 0) {
-                              showConfirm({
-                                title: 'Không thể xóa giai đoạn!',
-                                message: `Giai đoạn này đang chứa ${dealCount} deal. Bạn phải di chuyển tất cả deal sang giai đoạn khác trước khi xóa.`,
-                                confirmText: 'Đã hiểu',
-                                onConfirm: () => {}
-                              });
-                              return;
-                            }
-                            
-                            showConfirm({
-                              title: 'Xóa giai đoạn Pipeline?',
-                              message: `Bạn có chắc chắn muốn xóa giai đoạn "${activeModal.item.name}"? Thao tác này không thể hoàn tác.`,
-                              isDanger: true,
-                              confirmText: 'Xóa vĩnh viễn',
-                              onConfirm: async () => {
-                                try {
-                                  await api.delete(`/pipeline-stages/${activeModal.item.id}`);
-                                  addToast('Đã xóa giai đoạn', 'success');
-                                  fetchPipelines();
-                                  setActiveModal({ type: null, item: null });
-                                } catch (e: any) {
-                                  addToast(e.response?.data?.message || 'Lỗi khi xóa', 'error');
-                                }
-                              }
-                            });
-                          }
-                          if (activeModal.type === 'tag') {
-                            const usageCount = activeModal.item.count || 0;
-                            showConfirm({
-                              title: 'Xác nhận xóa Tag?',
-                              message: `Bạn có chắc chắn muốn xóa Tag "${activeModal.item.name}"?`,
-                              impactInfo: usageCount > 0 ? `Cảnh báo: Tag này đang được sử dụng bởi ${usageCount} mục.` : undefined,
-                              isDanger: true,
-                              requireWordMatch: usageCount > 10 ? 'DELETE' : undefined,
-                              confirmText: 'Xác nhận xóa',
-                              onConfirm: async () => {
-                                try {
-                                  await api.delete(`/tags/${activeModal.item.id}`);
-                                  addToast('Đã xóa Tag', 'success');
-                                  fetchTags();
-                                  setActiveModal({ type: null, item: null });
-                                } catch (e: any) {
-                                  addToast(e.response?.data?.message || 'Lỗi khi xóa', 'error');
-                                }
-                              }
-                            });
-                          }
-                          if (activeModal.type === 'field') {
-                            showConfirm({
-                              title: 'Xóa trường tùy chỉnh?',
-                              message: `Dữ liệu trong trường "${activeModal.item.label}" sẽ bị xóa vĩnh viễn trên toàn bộ hệ thống.`,
-                              isDanger: true,
-                              confirmText: 'Xác nhận xóa',
-                              onConfirm: async () => {
-                                try {
-                                  await api.delete(`/custom-fields/${activeModal.item.id}`);
-                                  fetchCustomFields();
-                                  setActiveModal({ type: null, item: null });
-                                  addToast('Đã xóa trường tùy chỉnh', 'success');
-                                } catch (e: any) {
-                                  addToast('Lỗi xóa trường tùy chỉnh', 'error');
-                                }
-                              }
-                            });
-                          }
-                          setActiveModal({ type: null, item: null });
-                          addToast('Đã xóa', 'success');
-                        } catch (e: any) {
-                          addToast(e.response?.data?.message || 'Lỗi khi xóa', 'error');
-                        }
+              {['dropdown', 'multiselect'].includes(genericForm.field_type) && (
+                <div className="form-group">
+                  <label className="form-label">Các tùy chọn (cách nhau bởi dấu phẩy)</label>
+                  <input className="form-input" value={Array.isArray(genericForm.options) ? genericForm.options.join(', ') : (genericForm.options || '')} onChange={e => setGenericForm({ ...genericForm, options: e.target.value })} placeholder="VD: Vàng, Bạc, Đồng" />
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1.25rem 0 0 0', marginTop: '1.5rem', borderTop: '1px solid var(--color-border)' }}>
+          {activeModal.item ? (
+            <button className="btn danger sm" onClick={() => {
+              showConfirm(
+                'Xác nhận xóa?',
+                'Bạn có chắc chắn muốn xóa mục này? Thao tác này không thể hoàn tác.',
+                async () => {
+                  try {
+                    if (activeModal.type === 'pipeline') {
+                      const dealCount = activeModal.item.deals || 0;
+                      if (dealCount > 0) {
+                        showConfirm({
+                          title: 'Không thể xóa giai đoạn!',
+                          message: `Giai đoạn này đang chứa ${dealCount} deal. Bạn phải di chuyển tất cả deal sang giai đoạn khác trước khi xóa.`,
+                          confirmText: 'Đã hiểu',
+                          onConfirm: () => {}
+                        });
+                        return;
                       }
-                    );
-                  }}><Trash2 size={14} /> Xóa</button>
-                ) : <div />}
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button className="btn secondary" onClick={() => setActiveModal({ type: null, item: null })}>Hủy</button>
-                  <button className="btn primary" onClick={handleGenericSave}>Lưu cấu hình</button>
-                </div>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+                      
+                      showConfirm({
+                        title: 'Xóa giai đoạn Pipeline?',
+                        message: `Bạn có chắc chắn muốn xóa giai đoạn "${activeModal.item.name}"? Thao tác này không thể hoàn tác.`,
+                        isDanger: true,
+                        confirmText: 'Xóa vĩnh viễn',
+                        onConfirm: async () => {
+                          try {
+                            await api.delete(`/pipeline-stages/${activeModal.item.id}`);
+                            addToast('Đã xóa giai đoạn', 'success');
+                            fetchPipelines();
+                            setActiveModal({ type: null, item: null });
+                          } catch (e: any) {
+                            addToast(e.response?.data?.message || 'Lỗi khi xóa', 'error');
+                          }
+                        }
+                      });
+                    }
+                    if (activeModal.type === 'tag') {
+                      const usageCount = activeModal.item.count || 0;
+                      showConfirm({
+                        title: 'Xác nhận xóa Tag?',
+                        message: `Bạn có chắc chắn muốn xóa Tag "${activeModal.item.name}"?`,
+                        impactInfo: usageCount > 0 ? `Cảnh báo: Tag này đang được sử dụng bởi ${usageCount} mục.` : undefined,
+                        isDanger: true,
+                        requireWordMatch: usageCount > 10 ? 'DELETE' : undefined,
+                        confirmText: 'Xác nhận xóa',
+                        onConfirm: async () => {
+                          try {
+                            await api.delete(`/tags/${activeModal.item.id}`);
+                            addToast('Đã xóa Tag', 'success');
+                            fetchTags();
+                            setActiveModal({ type: null, item: null });
+                          } catch (e: any) {
+                            addToast(e.response?.data?.message || 'Lỗi khi xóa', 'error');
+                          }
+                        }
+                      });
+                    }
+                    if (activeModal.type === 'field') {
+                      showConfirm({
+                        title: 'Xóa trường tùy chỉnh?',
+                        message: `Dữ liệu trong trường "${activeModal.item.label}" sẽ bị xóa vĩnh viễn trên toàn bộ hệ thống.`,
+                        isDanger: true,
+                        confirmText: 'Xác nhận xóa',
+                        onConfirm: async () => {
+                          try {
+                            await api.delete(`/custom-fields/${activeModal.item.id}`);
+                            fetchCustomFields();
+                            setActiveModal({ type: null, item: null });
+                            addToast('Đã xóa trường tùy chỉnh', 'success');
+                          } catch (e: any) {
+                            addToast('Lỗi xóa trường tùy chỉnh', 'error');
+                          }
+                        }
+                      });
+                    }
+                    setActiveModal({ type: null, item: null });
+                    addToast('Đã xóa', 'success');
+                  } catch (e: any) {
+                    addToast(e.response?.data?.message || 'Lỗi khi xóa', 'error');
+                  }
+                }
+              );
+            }}><Trash2 size={14} /> Xóa</button>
+          ) : <div />}
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn secondary" onClick={() => setActiveModal({ type: null, item: null })}>Hủy</button>
+            <button className="btn primary" onClick={handleGenericSave}>Lưu cấu hình</button>
+          </div>
+        </div>
+      </CustomModal>
     </div>
   );
 };

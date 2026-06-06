@@ -61,12 +61,12 @@ class InventoryController {
      * Handle internal stock out (Damage, Gift, Loss)
      */
     public function internalExport(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền thực hiện xuất kho nội bộ', false);
+        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền thực hiện xuất kho nội bộ', false);
         $b = getBody();
         if (empty($b['batch_id']) || empty($b['qty']) || empty($b['reason'])) {
             respond(422, null, 'Thiếu thông tin xuất kho nội bộ', false);
         }
-        if ((int)$b['qty'] <= 0) {
+        if ((float)$b['qty'] <= 0) {
             respond(422, null, 'Số lượng xuất kho phải lớn hơn 0', false);
         }
 
@@ -81,7 +81,7 @@ class InventoryController {
             if ($batch['current_qty'] < $b['qty']) throw new Exception('Số lượng tồn kho trong lô không đủ');
 
             // 2. Update batch quantity
-            $newQty = $batch['current_qty'] - $b['qty'];
+            $newQty = (float)$batch['current_qty'] - (float)$b['qty'];
             $this->db->prepare("UPDATE batches SET current_qty = ? WHERE id = ?")
                  ->execute([$newQty, $b['batch_id']]);
 
@@ -159,10 +159,10 @@ class InventoryController {
      * Manual adjustment
      */
     public function adjust(array $auth): void {
-        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền điều chỉnh kho', false);
+        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền điều chỉnh kho', false);
         $b = getBody();
         if (empty($b['batch_id']) || !isset($b['new_qty'])) respond(400, null, 'Thiếu thông tin điều chỉnh', false);
-        if ((int)$b['new_qty'] < 0) respond(422, null, 'Số lượng tồn kho không được nhỏ hơn 0', false);
+        if ((float)$b['new_qty'] < 0) respond(422, null, 'Số lượng tồn kho không được nhỏ hơn 0', false);
 
         $this->db->beginTransaction();
         try {
@@ -171,10 +171,9 @@ class InventoryController {
             $batch = $stmt->fetch();
             if (!$batch) throw new Exception('Không tìm thấy lô hàng');
 
-            $qtyChange = $b['new_qty'] - $batch['current_qty'];
-
+            $qtyChange = (float)$b['new_qty'] - (float)$batch['current_qty'];
             $this->db->prepare("UPDATE batches SET current_qty = ? WHERE id = ?")
-                 ->execute([$b['new_qty'], $b['batch_id']]);
+                 ->execute([(float)$b['new_qty'], $b['batch_id']]);
 
             $logStmt = $this->db->prepare("
                 INSERT INTO inventory_logs (tenant_id, batch_id, action_type, qty_change, reason, created_by)
@@ -211,9 +210,9 @@ class InventoryController {
             LEFT JOIN users u ON l.created_by = u.id
             WHERE l.tenant_id = ?
             ORDER BY l.created_at DESC
-            LIMIT ?
+            LIMIT $limit
         ");
-        $stmt->execute([$tid, $limit]);
+        $stmt->execute([$tid]);
         respond(200, $stmt->fetchAll());
     }
 
@@ -221,14 +220,14 @@ class InventoryController {
      * Archive a batch (when it's empty and no longer needed in active list)
      */
     public function archive(array $auth, int $id): void {
-        if ($auth['role'] !== 'admin') respond(403, null, 'Chỉ admin mới có quyền lưu trữ lô hàng', false);
+        if (!in_array($auth['role'], ['admin', 'super_admin'], true)) respond(403, null, 'Chỉ admin mới có quyền lưu trữ lô hàng', false);
         
         $stmt = $this->db->prepare("SELECT current_qty FROM batches WHERE id=? AND tenant_id=?");
         $stmt->execute([$id, $auth['tenant_id']]);
         $qty = $stmt->fetchColumn();
         
         if ($qty === false) respond(404, null, 'Không tìm thấy lô hàng', false);
-        if ((int)$qty > 0) respond(400, null, 'Không thể lưu trữ lô hàng còn tồn kho. Vui lòng điều chỉnh kho về 0 trước.', false);
+        if ((float)$qty > 0) respond(400, null, 'Không thể lưu trữ lô hàng còn tồn kho. Vui lòng điều chỉnh kho về 0 trước.', false);
 
         $this->db->prepare("UPDATE batches SET status='archived' WHERE id=? AND tenant_id=?")->execute([$id, $auth['tenant_id']]);
         respond(200, null, 'Đã lưu trữ lô hàng');

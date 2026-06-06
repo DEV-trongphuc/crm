@@ -14,7 +14,7 @@ class DashboardController {
         $fromTs = $from . ' 00:00:00';
         $toTs   = $to . ' 23:59:59';
 
-        $isSale = $auth['role'] === 'sale';
+        $isSale = $auth['role'] === 'sales';
         $uid = $auth['user_id'];
 
         $fetchStats = function($f, $t, $fTs, $tTs) use ($tid, $isSale, $uid) {
@@ -183,16 +183,16 @@ class DashboardController {
                     FROM invoices 
                     WHERE tenant_id = :tid1 
                       AND status = 'paid' 
-                      AND DATE_FORMAT(paid_at, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
-                      ".(($auth['role'] === 'sale') ? " AND created_by = :uid1" : "")."
+                      AND paid_at BETWEEN DATE_FORMAT(dates.date, '%Y-%m-01 00:00:00') AND CONCAT(LAST_DAY(dates.date), ' 23:59:59')
+                      ".(($auth['role'] === 'sales') ? " AND created_by = :uid1" : "")."
                 ) as revenue,
                 (
                     (SELECT COALESCE(SUM(amount), 0) 
                      FROM expenses 
                      WHERE tenant_id = :tid2 
                        AND status = 'approved' 
-                       AND DATE_FORMAT(date, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
-                       ".(($auth['role'] === 'sale') ? " AND created_by = :uid2" : "")."
+                       AND date BETWEEN DATE_FORMAT(dates.date, '%Y-%m-01') AND LAST_DAY(dates.date)
+                       ".(($auth['role'] === 'sales') ? " AND created_by = :uid2" : "")."
                     ) +
                     (SELECT COALESCE(SUM(ii.quantity * p.cost), 0)
                      FROM invoice_items ii 
@@ -200,16 +200,16 @@ class DashboardController {
                      JOIN invoices i ON ii.invoice_id = i.id
                      WHERE i.tenant_id = :tid3
                        AND i.status = 'paid'
-                       AND DATE_FORMAT(i.paid_at, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
-                       ".(($auth['role'] === 'sale') ? " AND i.created_by = :uid3" : "")."
+                       AND i.paid_at BETWEEN DATE_FORMAT(dates.date, '%Y-%m-01 00:00:00') AND CONCAT(LAST_DAY(dates.date), ' 23:59:59')
+                       ".(($auth['role'] === 'sales') ? " AND i.created_by = :uid3" : "")."
                     ) +
                     (SELECT COALESCE(SUM(shipping_fee), 0)
                      FROM invoices
                      WHERE tenant_id = :tid4
                        AND status = 'paid'
                        AND shipping_customer_pay = 0
-                       AND DATE_FORMAT(paid_at, '%Y-%m') = DATE_FORMAT(dates.date, '%Y-%m')
-                       ".(($auth['role'] === 'sale') ? " AND created_by = :uid4" : "")."
+                       AND paid_at BETWEEN DATE_FORMAT(dates.date, '%Y-%m-01 00:00:00') AND CONCAT(LAST_DAY(dates.date), ' 23:59:59')
+                       ".(($auth['role'] === 'sales') ? " AND created_by = :uid4" : "")."
                     )
                 ) as cost
             FROM (
@@ -224,7 +224,7 @@ class DashboardController {
         ";
         
         $p = ['tid1' => $tid, 'tid2' => $tid, 'tid3' => $tid, 'tid4' => $tid];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $p['uid1'] = $auth['user_id'];
             $p['uid2'] = $auth['user_id'];
             $p['uid3'] = $auth['user_id'];
@@ -247,7 +247,7 @@ class DashboardController {
             LEFT JOIN users u ON d.owner_id = u.id
             WHERE d.tenant_id=? AND (ps.is_won=0 OR ps.is_won IS NULL) AND (ps.is_lost=0 OR ps.is_lost IS NULL)";
         $p = [$tid];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND d.owner_id = ?";
             $p[] = $auth['user_id'];
         }
@@ -264,7 +264,7 @@ class DashboardController {
             LEFT JOIN users u ON a.user_id = u.id
             WHERE a.tenant_id=?";
         $p = [$tid];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND a.user_id = ?";
             $p[] = $auth['user_id'];
         }
@@ -280,14 +280,14 @@ class DashboardController {
         $sql = "
             SELECT ps.id, ps.name, ps.color, ps.order_index, ps.is_won, ps.is_lost,
                    (
-                     (SELECT COUNT(*) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid1 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid1" : "").") +
-                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid2 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid2" : "").") +
-                     (SELECT COUNT(*) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 ".(($auth['role'] === 'sale') ? " AND cp.owner_id = :uid3" : "").")
+                     (SELECT COUNT(*) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid1 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid1" : "").") +
+                     (SELECT COUNT(*) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid2 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid2" : "").") +
+                     (SELECT COUNT(*) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid3 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid3" : "").")
                    ) as deal_count,
                    (
-                     (SELECT COALESCE(SUM(value),0) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid4 ".(($auth['role'] === 'sale') ? " AND d.owner_id = :uid4" : "").") +
-                     (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid5 ".(($auth['role'] === 'sale') ? " AND c.owner_id = :uid5" : "").") +
-                     (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 ".(($auth['role'] === 'sale') ? " AND cp.owner_id = :uid6" : "").")
+                     (SELECT COALESCE(SUM(value),0) FROM deals d WHERE d.stage_id = ps.id AND d.deleted_at IS NULL AND d.tenant_id = :tid4 ".(($auth['role'] === 'sales') ? " AND d.owner_id = :uid4" : "").") +
+                     (SELECT COALESCE(SUM(expected_revenue),0) FROM contacts c WHERE c.stage_id = ps.id AND c.deleted_at IS NULL AND c.tenant_id = :tid5 ".(($auth['role'] === 'sales') ? " AND c.owner_id = :uid5" : "").") +
+                     (SELECT COALESCE(SUM(expected_revenue),0) FROM companies cp WHERE cp.stage_id = ps.id AND cp.deleted_at IS NULL AND cp.tenant_id = :tid6 ".(($auth['role'] === 'sales') ? " AND cp.owner_id = :uid6" : "").")
                    ) as total_value
             FROM pipeline_stages ps
             WHERE ps.tenant_id = :tid_main
@@ -300,7 +300,7 @@ class DashboardController {
             'tid4' => $tid, 'tid5' => $tid, 'tid6' => $tid, 
             'tid_main' => $tid
         ];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $p['uid1'] = $auth['user_id'];
             $p['uid2'] = $auth['user_id'];
             $p['uid3'] = $auth['user_id'];
@@ -321,7 +321,7 @@ class DashboardController {
         
         $sql = "SELECT source, COUNT(*) as count FROM contacts WHERE tenant_id=? AND deleted_at IS NULL AND created_at BETWEEN ? AND ?";
         $p = [$tid, $from, $to];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND owner_id = ?";
             $p[] = $auth['user_id'];
         }
@@ -340,7 +340,7 @@ class DashboardController {
         $where = "u.tenant_id=? AND u.is_active=1 AND u.role IN ('admin','manager','sales','sale')";
         $params = [$tid, $from, $to, $tid];
         
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $where .= " AND u.id=?";
             $params[] = $auth['user_id'];
         }

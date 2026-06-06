@@ -39,7 +39,8 @@ class AuthController {
                  ->execute([$ip, $email]);
             
             // Log for security audit
-            logActivity($this->db, $user['tenant_id'] ?? null, null, 'LOGIN_FAIL', 'auth', null, "Thất bại: $email từ IP $ip");
+            $tenantId = $user ? $user['tenant_id'] : null;
+            logActivity($this->db, $tenantId, null, 'LOGIN_FAIL', 'auth', null, "Thất bại: $email từ IP $ip");
 
             respond(401, null, 'Email hoặc mật khẩu không đúng', false);
         }

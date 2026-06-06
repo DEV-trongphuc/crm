@@ -44,9 +44,14 @@ class FinanceController
         $offset = ($page - 1) * $limit;
         $status = $_GET['status'] ?? '';
         $search = $_GET['search'] ?? '';
+        $contactId = $_GET['contact_id'] ?? '';
         $where = ['i.tenant_id=?', 'i.deleted_at IS NULL'];
         $params = [$tid];
-        if ($auth['role'] === 'sale') {
+        if ($contactId) {
+            $where[] = 'i.contact_id = ?';
+            $params[] = (int)$contactId;
+        }
+        if ($auth['role'] === 'sales') {
             $where[] = 'i.created_by = ?';
             $params[] = $auth['user_id'];
         }
@@ -96,7 +101,7 @@ class FinanceController
             WHERE i.id=? AND i.tenant_id=? AND i.deleted_at IS NULL
         ";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND i.created_by=?";
             $p[] = $auth['user_id'];
         }
@@ -176,7 +181,7 @@ class FinanceController
             if (!empty($data['items']) && is_array($data['items'])) {
                 $sItem = $this->db->prepare("INSERT INTO invoice_items (invoice_id,product_id,name,quantity,unit_price,subtotal) VALUES (?,?,?,?,?,?)");
                 foreach ($data['items'] as $item) {
-                    $qty = (int) ($item['quantity'] ?? 1);
+                    $qty = (float) ($item['quantity'] ?? 1);
                     $price = (float) ($item['unit_price'] ?? 0);
                     if ($qty <= 0 || $price < 0) {
                         throw new Exception('Số lượng sản phẩm phải lớn hơn 0 và đơn giá không được âm');
@@ -196,7 +201,7 @@ class FinanceController
                     $sItem->execute([$invId, $item['product_id'] ?? null, $item['name'], $qty, $price, $item['subtotal'] ?? 0]);
 
                     if ($isPaid && !empty($item['product_id']) && $trackInventory) {
-                        deductStockFIFO($this->db, $tid, $uid, (int) $item['product_id'], (int) $item['quantity'], $data['invoice_number']);
+                        deductStockFIFO($this->db, $tid, $uid, (int) $item['product_id'], (float) $item['quantity'], $data['invoice_number']);
                     }
                 }
             }
@@ -255,9 +260,9 @@ class FinanceController
         $this->db->beginTransaction();
         try {
             // Check permission and current status with FOR UPDATE to prevent race condition
-            $check = $this->db->prepare("SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND created_by=?" : "") . " FOR UPDATE");
+            $check = $this->db->prepare("SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND created_by=?" : "") . " FOR UPDATE");
             $cp = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sale')
+            if ($auth['role'] === 'sales')
                 $cp[] = $auth['user_id'];
             $check->execute($cp);
             $current = $check->fetch();
@@ -307,20 +312,20 @@ class FinanceController
         $items->execute([$invId]);
         while ($item = $items->fetch()) {
             if ($item['track_inventory'] && !empty($item['product_id'])) {
-                deductStockFIFO($this->db, $auth['tenant_id'], $auth['user_id'], (int) $item['product_id'], (int) $item['quantity'], $invNum);
+                deductStockFIFO($this->db, $auth['tenant_id'], $auth['user_id'], (int) $item['product_id'], (float) $item['quantity'], $invNum);
             }
         }
     }
 
     public function deleteInvoice(array $auth, int $id): void
     {
-        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa hóa đơn', false);
+        if (in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa hóa đơn', false);
         try {
             $this->db->beginTransaction();
 
             $sql = "UPDATE invoices SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
             $p = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sale') {
+            if ($auth['role'] === 'sales') {
                 $sql .= " AND created_by=?";
                 $p[] = $auth['user_id'];
             }
@@ -362,9 +367,9 @@ class FinanceController
             $this->db->beginTransaction();
 
             // Check if already deducted or already paid
-            $check = $this->db->prepare("SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND created_by=?" : "") . " FOR UPDATE");
+            $check = $this->db->prepare("SELECT id, status, is_inventory_deducted, invoice_number FROM invoices WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND created_by=?" : "") . " FOR UPDATE");
             $cp = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sale')
+            if ($auth['role'] === 'sales')
                 $cp[] = $auth['user_id'];
             $check->execute($cp);
             $inv = $check->fetch();
@@ -376,7 +381,7 @@ class FinanceController
 
             $sql = "UPDATE invoices SET status='paid', paid_at=NOW(), is_inventory_deducted=1 WHERE id=? AND tenant_id=?";
             $p = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sale') {
+            if ($auth['role'] === 'sales') {
                 $sql .= " AND created_by=?";
                 $p[] = $auth['user_id'];
             }
@@ -421,7 +426,7 @@ class FinanceController
         $to = $_GET['to'] ?? '';
         $where = ['e.tenant_id=?', 'e.deleted_at IS NULL'];
         $params = [$tid];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $where[] = 'e.created_by = ?';
             $params[] = $auth['user_id'];
         }
@@ -486,7 +491,7 @@ class FinanceController
     {
         $sql = "SELECT e.*, u.full_name as creator_name FROM expenses e LEFT JOIN users u ON e.created_by=u.id WHERE e.id=? AND e.tenant_id=? AND e.deleted_at IS NULL";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND e.created_by=?";
             $p[] = $auth['user_id'];
         }
@@ -608,9 +613,9 @@ class FinanceController
         $this->db->beginTransaction();
         try {
             // Check permission and get current amount if not provided
-            $check = $this->db->prepare("SELECT id, amount FROM expenses WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND created_by=?" : ""));
+            $check = $this->db->prepare("SELECT id, amount FROM expenses WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sales' ? " AND created_by=?" : ""));
             $cp = [$id, $auth['tenant_id']];
-            if ($auth['role'] === 'sale')
+            if ($auth['role'] === 'sales')
                 $cp[] = $auth['user_id'];
             $check->execute($cp);
             $row = $check->fetch();
@@ -662,7 +667,7 @@ class FinanceController
     {
         $where = "ee.entity_type=? AND ee.entity_id=? AND e.tenant_id=?";
         $p = [$type, $id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $where .= " AND e.created_by=?";
             $p[] = $auth['user_id'];
         }
@@ -680,11 +685,11 @@ class FinanceController
 
     public function deleteExpense(array $auth, int $id): void
     {
-        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa chi phí', false);
+        if ($auth['role'] !== 'super_admin' && in_array($auth['role'], ['sales', 'viewer'], true)) respond(403, null, 'Bạn không có quyền xóa chi phí', false);
         $sql = "UPDATE expenses SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND created_by=?";
+        if ($auth['role'] !== 'super_admin' && $auth['role'] === 'sales') {
+            $sql .= " AND created_by = ?";
             $p[] = $auth['user_id'];
         }
         $stmt = $this->db->prepare($sql);
@@ -697,8 +702,8 @@ class FinanceController
 
     public function approveExpense(array $auth, int $id): void
     {
-        if (!in_array($auth['role'], ['admin', 'manager'])) respond(403, null, 'Bạn không có quyền duyệt chi phí', false);
-        requireRole($auth, ['admin', 'manager']);
+        if (!in_array($auth['role'], ['admin', 'manager', 'super_admin'], true)) respond(403, null, 'Bạn không có quyền duyệt chi phí', false);
+        requireRole($auth, ['admin', 'manager', 'super_admin']);
         $data = getBody();
         $status = $data['status'] ?? 'approved';
         if ($status === 'approved') {
@@ -714,7 +719,7 @@ class FinanceController
 
     public function summary(array $auth): void
     {
-        requireRole($auth, ['admin', 'manager']);
+        requireRole($auth, ['admin', 'manager', 'super_admin']);
         $tid = $auth['tenant_id'];
         $sInv = $this->db->prepare("
             SELECT COALESCE(SUM(total),0) as total_revenue,

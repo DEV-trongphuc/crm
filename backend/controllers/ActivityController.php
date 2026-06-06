@@ -38,7 +38,7 @@ class ActivityController {
         if (!in_array($sortBy, $allowedSort)) $sortBy = 'due_date';
         if (!in_array(strtoupper($order), ['ASC', 'DESC'])) $order = 'ASC';
 
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $where[] = 'a.user_id = ?';
             $params[] = $auth['user_id'];
         }
@@ -91,8 +91,8 @@ class ActivityController {
         }
 
         $targetUserId = $b['user_id'] ?? $auth['user_id'];
-        if ($auth['role'] === 'sale' && (int)$targetUserId !== (int)$auth['user_id']) {
-            $targetUserId = $auth['user_id']; // Force self for sale role
+        if ($auth['role'] === 'sales' && (int)$targetUserId !== (int)$auth['user_id']) {
+            $targetUserId = $auth['user_id']; // Force self for sales role
         }
         
         $due_date = empty($b['due_date']) ? null : $b['due_date'];
@@ -134,15 +134,26 @@ class ActivityController {
     }
 
     public function show(array $auth,int $id): void {
-        $sql = "SELECT a.*,u.full_name as user_name FROM activities a LEFT JOIN users u ON a.user_id=u.id WHERE a.id=? AND a.tenant_id=? AND a.deleted_at IS NULL";
-        $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND a.user_id=?";
-            $p[] = $auth['user_id'];
-        }
-        $stmt=$this->db->prepare($sql);
-        $stmt->execute($p);
+        $stmt=$this->db->prepare("SELECT a.*,u.full_name as user_name FROM activities a LEFT JOIN users u ON a.user_id=u.id WHERE a.id=? AND a.tenant_id=? AND a.deleted_at IS NULL");
+        $stmt->execute([$id, $auth['tenant_id']]);
         $row=$stmt->fetch(); if(!$row) respond(404,null,'Không tìm thấy',false);
+
+        // Access check for sales role
+        if ($auth['role'] === 'sales') {
+            $allowed = false;
+            if ((int)$row['user_id'] === (int)$auth['user_id']) {
+                $allowed = true;
+            } elseif ($row['related_type'] && $row['related_id']) {
+                $table = $row['related_type'] === 'contact' ? 'contacts' : ($row['related_type'] === 'company' ? 'companies' : 'deals');
+                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
+                $checkOwner->execute([(int)$row['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                if ($checkOwner->fetch()) {
+                    $allowed = true;
+                }
+            }
+            if (!$allowed) respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
+        }
+
         respond(200,$row);
     }
 
@@ -189,11 +200,25 @@ class ActivityController {
         if(!$sets) respond(422,null,'Không có dữ liệu',false);
 
         // Check permission first
-        $check = $this->db->prepare("SELECT id FROM activities WHERE id=? AND tenant_id=? " . ($auth['role'] === 'sale' ? " AND user_id=?" : ""));
-        $cp = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') $cp[] = $auth['user_id'];
-        $check->execute($cp);
-        if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+        $check = $this->db->prepare("SELECT id, user_id, related_type, related_id FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
+        $check->execute([$id, $auth['tenant_id']]);
+        $activity = $check->fetch();
+        if (!$activity) respond(404, null, 'Không tìm thấy hoặc không có quyền', false);
+
+        if ($auth['role'] === 'sales') {
+            $allowed = false;
+            if ((int)$activity['user_id'] === (int)$auth['user_id']) {
+                $allowed = true;
+            } elseif ($activity['related_type'] && $activity['related_id']) {
+                $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
+                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
+                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                if ($checkOwner->fetch()) {
+                    $allowed = true;
+                }
+            }
+            if (!$allowed) respond(403, null, 'Bạn không có quyền cập nhật hoạt động này', false);
+        }
 
         $params[]=$id;$params[]=$auth['tenant_id'];
         $stmt = $this->db->prepare("UPDATE activities SET ".implode(',',$sets)." WHERE id=? AND tenant_id=?");
@@ -227,15 +252,25 @@ class ActivityController {
 
     public function getComments(array $auth, int $id): void {
         // Verify activity belongs to tenant and user has permission
-        $sql = "SELECT id FROM activities WHERE id=? AND tenant_id=?";
-        $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND user_id=?";
-            $p[] = $auth['user_id'];
+        $check = $this->db->prepare("SELECT id, user_id, related_type, related_id FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
+        $check->execute([$id, $auth['tenant_id']]);
+        $activity = $check->fetch();
+        if (!$activity) respond(404, null, 'Không tìm thấy hoạt động hoặc không có quyền truy cập', false);
+
+        if ($auth['role'] === 'sales') {
+            $allowed = false;
+            if ((int)$activity['user_id'] === (int)$auth['user_id']) {
+                $allowed = true;
+            } elseif ($activity['related_type'] && $activity['related_id']) {
+                $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
+                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
+                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                if ($checkOwner->fetch()) {
+                    $allowed = true;
+                }
+            }
+            if (!$allowed) respond(403, null, 'Bạn không có quyền truy cập hoạt động này', false);
         }
-        $check = $this->db->prepare($sql);
-        $check->execute($p);
-        if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoạt động hoặc không có quyền truy cập', false);
 
         $stmt = $this->db->prepare("
             SELECT c.*, u.full_name as user_name, u.avatar_url 
@@ -257,15 +292,25 @@ class ActivityController {
     public function addComment(array $auth, int $id): void {
         if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền bình luận', false);
         // Verify activity belongs to tenant and user has permission
-        $sql = "SELECT id FROM activities WHERE id=? AND tenant_id=?";
-        $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
-            $sql .= " AND user_id=?";
-            $p[] = $auth['user_id'];
+        $check = $this->db->prepare("SELECT id, user_id, related_type, related_id FROM activities WHERE id=? AND tenant_id=? AND deleted_at IS NULL");
+        $check->execute([$id, $auth['tenant_id']]);
+        $activity = $check->fetch();
+        if (!$activity) respond(404, null, 'Không tìm thấy hoạt động hoặc không có quyền truy cập', false);
+
+        if ($auth['role'] === 'sales') {
+            $allowed = false;
+            if ((int)$activity['user_id'] === (int)$auth['user_id']) {
+                $allowed = true;
+            } elseif ($activity['related_type'] && $activity['related_id']) {
+                $table = $activity['related_type'] === 'contact' ? 'contacts' : ($activity['related_type'] === 'company' ? 'companies' : 'deals');
+                $checkOwner = $this->db->prepare("SELECT id FROM $table WHERE id=? AND tenant_id=? AND owner_id=?");
+                $checkOwner->execute([(int)$activity['related_id'], $auth['tenant_id'], $auth['user_id']]);
+                if ($checkOwner->fetch()) {
+                    $allowed = true;
+                }
+            }
+            if (!$allowed) respond(403, null, 'Bạn không có quyền bình luận cho hoạt động này', false);
         }
-        $check = $this->db->prepare($sql);
-        $check->execute($p);
-        if (!$check->fetch()) respond(404, null, 'Không tìm thấy hoạt động hoặc không có quyền truy cập', false);
 
         $b = getBody();
         if (empty($b['content']) && empty($b['attachments'])) {
@@ -293,10 +338,10 @@ class ActivityController {
     }
 
     public function destroy(array $auth, int $id): void {
-        if (in_array($auth['role'], ['sale', 'viewer'])) respond(403, null, 'Bạn không có quyền xóa hoạt động', false);
+        if ($auth['role'] === 'viewer') respond(403, null, 'Bạn không có quyền xóa hoạt động', false);
         $sql = "UPDATE activities SET deleted_at = NOW() WHERE id=? AND tenant_id=?";
         $p = [$id, $auth['tenant_id']];
-        if ($auth['role'] === 'sale') {
+        if ($auth['role'] === 'sales') {
             $sql .= " AND user_id=?";
             $p[] = $auth['user_id'];
         }
